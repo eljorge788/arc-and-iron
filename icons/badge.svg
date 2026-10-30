@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="512" height="512">
+  <defs>
+    <path id="top" d="M22 64 A42 42 0 0 1 106 64"/>
+    <path id="bot" d="M18 64 A46 46 0 0 0 110 64"/>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E3E8EB"/><stop offset=".55" stop-color="#A9B4BB"/><stop offset="1" stop-color="#6E7A82"/></linearGradient>
+    <linearGradient id="steelV" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7C8890"/><stop offset=".45" stop-color="#E3E8EB"/><stop offset="1" stop-color="#7C8890"/></linearGradient>
+    <linearGradient id="cu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EE9F6E"/><stop offset="1" stop-color="#A9461A"/></linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="62" fill="#C2571A"/>
+  <circle cx="64" cy="64" r="57" fill="#1B2328"/>
+  <circle cx="64" cy="64" r="54" fill="none" stroke="#C2571A" stroke-width="1.2" stroke-dasharray="2 2.5"/>
+  <text font-family="'Barlow Condensed','Arial Narrow',sans-serif" font-weight="700" font-size="15" letter-spacing="3" fill="#ECEFEE"><textPath href="#top" startOffset="50%" text-anchor="middle">ARC &amp; IRON</textPath></text>
+  <text font-family="'Barlow Condensed','Arial Narrow',sans-serif" font-weight="700" font-size="9" letter-spacing="2" fill="#EE9F6E"><textPath href="#bot" startOffset="50%" text-anchor="middle">MACE · BELL · CLUB</textPath></text>
+  <circle cx="22" cy="64" r="2" fill="#C2571A"/><circle cx="106" cy="64" r="2" fill="#C2571A"/>
+  <g transform="translate(64 66) scale(.62) translate(-64 -66)">
+    <!-- steel club: wide end top-left, knob bottom-right -->
+    <g transform="translate(68 70) rotate(-39)">
+      <path d="M-2.6 36 L-3 6 C-3.6 -12 -10.5 -34 -10.5 -54 A10.5 10.5 0 0 1 10.5 -54 C10.5 -34 3.6 -12 3 6 L2.6 36 Z" fill="url(#steelV)" stroke="#1B2328" stroke-width="2"/>
+      <ellipse cx="0" cy="38" rx="5" ry="3.2" fill="url(#steelV)" stroke="#1B2328" stroke-width="1.5"/>
+    </g>
+    <!-- steel mace: copper head top-right -->
+    <line x1="34" y1="100" x2="94" y2="28" stroke="#1B2328" stroke-width="9" stroke-linecap="round"/>
+    <line x1="34" y1="100" x2="94" y2="28" stroke="url(#steelV)" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="100" cy="21" r="13" fill="url(#cu)" stroke="#1B2328" stroke-width="2"/>
+    <circle cx="96" cy="17" r="4" fill="#F6C3A2"/>
+    <!-- kettlebell -->
+    <path d="M44 66 V50 a20 20 0 0 1 40 0 V66 H74 V51 a10 10 0 0 0 -20 0 V66z" fill="url(#steel)" stroke="#1B2328" stroke-width="4"/>
+    <path d="M36 82 a28 28 0 1 1 56 0 c0 10-4 18-9 22 H45 c-5-4-9-12-9-22z" fill="url(#steel)" stroke="#1B2328" stroke-width="4"/>
+    <path d="M47 80 a17 17 0 0 1 11-12" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" opacity=".75"/>
+    <path d="M55 88 l9 -6 l9 6 l-9 6z" fill="url(#cu)"/>
+  </g>
+</svg>
