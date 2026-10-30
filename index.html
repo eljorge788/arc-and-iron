@@ -273,6 +273,12 @@ html.guiding,html.guiding body{overflow:hidden}
 .awake{font-family:var(--mono);font-size:.72rem;color:var(--good)}
 .awake[data-m="failed"],.awake[data-m="paused"]{color:var(--warn)}
 .g-awaketip{font-size:.85rem}
+.voicerow{display:grid;gap:6px}
+.range.vol{gap:10px;flex-wrap:wrap}
+.range.vol input{flex:1 1 140px;min-width:0}
+.range.vol output{min-width:4ch}
+.vpanel{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 12px;display:grid;gap:8px}
+.vpanel .hint{margin:0}
 .vbtn{font:inherit;font-family:var(--mono);font-size:.72rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:3px 10px;cursor:pointer}
 .vbtn[aria-pressed="false"]{color:var(--muted)}
 .g-name{font-size:clamp(2rem,9vw,3rem);line-height:1.02;text-transform:uppercase}
@@ -341,7 +347,8 @@ html.guiding,html.guiding body{overflow:hidden}
       <div class="field"><span>Experience</span><div class="seg" id="level"></div></div>
       <div class="field"><span>Focus</span><div class="seg" id="goal"></div></div>
       <div class="field"><span>Conditioning style</span><div class="seg" id="format"></div><span class="hint" id="fmtHint"></span></div>
-      <label class="pairrow check" id="voiceRow"><input type="checkbox" id="voiceSet"> Voice coach in guided workouts (says each step and counts down the last seconds)</label>
+      <div class="voicerow" id="voiceRow"><label class="pairrow check"><input type="checkbox" id="voiceSet"> Voice coach in guided workouts (says each step and counts down the last seconds)</label>
+        <div class="range vol"><span class="unit">Volume</span><input type="range" id="voiceVol" min="10" max="100" step="10" aria-label="Voice volume"><output id="voiceVolOut"></output><button class="btn ghost small" id="voiceTest" type="button">Test</button></div></div>
       <label class="pairrow check"><input type="checkbox" id="recov"> Work around muscles that need rest (from your Recovery tab)</label>
       <div class="field" id="minField"><span>Time for this workout</span>
         <div class="range"><input type="range" id="minutes" min="10" max="60" step="5" aria-label="Minutes per workout"><output id="minOut"></output></div></div>
@@ -465,7 +472,12 @@ html.guiding,html.guiding body{overflow:hidden}
 
 <div class="guide" id="guide" hidden role="dialog" aria-modal="true" aria-label="Workout in progress">
   <div class="g-in">
-    <div class="g-top"><div class="g-bar"><i id="gBar"></i></div><div class="g-meta"><span id="gBlock"></span><span class="g-mr"><span id="gCount"></span><span class="awake" id="gAwake" hidden></span><button class="vbtn" id="gVoice" type="button" aria-pressed="true">Voice on</button></span></div></div>
+    <div class="g-top"><div class="g-bar"><i id="gBar"></i></div><div class="g-meta"><span id="gBlock"></span><span class="g-mr"><span id="gCount"></span><span class="awake" id="gAwake" hidden></span><button class="vbtn" id="gVoice" type="button" aria-expanded="false" aria-controls="gVoicePanel">Voice</button></span></div></div>
+    <div class="vpanel" id="gVoicePanel" hidden>
+      <label class="pairrow check"><input type="checkbox" id="gVoiceOn"> Voice coach</label>
+      <div class="range vol"><span class="unit">Volume</span><input type="range" id="gVol" min="10" max="100" step="10" aria-label="Voice volume"><output id="gVolOut"></output><button class="btn ghost small" id="gVoiceTest" type="button">Test</button></div>
+      <p class="hint">Also turn up your phone's volume. On iPhone, check the silent switch.</p>
+    </div>
     <div class="g-main">
       <div class="g-phase" id="gPhase"></div>
       <h2 class="g-name" id="gName"></h2>
@@ -701,7 +713,8 @@ function renderSettings(){
   const fmtHints={auto:'A different style each time.',intervals:'Timed work and rest through a circuit.',emom:'A set of reps at the top of every minute.',tabata:'20 s hard, 10 s easy, 8 rounds.',amrap:'As many rounds as you can in the time.',ladder:'Climb 2, 4, 6, 8 reps and start again.',deck:'Draw cards: suit picks the move, number sets the reps.'};
   if(!S.format)S.format='auto';
   seg('format',Object.entries(FORMATS),'format',()=>{$('fmtHint').textContent=fmtHints[S.format]});$('fmtHint').textContent=fmtHints[S.format];
-  $('voiceRow').hidden=!VOICE_OK;$('voiceSet').checked=S.voice!==false;$('voiceSet').onchange=e=>{S.voice=e.target.checked;save();voiceBtn();if(S.voice)say('Voice coach on.',{interrupt:true})};
+  $('voiceRow').hidden=!VOICE_OK;$('voiceSet').checked=S.voice!==false;$('voiceSet').onchange=e=>{S.voice=e.target.checked;save();syncVoiceUI();if(S.voice)say('Voice coach on.',{interrupt:true})};
+  bindVol('voiceVol','voiceVolOut');$('voiceTest').onclick=testVoice;syncVoiceUI();
   $('recov').checked=S.recov!==false;$('recov').onchange=e=>{S.recov=e.target.checked;save()};
   const modeUI=()=>{const wk=S.mode==='week';if($('todayNote'))renderSetupBar();$('daysField').hidden=!wk;$('minField').hidden=wk;$('gen').textContent=wk?'Build week':'Build workout'};
   seg('mode',[['single','Single workout'],['week','Weekly plan']],'mode',modeUI);
@@ -1021,7 +1034,7 @@ $('copy').onclick=async()=>{
 
 /* ---------- guided workout mode ---------- */
 let actx=null,wake=null,G=null;
-function beep(f,d){try{if(!actx)return;const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;o.connect(g);g.connect(actx.destination);g.gain.setValueAtTime(.2,actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d);o.start();o.stop(actx.currentTime+d)}catch(e){}}
+function beep(f,d){try{if(!actx)return;const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;o.connect(g);g.connect(actx.destination);g.gain.setValueAtTime(Math.max(.02,.25*vVol()),actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d);o.start();o.stop(actx.currentTime+d)}catch(e){}}
 function phasesFor(b){
   const ph=[];const tm=b.timer;
   if(tm.phases)return tm.phases.slice();
@@ -1085,6 +1098,8 @@ $('guide').addEventListener('pointerdown',()=>{if(window.Awake&&G)Awake.nudge()}
 /* ---------- voice coach ---------- */
 const VOICE_OK=typeof window!=='undefined'&&'speechSynthesis' in window&&typeof SpeechSynthesisUtterance!=='undefined';
 const voiceOn=()=>VOICE_OK&&S.voice!==false;
+const vVol=()=>{const v=+S.voiceVol;return isFinite(v)&&v>0?Math.min(1,v):1};
+const volPct=()=>Math.round(vVol()*100)+'%';
 let vVoice=null;
 function pickVoice(){
   if(!VOICE_OK)return null;
@@ -1099,7 +1114,7 @@ function say(text,{interrupt=false,rate=1.05}={}){
   try{
     if(interrupt)speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(text);
-    if(vVoice)u.voice=vVoice;u.lang=(vVoice&&vVoice.lang)||'en-US';u.rate=rate;u.pitch=1;u.volume=1;
+    if(vVoice)u.voice=vVoice;u.lang=(vVoice&&vVoice.lang)||'en-US';u.rate=rate;u.pitch=1;u.volume=vVol();
     speechSynthesis.speak(u);
   }catch(e){}
 }
@@ -1228,12 +1243,22 @@ function gDraw(){
   $('gNext').textContent=nx?'Up next: '+nx:'Last step';
   $('gDone').textContent=s.secs?'Skip':'Done';
 }
-function gClose(){if(!G)return;clearInterval(G.iv);G=null;hush();$('guide').hidden=true;document.documentElement.classList.remove('guiding');if(window.Awake)Awake.off();awakeChip('off')}
+function gClose(){if(!G)return;$('gVoicePanel').hidden=true;$('gVoice').setAttribute('aria-expanded','false');clearInterval(G.iv);G=null;hush();$('guide').hidden=true;document.documentElement.classList.remove('guiding');if(window.Awake)Awake.off();awakeChip('off')}
 $('gDone').onclick=()=>{if(!G)return;if(G.done){const w=G.w,mins=Math.max(1,Math.round(G.elapsed/60)),notes=gNotes();gClose();prefillLog(w,{minutes:mins,notes});go('log');return}gGo(1)};
 $('gBack').onclick=()=>gGo(-1);
-function voiceBtn(){const b=$('gVoice');if(!VOICE_OK){b.hidden=true;return}const on=S.voice!==false;b.setAttribute('aria-pressed',String(on));b.textContent=on?'🔊 Voice on':'🔇 Voice off'}
-$('gVoice').onclick=()=>{S.voice=S.voice===false;save();voiceBtn();if(S.voice)announceStep();else hush()};
-voiceBtn();
+function voiceBtn(){const b=$('gVoice');if(!VOICE_OK){b.hidden=true;return}const on=S.voice!==false;b.textContent=on?'🔊 '+volPct():'🔇 Off'}
+function syncVoiceUI(){voiceBtn();const on=S.voice!==false,v=Math.round(vVol()*100);
+  [['voiceSet',null],['gVoiceOn',null]].forEach(([id])=>{const e=$(id);if(e)e.checked=on});
+  [['voiceVol','voiceVolOut'],['gVol','gVolOut']].forEach(([id,o])=>{const e=$(id);if(e){e.value=v;e.disabled=!on;$(o).textContent=v+'%'}});
+  ['voiceTest','gVoiceTest'].forEach(id=>{const e=$(id);if(e)e.disabled=!on})}
+let volTimer=null;
+function bindVol(id,out){const e=$(id);
+  e.oninput=()=>{S.voiceVol=+e.value/100;$(out).textContent=e.value+'%';syncVoiceUI();clearTimeout(volTimer);volTimer=setTimeout(()=>{save();testVoice()},350)}}
+function testVoice(){if(!voiceOn())return;say('Voice at '+Math.round(vVol()*100)+' percent.',{interrupt:true})}
+$('gVoice').onclick=()=>{const p=$('gVoicePanel');p.hidden=!p.hidden;$('gVoice').setAttribute('aria-expanded',String(!p.hidden))};
+$('gVoiceOn').onchange=e=>{S.voice=e.target.checked;save();syncVoiceUI();if(S.voice)announceStep();else hush()};
+bindVol('gVol','gVolOut');$('gVoiceTest').onclick=testVoice;
+syncVoiceUI();
 $('gPause').onclick=()=>{if(!G)return;G.run=!G.run;gDraw();if(!G.run)hush();else say('Go.',{interrupt:true})};
 $('gEnd').onclick=()=>{if(!G)return;if(G.done){gClose();return}
   if(!G.armed){G.armed=true;gDraw();setTimeout(()=>{if(G&&G.armed){G.armed=false;gDraw()}},3000);return}
