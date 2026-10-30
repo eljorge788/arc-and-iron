@@ -66,6 +66,20 @@ section{display:grid;gap:14px}
 .gearbox[open]>summary{margin-bottom:12px}
 .gearbox[open] .gb-sum{display:none}
 .gearbox[open] .gb-edit{visibility:hidden}
+.setupbar{display:grid;gap:14px}
+.setupseg button{flex:0 1 auto}
+.setupseg .su-new{color:var(--accent);font-weight:700}
+.todaygear{display:grid;gap:8px}
+.tg-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:8px 10px}
+.tg-row .weights{flex:1 1 200px;min-width:0;align-items:center}
+.tg-imp{font:inherit;font-weight:700;display:flex;align-items:center;gap:8px;border:0;background:transparent;color:var(--ink);cursor:pointer;padding:4px 2px;min-width:118px;text-align:left}
+.tg-box{width:20px;height:20px;border-radius:5px;border:2px solid var(--accent);display:grid;place-items:center;font-size:.8rem;color:var(--accent-ink);background:var(--accent)}
+.tg-off .tg-box{background:transparent;border-color:var(--line)}
+.tg-off{background:transparent;opacity:.7}
+.tg-off .tg-imp{color:var(--muted);text-decoration:line-through}
+.chip:disabled{opacity:.4;cursor:default}
+.tg-foot{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.gearbox .field{margin-bottom:12px}
 .gearbox #gearnote{margin-bottom:12px}
 .gearbox #gearDone{margin-top:12px}
 @media (max-width:480px){.gearbox>summary{grid-template-columns:1fr auto}.gb-sum{grid-column:1/-1;grid-row:2}}
@@ -300,12 +314,19 @@ html.guiding,html.guiding body{overflow:hidden}
 
   <div class="view" id="v-build">
   <p class="tip" id="buildTip" hidden></p>
-  <details class="gearbox" id="gearBox">
-    <summary><span class="gb-title">Your gear</span><span class="gb-sum" id="gearSum"></span><span class="gb-edit" id="gearEdit">Edit</span></summary>
-    <p class="note" id="gearnote">Starting with an example rack. Tap the weights you actually own.</p>
-    <div class="rack" id="rack"></div>
-    <button class="btn ghost small" id="gearDone" type="button">Done</button>
-  </details>
+  <section class="setupbar" aria-labelledby="eq-h">
+    <h2 id="eq-h">Equipment</h2>
+    <div class="field"><span>Setup</span><div class="seg setupseg" id="setupSeg" role="group" aria-label="Equipment setup"></div></div>
+    <div class="field"><span>Using today</span><div id="todayGear" class="todaygear"></div>
+      <div class="tg-foot"><span class="hint" id="todayNote"></span><button class="link" id="todayReset" type="button" hidden>Use the whole setup</button></div></div>
+    <details class="gearbox" id="gearBox">
+      <summary><span class="gb-title">Edit setup</span><span class="gb-sum" id="gearSum"></span><span class="gb-edit" id="gearEdit">Edit</span></summary>
+      <p class="note" id="gearnote">Starting with an example setup. Tap the weights you actually own, and add more setups (gym, travel) with + New.</p>
+      <label class="field"><span>Setup name</span><input type="text" id="suName" maxlength="24" autocomplete="off"></label>
+      <div class="rack" id="rack"></div>
+      <div class="go"><button class="btn ghost small" id="gearDone" type="button">Done</button><button class="link" id="suDel" type="button">Delete this setup</button></div>
+    </details>
+  </section>
 
   <section aria-labelledby="set-h">
     <h2 id="set-h">Session</h2>
@@ -575,6 +596,26 @@ function renderDays(){
   $('daySum').textContent=on.length?`${on.length} training day${on.length>1?'s':''}, ${tot} minutes total.`:'Pick at least one day.';
 }
 function save(){try{localStorage.setItem('ironflow',JSON.stringify(S))}catch(e){}}
+/* ---------- equipment setups ---------- */
+// S.setups holds named setups; S.eq always points at the active setup's equipment so older code
+// and older saved data keep working. S.today holds a today-only tweak that never changes the setup.
+function linkSetups(){
+  if(!Array.isArray(S.setups)||!S.setups.length)S.setups=[{id:'s1',name:'Home',eq:S.eq}];
+  S.setups.forEach(st=>{for(const k in DEFAULT.eq)if(!st.eq[k])st.eq[k]=JSON.parse(JSON.stringify(Object.assign({},DEFAULT.eq[k],{on:false,w:[]})))});
+  let a=S.setups.find(x=>x.id===S.active);if(!a){a=S.setups[0];S.active=a.id}
+  S.eq=a.eq;
+}
+linkSetups();
+const activeSetup=()=>S.setups.find(x=>x.id===S.active)||S.setups[0];
+function todayTweak(){const t=S.today;return t&&t.date===new Date().toLocaleDateString('en-CA')&&t.setup===S.active?t:null}
+function tweakActive(){const t=todayTweak();return !!t&&((t.off||[]).length>0||Object.values(t.offW||{}).some(a=>a.length))}
+// equipment the generator should use: today's selection for single workouts, the whole setup for weekly plans
+function effEq(k){
+  const st=S.eq[k];const t=S.mode==='week'?null:todayTweak();
+  if(!t)return st;
+  const off=(t.off||[]).includes(k),ow=(t.offW||{})[k]||[];
+  return {on:st.on&&!off,w:st.w.filter(w=>!ow.includes(w)),pair:st.pair,unit:st.unit};
+}
 
 const $=id=>document.getElementById(id);
 const rnd=a=>a[Math.floor(Math.random()*a.length)];
@@ -606,8 +647,39 @@ function renderRack(){
     if(e.pair)div.querySelector(`#pair-${k}`).onchange=ev=>{st.pair=ev.target.checked;save()};
   }
   $('gearnote').hidden=fromStore;
-  const parts=Object.keys(EQ).filter(k=>S.eq[k].on&&S.eq[k].w.length).map(k=>`${EQ[k].name} ${S.eq[k].w.join(', ')} ${unitOf(k)}${S.eq[k].pair?' (pairs)':''}`);
-  $('gearSum').textContent=parts.length?parts.join(' · '):'Nothing selected yet';
+  $('gearSum').textContent=activeSetup().name;
+  $('suName').value=activeSetup().name;
+  $('suDel').hidden=S.setups.length<2;
+  renderSetupBar();
+}
+function setupSummary(st){const p=Object.keys(EQ).filter(k=>st.eq[k].on&&st.eq[k].w.length).map(k=>`${EQ[k].name} ${st.eq[k].w.join(', ')} ${st.eq[k].unit||EQ[k].unit}`);return p.length?p.join(' · '):'No equipment yet'}
+function renderSetupBar(){
+  const sg=$('setupSeg');sg.innerHTML='';
+  S.setups.forEach(st=>{const b=document.createElement('button');b.type='button';b.textContent=st.name;b.setAttribute('aria-pressed',String(st.id===S.active));
+    b.onclick=()=>{if(st.id===S.active)return;S.active=st.id;linkSetups();save();renderRack()};sg.appendChild(b)});
+  const nb=document.createElement('button');nb.type='button';nb.className='su-new';nb.textContent='+ New';nb.onclick=newSetup;sg.appendChild(nb);
+  // today chips
+  const t=todayTweak()||{off:[],offW:{}};const box=$('todayGear');
+  const ks=Object.keys(EQ).filter(k=>S.eq[k].on&&S.eq[k].w.length);
+  if(!ks.length){box.innerHTML='<p class="empty">This setup has no equipment yet. Tap Edit setup to add what you have.</p>'}
+  else box.innerHTML=ks.map(k=>{const st=S.eq[k],off=(t.off||[]).includes(k),ow=(t.offW||{})[k]||[];
+    return `<div class="tg-row${off?' tg-off':''}"><button type="button" class="tg-imp" data-ti="${k}" aria-pressed="${!off}"><span class="tg-box">${off?'':'✓'}</span>${EQ[k].name}</button>
+      <div class="weights">${st.w.map(w=>`<button type="button" class="chip" data-tw="${k}:${w}" aria-pressed="${!off&&!ow.includes(w)}" ${off?'disabled':''}>${w}</button>`).join('')}<span class="unit">${st.unit||EQ[k].unit}</span></div></div>`}).join('');
+  const changed=tweakActive();
+  $('todayNote').textContent=S.mode==='week'?'Weekly plans use the whole setup. Today-only changes apply to single workouts.':changed?'Changed for today only. Your saved setup stays the same.':'Tap anything you are not using today. Changes reset tomorrow.';
+  $('todayReset').hidden=!changed;
+  box.querySelectorAll('[data-ti]').forEach(b=>b.onclick=()=>{const tw=editTweak(),k=b.dataset.ti,i=tw.off.indexOf(k);i<0?tw.off.push(k):tw.off.splice(i,1);commitTweak()});
+  box.querySelectorAll('[data-tw]').forEach(b=>b.onclick=()=>{const tw=editTweak(),[k,ws]=b.dataset.tw.split(':'),w=+ws;const a=tw.offW[k]=tw.offW[k]||[];const i=a.indexOf(w);
+    if(i<0){if(S.eq[k].w.filter(x=>!a.includes(x)).length<=1){tw.off.push(k)}else a.push(w)}else a.splice(i,1);commitTweak()});
+}
+function editTweak(){let t=todayTweak();if(!t){t=S.today={date:new Date().toLocaleDateString('en-CA'),setup:S.active,off:[],offW:{}}}t.off=t.off||[];t.offW=t.offW||{};return t}
+function commitTweak(){const t=S.today;if(t){t.off=t.off.filter(k=>S.eq[k]);for(const k in t.offW){t.offW[k]=t.offW[k].filter(w=>S.eq[k].w.includes(w))}}save();renderSetupBar()}
+let suCount=0;
+function newSetup(){
+  const base=activeSetup();let n=S.setups.length+1,name='Setup '+n;while(S.setups.some(x=>x.name===name))name='Setup '+(++n);
+  const st={id:'s'+Date.now().toString(36)+(suCount++),name,eq:JSON.parse(JSON.stringify(base.eq))};
+  S.setups.push(st);S.active=st.id;linkSetups();save();renderRack();
+  $('gearBox').open=true;setTimeout(()=>{try{$('suName').focus();$('suName').select()}catch(e){}},50);
 }
 function seg(id,opts,key,after){
   const el=$(id);el.innerHTML='';
@@ -621,7 +693,7 @@ function renderSettings(){
   if(!S.format)S.format='auto';
   seg('format',Object.entries(FORMATS),'format',()=>{$('fmtHint').textContent=fmtHints[S.format]});$('fmtHint').textContent=fmtHints[S.format];
   $('recov').checked=S.recov!==false;$('recov').onchange=e=>{S.recov=e.target.checked;save()};
-  const modeUI=()=>{const wk=S.mode==='week';$('daysField').hidden=!wk;$('minField').hidden=wk;$('gen').textContent=wk?'Build week':'Build workout'};
+  const modeUI=()=>{const wk=S.mode==='week';if($('todayNote'))renderSetupBar();$('daysField').hidden=!wk;$('minField').hidden=wk;$('gen').textContent=wk?'Build week':'Build workout'};
   seg('mode',[['single','Single workout'],['week','Weekly plan']],'mode',modeUI);
   renderDays();modeUI();
   $('gen').textContent=S.mode==='week'?'Build week':'Build workout';
@@ -630,16 +702,16 @@ function renderSettings(){
 }
 
 /* ---------- generator ---------- */
-function activeEq(){return Object.keys(EQ).filter(k=>S.eq[k].on&&S.eq[k].w.length)}
+function activeEq(){return Object.keys(EQ).filter(k=>{const e=effEq(k);return e.on&&e.w.length})}
 function weightFor(ex){
-  const st=S.eq[ex.eq],w=st.w,n=w.length;let i=ex.load==='light'?0:ex.load==='heavy'?n-1:Math.floor((n-1)/2);
+  const st=effEq(ex.eq),w=st.w,n=w.length;let i=ex.load==='light'?0:ex.load==='heavy'?n-1:Math.floor((n-1)/2);
   if(S.level===1&&ex.load==='heavy'&&n>2)i=n-2;
   if(ex.u&&ex.eq==='mace'&&ex.load!=='heavy'&&n>1&&S.level===1)i=0;
   const val=w[i]+' '+unitOf(ex.eq);return ex.d?'2 × '+val:val;
 }
 let BUILD_CTX=null;
 function pool(eqs,maxLvl,noGate){
-  const base=x=>eqs.includes(x.eq)&&(x.lvl<=maxLvl||masteredMove(x.name,x.eq))&&(!x.d||S.eq[x.eq].pair);
+  const base=x=>eqs.includes(x.eq)&&(x.lvl<=maxLvl||masteredMove(x.name,x.eq))&&(!x.d||effEq(x.eq).pair);
   let p=X.filter(x=>base(x)&&(noGate||!skillLocked(x)));
   if(p.length<3)p=X.filter(base);
   const ctx=BUILD_CTX;
@@ -709,13 +781,13 @@ function flowBlock(eqs,min,used,pref){
     const top=opts.filter(x=>x.lvl===S.level);f=(top.length&&Math.random()<.6)?rnd(top):rnd(opts);
   }
   used.add(f.name);
-  const st=S.eq[f.eq].w;const wt=st[Math.min(st.length-1,Math.floor((st.length-1)/2))]+' '+unitOf(f.eq);
+  const st=effEq(f.eq).w;const wt=st[Math.min(st.length-1,Math.floor((st.length-1)/2))]+' '+unitOf(f.eq);
   const work=S.level===1?45:60,rest=30;const rounds=Math.max(2,Math.floor((min*60-120)/(work+rest)));
   return{kind:'Flow',title:f.name,min,flow:f,wt,fmt:`Learn it first: 2 minutes of slow cycles, pausing at each position. Then flow ${work} s on, ${rest} s off for ${rounds} rounds. Switch your lead side every cycle.`,note:f.note,timer:{work,rest,rounds,lead:120}};
 }
 function forced(p,names){
   if(!names)return null;
-  const out=names.map(n=>X.find(x=>x.name===n)).filter(x=>x&&S.eq[x.eq].on&&S.eq[x.eq].w.length);
+  const out=names.map(n=>X.find(x=>x.name===n)).filter(x=>x&&effEq(x.eq).on&&effEq(x.eq).w.length);
   return out.length?out:null;
 }
 const repBase=()=>S.level===1?6:S.level===2?8:10;
@@ -871,7 +943,7 @@ function avoidedNote(w){
 }
 function workoutHTML(w,wi,heading){
   return `<div class="sheet"><div class="sheet-head"><div><div class="eyebrow">${esc(w.program?w.program.label:(heading||'Your workout'))}</div><h2>${GOALS[w.type]} · ${w.minutes} min</h2></div>
-    <div class="tags"><span class="tag">${LEVELS[S.level-1]}</span>${w.eqs.map(k=>`<span class="tag">${EQ[k].name}</span>`).join('')}</div></div>
+    <div class="tags"><span class="tag">${esc(activeSetup().name)}</span><span class="tag">${LEVELS[S.level-1]}</span>${w.eqs.map(k=>`<span class="tag">${EQ[k].name}</span>`).join('')}</div></div>
     <button class="btn startbtn" data-start="${wi}">▶ Start workout</button>
     ${avoidedNote(w)}${recoveryTip(w)}
     ${w.blocks.map((b,bi)=>blockHTML(b,bi,wi)).join('')}
@@ -1423,6 +1495,12 @@ window.addEventListener('hashchange',()=>go(location.hash.slice(1),true));
 $('gen').onclick=()=>generate(true);
 $('useSkills').onchange=e=>{S.useSkills=e.target.checked;save()};
 $('gearDone').onclick=()=>{$('gearBox').open=false;$('gearBox').scrollIntoView({block:'nearest'})};
+$('suName').oninput=e=>{const v=e.target.value.trim().slice(0,24);if(!v)return;activeSetup().name=v;$('gearSum').textContent=v;save();renderSetupBar()};
+$('suName').onblur=e=>{if(!e.target.value.trim())e.target.value=activeSetup().name};
+$('suDel').onclick=()=>{const b=$('suDel');if(S.setups.length<2)return;
+  if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Tap again to delete '+activeSetup().name;setTimeout(()=>{b.classList.remove('armed');b.textContent='Delete this setup'},3000);return}
+  S.setups=S.setups.filter(x=>x.id!==S.active);S.active=S.setups[0].id;linkSetups();save();b.classList.remove('armed');b.textContent='Delete this setup';renderRack()};
+$('todayReset').onclick=()=>{S.today=null;save();renderSetupBar()};
 {let setup=false;try{setup=localStorage.getItem('ironflow-setup')==='1'}catch(e){}$('gearBox').open=!setup&&!fromStore}
 renderRack();renderSettings();renderLib();renderSoreForm();generate();
 go((location.hash||'#build').slice(1),true);
@@ -1441,7 +1519,7 @@ $('bkFile').onchange=async e=>{
     const ids=new Set(Store.logs.map(l=>l.id));d.logs.forEach(l=>{if(!ids.has(l.id))Store.logs.push(l)});
     const cids=new Set(Store.checks.map(c=>c.id));(d.checks||[]).forEach(c=>{if(!cids.has(c.id))Store.checks.push(c)});
     if(d.state)Store.state=Object.assign({skills:{},program:null},d.state);
-    if(d.settings){S=Object.assign(S,d.settings);save()}
+    if(d.settings){S=Object.assign(S,d.settings);linkSetups();save()}
     Store.saveLocal();renderRack();renderSettings();renderTrack();m.textContent='Restored '+d.logs.length+' workouts.';
   }catch(err){m.textContent='That file is not an Arc & Iron backup.'}
   m.hidden=false;e.target.value='';

@@ -9,7 +9,8 @@ https://eljorge788.github.io/arc-and-iron/
 - `manifest.webmanifest` and `icons/`: home-screen install. `icons/badge.svg` is the master logo.
 
 ## Data
-User data lives in each browser's localStorage (`ironflow`, `ironflow-logs`, `ironflow-checks`, `ironflow-state`, `ironflow-setup`). Keep these key names and record shapes backward compatible so updates never wipe anyone's history. The in-app backup file uses `app: "arc-and-iron"`.
+User data lives in each browser's localStorage (`ironflow`, `ironflow-logs`, `ironflow-checks`, `ironflow-state`, `ironflow-setup`). Keep these key names and record shapes backward compatible so updates never wipe anyone's history.
+Equipment: `S.setups` holds named setups and `S.eq` always points at the active setup's equipment (older saves without setups are migrated into a "Home" setup by `linkSetups()`). `S.today` is a today-only tweak; the generator reads equipment through `effEq()`. The in-app backup file uses `app: "arc-and-iron"`.
 
 ## Working on it
 - Test changes before pushing (a jsdom smoke test is enough: build a workout, run guided mode, log it, check Programs).
