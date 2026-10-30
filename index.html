@@ -268,6 +268,9 @@ html.guiding,html.guiding body{overflow:hidden}
 .g-main{flex:1;display:grid;gap:10px;align-content:start}
 .g-phase{font-family:var(--mono);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent)}
 .guide.rest .g-phase{color:var(--ember)}
+.g-mr{display:flex;align-items:center;gap:10px}
+.vbtn{font:inherit;font-family:var(--mono);font-size:.72rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:3px 10px;cursor:pointer}
+.vbtn[aria-pressed="false"]{color:var(--muted)}
 .g-name{font-size:clamp(2rem,9vw,3rem);line-height:1.02;text-transform:uppercase}
 .g-detail{color:var(--muted);font-size:1rem}
 .g-wtrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
@@ -334,6 +337,7 @@ html.guiding,html.guiding body{overflow:hidden}
       <div class="field"><span>Experience</span><div class="seg" id="level"></div></div>
       <div class="field"><span>Focus</span><div class="seg" id="goal"></div></div>
       <div class="field"><span>Conditioning style</span><div class="seg" id="format"></div><span class="hint" id="fmtHint"></span></div>
+      <label class="pairrow check" id="voiceRow"><input type="checkbox" id="voiceSet"> Voice coach in guided workouts (says each step and counts down the last seconds)</label>
       <label class="pairrow check"><input type="checkbox" id="recov"> Work around muscles that need rest (from your Recovery tab)</label>
       <div class="field" id="minField"><span>Time for this workout</span>
         <div class="range"><input type="range" id="minutes" min="10" max="60" step="5" aria-label="Minutes per workout"><output id="minOut"></output></div></div>
@@ -457,7 +461,7 @@ html.guiding,html.guiding body{overflow:hidden}
 
 <div class="guide" id="guide" hidden role="dialog" aria-modal="true" aria-label="Workout in progress">
   <div class="g-in">
-    <div class="g-top"><div class="g-bar"><i id="gBar"></i></div><div class="g-meta"><span id="gBlock"></span><span id="gCount"></span></div></div>
+    <div class="g-top"><div class="g-bar"><i id="gBar"></i></div><div class="g-meta"><span id="gBlock"></span><span class="g-mr"><span id="gCount"></span><button class="vbtn" id="gVoice" type="button" aria-pressed="true">Voice on</button></span></div></div>
     <div class="g-main">
       <div class="g-phase" id="gPhase"></div>
       <h2 class="g-name" id="gName"></h2>
@@ -692,6 +696,7 @@ function renderSettings(){
   const fmtHints={auto:'A different style each time.',intervals:'Timed work and rest through a circuit.',emom:'A set of reps at the top of every minute.',tabata:'20 s hard, 10 s easy, 8 rounds.',amrap:'As many rounds as you can in the time.',ladder:'Climb 2, 4, 6, 8 reps and start again.',deck:'Draw cards: suit picks the move, number sets the reps.'};
   if(!S.format)S.format='auto';
   seg('format',Object.entries(FORMATS),'format',()=>{$('fmtHint').textContent=fmtHints[S.format]});$('fmtHint').textContent=fmtHints[S.format];
+  $('voiceRow').hidden=!VOICE_OK;$('voiceSet').checked=S.voice!==false;$('voiceSet').onchange=e=>{S.voice=e.target.checked;save();voiceBtn();if(S.voice)say('Voice coach on.',{interrupt:true})};
   $('recov').checked=S.recov!==false;$('recov').onchange=e=>{S.recov=e.target.checked;save()};
   const modeUI=()=>{const wk=S.mode==='week';if($('todayNote'))renderSetupBar();$('daysField').hidden=!wk;$('minField').hidden=wk;$('gen').textContent=wk?'Build week':'Build workout'};
   seg('mode',[['single','Single workout'],['week','Weekly plan']],'mode',modeUI);
@@ -1065,6 +1070,73 @@ const mmss=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart
 function newDeck(){const d=[];for(const s of [0,1,2,3])for(let v=1;v<=13;v++)d.push({s,v});return shuffle(d)}
 function cardReps(v){let r=v===1?11:v>10?10:v;if(S.level===1)r=Math.max(2,Math.ceil(r*.6));return r}
 const cardLabel=v=>v===1?'A':v===11?'J':v===12?'Q':v===13?'K':String(v);
+/* ---------- voice coach ---------- */
+const VOICE_OK=typeof window!=='undefined'&&'speechSynthesis' in window&&typeof SpeechSynthesisUtterance!=='undefined';
+const voiceOn=()=>VOICE_OK&&S.voice!==false;
+let vVoice=null;
+function pickVoice(){
+  if(!VOICE_OK)return null;
+  const vs=speechSynthesis.getVoices()||[];
+  const en=vs.filter(v=>/^en(-|_|$)/i.test(v.lang));
+  vVoice=en.find(v=>/en-US/i.test(v.lang)&&v.localService)||en.find(v=>/en-US/i.test(v.lang))||en[0]||null;
+  return vVoice;
+}
+if(VOICE_OK){pickVoice();try{speechSynthesis.addEventListener('voiceschanged',pickVoice)}catch(e){}}
+function say(text,{interrupt=false,rate=1.05}={}){
+  if(!voiceOn()||!text)return;
+  try{
+    if(interrupt)speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    if(vVoice)u.voice=vVoice;u.lang=(vVoice&&vVoice.lang)||'en-US';u.rate=rate;u.pitch=1;u.volume=1;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+function hush(){if(VOICE_OK)try{speechSynthesis.cancel()}catch(e){}}
+// turn on-screen text into something that sounds natural out loud
+function spoken(t){
+  return String(t||'')
+    .replace(/(\d+(?:\.\d+)?)\s*kg\b/g,(m,n)=>`${n} kilo${n==='1'?'':'s'}`)
+    .replace(/(\d+(?:\.\d+)?)\s*lb\b/g,(m,n)=>`${n} pound${n==='1'?'':'s'}`)
+    .replace(/\b2 × /g,'a pair at ')
+    .replace(/(\d+)\s*\/\s*(\d+)/g,'$1 of $2')
+    .replace(/(\d+)\s*[–-]\s*(\d+)/g,'$1 to $2')
+    .replace(/\/side\b/g,' per side').replace(/×/g,' times ')
+    .replace(/\s·\s/g,', ').replace(/\bAMRAP\b/g,'am rap').replace(/\bEMOM\b/g,'E mom')
+    .replace(/10-to-2/gi,'ten to two').replace(/\b360\b/g,'three sixty')
+    .replace(/\s+/g,' ').trim();
+}
+function nextWorkStep(from){for(let j=from+1;j<G.steps.length;j++)if(!G.steps[j].rest)return G.steps[j];return null}
+// what to say when a step begins
+function announceStep(){
+  if(!G||!voiceOn())return;
+  if(G.done){say('Workout complete. Nice work. Log it so your progress stays up to date.',{interrupt:true});return}
+  const s=G.steps[G.i];let t='';
+  if(s.rest){const nx=nextWorkStep(G.i);t=`Rest${s.secs?' '+s.secs+' seconds':''}.${nx?' Next up, '+nx.name+'.':''}`}
+  else if(s.list){t=`${s.name}. ${Math.round((s.secs||0)/60)} minutes. ${s.counter==='deck'?'Draw a card to start.':s.counter==='rounds'?'Tap plus one after each round.':s.counter==='rungs'?'Start at '+s.rungs[0]+' reps.':''} Go.`}
+  else{
+    const parts=[s.name];
+    if(s.wt)parts.push(s.wt);
+    if(s.detail&&!/^Learn it slowly/.test(s.detail))parts.push(s.detail.replace(/^(Warm-up|Cool-down)\s·\s/,''));
+    else if(s.detail)parts.push('Learn it slowly. Pause at each position');
+    if(!s.secs)parts.push('Tap done when finished');
+    t=parts.join('. ')+'.';
+  }
+  say(spoken(t),{interrupt:true});
+}
+// heads-up a few seconds before a timed step ends, then a short count
+function countdownCue(){
+  if(!G||!voiceOn())return;
+  const s=G.steps[G.i];if(!s.secs)return;
+  const lead=s.secs>=12?6:s.secs>=8?4:0;
+  if(lead&&G.left===lead){
+    const nxt=G.steps[G.i+1];
+    if(!nxt)say('Last few seconds.');
+    else if(nxt.rest)say('Rest coming up.');
+    else say(spoken('Next, '+nxt.name+(nxt.wt?', '+nxt.wt:'')+'.'));
+  }
+  if(G.left>=1&&G.left<=3)say(String(G.left),{rate:1.1});
+}
+
 function startGuided(w,fromBlock){
   try{actx=actx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){}
   try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(x=>wake=x).catch(()=>{})}catch(e){}
@@ -1074,18 +1146,19 @@ function startGuided(w,fromBlock){
   G={w,steps,i,left:steps[i].secs||0,run:true,elapsed:0,counts:{},rung:{},deck:{},card:{},armed:false,done:false};
   $('guide').hidden=false;document.documentElement.classList.add('guiding');
   G.iv=setInterval(gTick,1000);gDraw();beep(880,.15);
+  if(voiceOn())say(spoken('Starting '+GOALS[w.type]+', '+w.minutes+' minutes.'),{interrupt:true});announceStep();
   try{$('gDone').focus()}catch(e){}
 }
 function gTick(){
   if(!G||!G.run||G.done)return;G.elapsed++;
   const s=G.steps[G.i];if(!s.secs){gClock();return}
-  G.left--;if(G.left<=3&&G.left>0)beep(660,.08);
+  G.left--;if(voiceOn())countdownCue();else if(G.left<=3&&G.left>0)beep(660,.08);
   if(G.left<=0)gGo(1);else gClock();
 }
 function gGo(d){
   if(!G||G.done)return;const ni=G.i+d;if(ni<0)return;
-  if(ni>=G.steps.length){G.done=true;beep(990,.5);gDraw();return}
-  G.i=ni;G.left=G.steps[ni].secs||0;G.armed=false;beep(G.steps[ni].rest?440:880,.2);gDraw();
+  if(ni>=G.steps.length){G.done=true;beep(990,.5);gDraw();announceStep();return}
+  G.i=ni;G.left=G.steps[ni].secs||0;G.armed=false;beep(G.steps[ni].rest?440:880,.2);gDraw();announceStep();
 }
 function gClock(){const s=G.steps[G.i];$('gClock').textContent=s.secs?mmss(Math.max(0,G.left)):mmss(G.elapsed);$('gClockLbl').textContent=s.secs?(s.rest?'Rest left':'Time left'):'Workout time'}
 function gNotes(){
@@ -1133,18 +1206,23 @@ function gDraw(){
     if(k==='r+')G.counts[s.bi]=(G.counts[s.bi]||0)+1;
     if(k==='r-')G.counts[s.bi]=Math.max(0,(G.counts[s.bi]||0)-1);
     if(k==='rung')G.rung[s.bi]=(G.rung[s.bi]||0)+1;
-    if(k==='draw'){if(!G.deck[s.bi]||!G.deck[s.bi].length)G.deck[s.bi]=newDeck();G.card[s.bi]=G.deck[s.bi].pop()}
+    if(k==='draw'){if(!G.deck[s.bi]||!G.deck[s.bi].length)G.deck[s.bi]=newDeck();const c=G.card[s.bi]=G.deck[s.bi].pop();
+      const m=s.list[c.s%s.list.length],r=cardReps(c.v);say(spoken(`${['Ace','2','3','4','5','6','7','8','9','10','Jack','Queen','King'][c.v-1]} of ${['spades','hearts','diamonds','clubs'][c.s]}. ${m.name}, ${m.u?Math.ceil(r/2)+' per side':r+' reps'}.`),{interrupt:true})}
+    if(k==='rung'){const r=G.rung[s.bi],at=s.rungs[r%s.rungs.length];say(`${at} reps.`,{interrupt:true})}
     gDraw();
   });
-  g.querySelectorAll('#gDemo a,#gExtra a').forEach(a=>a.addEventListener('click',()=>{if(G&&G.run&&G.steps[G.i].secs){G.run=false;gDraw()}}));
+  g.querySelectorAll('#gDemo a,#gExtra a').forEach(a=>a.addEventListener('click',()=>{hush();if(G&&G.run&&G.steps[G.i].secs){G.run=false;gDraw()}}));
   let nx='';for(let j=G.i+1;j<n;j++){if(!G.steps[j].rest){nx=G.steps[j].name;break}}
   $('gNext').textContent=nx?'Up next: '+nx:'Last step';
   $('gDone').textContent=s.secs?'Skip':'Done';
 }
-function gClose(){if(!G)return;clearInterval(G.iv);G=null;$('guide').hidden=true;document.documentElement.classList.remove('guiding');try{wake&&wake.release()}catch(e){}wake=null}
+function gClose(){if(!G)return;clearInterval(G.iv);G=null;hush();$('guide').hidden=true;document.documentElement.classList.remove('guiding');try{wake&&wake.release()}catch(e){}wake=null}
 $('gDone').onclick=()=>{if(!G)return;if(G.done){const w=G.w,mins=Math.max(1,Math.round(G.elapsed/60)),notes=gNotes();gClose();prefillLog(w,{minutes:mins,notes});go('log');return}gGo(1)};
 $('gBack').onclick=()=>gGo(-1);
-$('gPause').onclick=()=>{if(!G)return;G.run=!G.run;gDraw()};
+function voiceBtn(){const b=$('gVoice');if(!VOICE_OK){b.hidden=true;return}const on=S.voice!==false;b.setAttribute('aria-pressed',String(on));b.textContent=on?'🔊 Voice on':'🔇 Voice off'}
+$('gVoice').onclick=()=>{S.voice=S.voice===false;save();voiceBtn();if(S.voice)announceStep();else hush()};
+voiceBtn();
+$('gPause').onclick=()=>{if(!G)return;G.run=!G.run;gDraw();if(!G.run)hush();else say('Go.',{interrupt:true})};
 $('gEnd').onclick=()=>{if(!G)return;if(G.done){gClose();return}
   if(!G.armed){G.armed=true;gDraw();setTimeout(()=>{if(G&&G.armed){G.armed=false;gDraw()}},3000);return}
   if(G.elapsed>=120){G.done=true;gDraw()}else gClose()};
