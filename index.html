@@ -7,6 +7,7 @@
 <meta name="description" content="Kettlebell, steel mace and steel club workouts built from your own gear, with guided sessions, programs, skill paths and progress tracking.">
 <meta name="theme-color" content="#1B2328">
 <link rel="manifest" href="manifest.webmanifest">
+<script src="keepawake.js" defer></script>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -269,6 +270,9 @@ html.guiding,html.guiding body{overflow:hidden}
 .g-phase{font-family:var(--mono);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent)}
 .guide.rest .g-phase{color:var(--ember)}
 .g-mr{display:flex;align-items:center;gap:10px}
+.awake{font-family:var(--mono);font-size:.72rem;color:var(--good)}
+.awake[data-m="failed"],.awake[data-m="paused"]{color:var(--warn)}
+.g-awaketip{font-size:.85rem}
 .vbtn{font:inherit;font-family:var(--mono);font-size:.72rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:3px 10px;cursor:pointer}
 .vbtn[aria-pressed="false"]{color:var(--muted)}
 .g-name{font-size:clamp(2rem,9vw,3rem);line-height:1.02;text-transform:uppercase}
@@ -461,7 +465,7 @@ html.guiding,html.guiding body{overflow:hidden}
 
 <div class="guide" id="guide" hidden role="dialog" aria-modal="true" aria-label="Workout in progress">
   <div class="g-in">
-    <div class="g-top"><div class="g-bar"><i id="gBar"></i></div><div class="g-meta"><span id="gBlock"></span><span class="g-mr"><span id="gCount"></span><button class="vbtn" id="gVoice" type="button" aria-pressed="true">Voice on</button></span></div></div>
+    <div class="g-top"><div class="g-bar"><i id="gBar"></i></div><div class="g-meta"><span id="gBlock"></span><span class="g-mr"><span id="gCount"></span><span class="awake" id="gAwake" hidden></span><button class="vbtn" id="gVoice" type="button" aria-pressed="true">Voice on</button></span></div></div>
     <div class="g-main">
       <div class="g-phase" id="gPhase"></div>
       <h2 class="g-name" id="gName"></h2>
@@ -472,6 +476,7 @@ html.guiding,html.guiding body{overflow:hidden}
       <p class="g-cue" id="gCue"></p>
       <div id="gDemo"></div>
     </div>
+    <p class="tip g-awaketip" id="gAwakeTip" hidden>This phone did not let the app keep the screen on. To stop it locking mid-workout, set Auto-Lock to Never for now (iPhone: Settings › Display &amp; Brightness › Auto-Lock; Android: Settings › Display › Screen timeout), and set it back afterward.</p>
     <p class="g-next" id="gNext"></p>
     <div class="g-ctrl"><button class="btn ghost" id="gBack">Back</button><button class="btn ghost" id="gPause">Pause</button><button class="btn" id="gDone">Done</button><button class="btn ghost" id="gEnd">End</button></div>
   </div>
@@ -1070,6 +1075,13 @@ const mmss=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart
 function newDeck(){const d=[];for(const s of [0,1,2,3])for(let v=1;v<=13;v++)d.push({s,v});return shuffle(d)}
 function cardReps(v){let r=v===1?11:v>10?10:v;if(S.level===1)r=Math.max(2,Math.ceil(r*.6));return r}
 const cardLabel=v=>v===1?'A':v===11?'J':v===12?'Q':v===13?'K':String(v);
+/* ---------- keep the screen on ---------- */
+function awakeChip(m){const c=$('gAwake');if(!c)return;
+  const t={native:'☀ Screen stays on',video:'☀ Screen stays on',paused:'Screen lock paused',failed:'⚠ Screen may lock',off:''}[m]||'';
+  c.textContent=t;c.hidden=!t;c.dataset.m=m;$('gAwakeTip').hidden=m!=='failed'}
+function keepOn(){if(!window.Awake){awakeChip('failed');return}Awake.onchange=awakeChip;Awake.on()}
+$('guide').addEventListener('pointerdown',()=>{if(window.Awake&&G)Awake.nudge()},true);
+
 /* ---------- voice coach ---------- */
 const VOICE_OK=typeof window!=='undefined'&&'speechSynthesis' in window&&typeof SpeechSynthesisUtterance!=='undefined';
 const voiceOn=()=>VOICE_OK&&S.voice!==false;
@@ -1139,7 +1151,7 @@ function countdownCue(){
 
 function startGuided(w,fromBlock){
   try{actx=actx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){}
-  try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(x=>wake=x).catch(()=>{})}catch(e){}
+  keepOn();
   if(G)clearInterval(G.iv);
   const steps=guidedSteps(w);let i=0;
   if(fromBlock){i=steps.findIndex(s=>s.bi===fromBlock);if(i<0)i=0}
@@ -1216,7 +1228,7 @@ function gDraw(){
   $('gNext').textContent=nx?'Up next: '+nx:'Last step';
   $('gDone').textContent=s.secs?'Skip':'Done';
 }
-function gClose(){if(!G)return;clearInterval(G.iv);G=null;hush();$('guide').hidden=true;document.documentElement.classList.remove('guiding');try{wake&&wake.release()}catch(e){}wake=null}
+function gClose(){if(!G)return;clearInterval(G.iv);G=null;hush();$('guide').hidden=true;document.documentElement.classList.remove('guiding');if(window.Awake)Awake.off();awakeChip('off')}
 $('gDone').onclick=()=>{if(!G)return;if(G.done){const w=G.w,mins=Math.max(1,Math.round(G.elapsed/60)),notes=gNotes();gClose();prefillLog(w,{minutes:mins,notes});go('log');return}gGo(1)};
 $('gBack').onclick=()=>gGo(-1);
 function voiceBtn(){const b=$('gVoice');if(!VOICE_OK){b.hidden=true;return}const on=S.voice!==false;b.setAttribute('aria-pressed',String(on));b.textContent=on?'🔊 Voice on':'🔇 Voice off'}
