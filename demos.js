@@ -63,7 +63,19 @@ function chain(...parts){
   return out;
 }
 const both=(kf,grip=true)=>chain(kf,mirrorKF(kf,grip));
-const shaft=(G,tip)=>norm(sub(tip,G));   // direction from the hands toward where the head should be
+const shaft=(G,tip)=>norm(sub(tip,G));
+// in-between keyframes that move the mace by its head (the working hand), not by its base, so a hand
+// sliding along the shaft follows a sensible path. a and b must be full poses.
+function viaHead(a,b,n,dt){
+  const headOf=p=>add(p.G,mul(p.D,Math.max(p.gL,p.gR)));
+  const ha=headOf(a),hb=headOf(b),out=[];
+  for(let i=1;i<n;i++){const u=i/n,o={};
+    for(const k of ['pitch','yaw','roll','hipYaw','turn','kneeOut','gL','gR','choke','tL','tR','fyL','fyR'])if(k in a&&k in b)o[k]=lerp(a[k],b[k],u);
+    o.P=vl(a.P,b.P,u);o.feet={L:vl(a.feet.L,b.feet.L,u),R:vl(a.feet.R,b.feet.R,u)};o.eL=vl(a.eL,b.eL,u);o.eR=vl(a.eR,b.eR,u);
+    o.D=norm(vl(a.D,b.D,u));const h=vl(ha,hb,u);o.G=sub(h,mul(o.D,Math.max(o.gL,o.gR)));o.pass=true;
+    out.push([dt*u,o]);}
+  return out;
+}   // direction from the hands toward where the head should be
 // wide grip: one hand on the base, the working hand right at the head. Places the shaft through both
 // hands and slides the butt so the head sits just past the working hand.
 function wide(base,head,work='R',extra){
@@ -114,27 +126,27 @@ function frontSquat(){
   return [[0,STAND],[0.55,top],[0.7,{}],[1.5,bottom],[1.75,{}],[2.55,top],[2.7,{}],[3.2,Object.assign({},STAND)],[3.4,{}]];
 }
 function lateralLunge(){
-  // From the upright hold, shift the weight over the right leg (bent) with the left leg straight. The top
-  // hand (left) slides up to the head and punches it down parallel to the straight leg. The other side
-  // switches which hand is on top.
-  // deep: the hips travel far over the bent left foot and the right leg locks out straight
-  // the mace finishes low and parallel, almost alongside the straight leg; the torso leans forward a
-  // little and tips toward the straight leg so the hands can get down beside it
-  const feet={L:[62,8,0],R:[-40,8,0]};
-  const P=[42,44,-14],hipR=[P[0]-9,P[1],P[2]],legDir=shaft(hipR,feet.R);
+  // Upright hold, step out wide. Shift well over one bent leg with the other locked straight; the top hand
+  // slides to the head and punches it down to finish low and parallel, almost alongside the straight leg.
+  // To change sides, rise to the wide centered stance and prayer-switch at the head in one motion as the
+  // other hand punches down to the other side. Feet stay wide throughout.
+  const feet={L:[48,8,0],R:[-48,8,0]};
+  const P=[38,44,-14],hipR=[P[0]-9,P[1],P[2]],legDir=shaft(hipR,feet.R);
   const base=add(add(hipR,mul(sub(feet.R,hipR),0.05)),[0,4,12]),head=add(base,mul(legDir,56));
+  // bent left, straight right leg: right hand on the head
   const punchL=Object.assign({P,pitch:33,roll:-25,yaw:0,feet,turn:14,kneeOut:0.1,eL:[1,-0.8,0],eR:[-0.6,-0.8,0.3]},wide(base,head,'R'));
-  // sideL: right hand on top for this side; the hands return down the shaft to the upright hold
-  const topR={gR:10,gL:0,choke:6};
-  const wideStandL=Object.assign(hold({P:[11,80,0],pitch:0,yaw:0,roll:0,feet,turn:14}),topR);
-  const sideL=[[0,Object.assign({},STAND,topR)],[0.5,wideStandL],[1.25,punchL],[1.5,{}],[2.2,wideStandL],[2.6,Object.assign({},STAND,topR)],[2.75,{}]];
-  // first rep lunges right so the left (top) hand punches along the straight left leg
-  const first=mirrorKF(sideL);
-  const swapTop=[[0,Object.assign({},STAND,topR)],[0.25,{}]];
-  const second=sideL;
-  return chain(first,swapTop,second.slice(1).map(([t,p])=>[t-0.5,p]),[[0,Object.assign({},STAND,{gR:0,gL:10})],[0.3,{}]]);
+  const punchR=mirror(punchL);               // bent right, straight left leg: left hand on the head
+  const c=wide([0,40,34],[0,118,30],'R');
+  const center=Object.assign({P:[0,82,0],pitch:0,yaw:0,roll:0,feet,turn:14,kneeOut:0.3,eL:[1,-1,0.2],eR:[-1,-1,0.2],pass:true},c,{gL:c.gR-4,pass:true});
+  const wideHold=Object.assign(hold({P:[0,82,0],pitch:0,yaw:0,roll:0,feet,turn:14}),{gL:10,gR:0,choke:6,offL:0,offR:0});
+  const full=p=>Object.assign({},STAND,p);
+  const pR=full(punchR),pL=full(punchL),ctr=full(center);
+  const leg=(a,b,t0,dt)=>viaHead(a,b,3,dt).map(([t,p])=>[t0+t,p]);
+  return [[0,STAND],[0.6,wideHold],[0.8,{}],[1.6,punchR],[1.85,{}]]
+    .concat(leg(pR,ctr,1.85,0.6),[[2.45,center]],leg(ctr,pL,2.45,0.6),[[3.05,punchL],[3.3,{}]])
+    .concat(leg(pL,ctr,3.3,0.6),[[3.9,center]],leg(ctr,pR,3.9,0.6),[[4.5,punchR],[4.75,{}]])
+    .concat([[5.4,wideHold],[5.6,{}],[6.1,Object.assign({},STAND)],[6.3,{}]]);
 }
-
 function frontLunge(){
   // left foot steps forward; front shin near vertical; then the right
   const bottom=hold({P:[0,54,26],pitch:4,yaw:0,feet:{L:[12,8,72],R:[-12,15,-18]},tR:1});
@@ -348,7 +360,7 @@ const MOVES={
   'mace:front squat':{kf:frontSquat(),
     cue:'Bring the mace up to the chest with the shaft vertical. Sit down between your hips with your chest tall, then stand.'},
   'mace:lateral lunge':{kf:lateralLunge(),
-    cue:'From the upright hold, step wide and shift well over one bent leg with the other leg locked straight. The top hand slides to the head and punches it down to finish low and parallel, almost alongside the straight leg. Switch the top hand for the other side.'},
+    cue:'From the upright hold, step wide. Shift well over one bent leg with the other locked straight; the top hand slides to the head and punches it down low and parallel along the straight leg. Rise to center, prayer-switch at the head, and punch down to the other side in one motion.'},
   'mace:front lunge':{kf:frontLunge(),
     cue:'Upright hold. Step forward into a lunge with the front shin near vertical, push back to standing. Both legs.'},
   'mace:360:left':{kf:threeSixty(),
