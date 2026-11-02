@@ -164,25 +164,33 @@ a{color:var(--accent)}
 button.demo{font-family:var(--mono);background:transparent;cursor:pointer}
 button.demo.vid{background:var(--accent)}
 button.steplink{font:inherit;font-weight:700;background:none;border:0;padding:0;cursor:pointer}
-/* animated demos */
-.dm-dialog{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);padding:16px;width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - 32px)}
+/* animated demos: front and side views of the same moment, side by side */
+.dm-dialog{--dm-far:color-mix(in srgb,var(--ink) 42%,var(--bg));--dm-torso:color-mix(in srgb,var(--ink) 78%,var(--bg));
+  border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);padding:16px;width:min(680px,calc(100vw - 24px));max-height:calc(100dvh - 24px)}
 .dm-dialog::backdrop{background:rgba(10,14,17,.6)}
 .dm-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .dm-head h3{font-size:1.5rem;text-transform:uppercase}
 .dm-x{border:0;background:transparent;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:6px}
 .dm-x:hover{background:var(--accent-soft);color:var(--ink)}
-.dm-stage{position:relative;background:var(--bg);border-radius:10px;margin:10px 0}
-.dm-svg{display:block;width:100%;height:auto;aspect-ratio:240/270}
-.dm-view{position:absolute;left:10px;top:8px;font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.dm-svg line{stroke:var(--ink);stroke-width:7;stroke-linecap:round}
-.dm-svg circle{fill:var(--ink)}
+.dm-views{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 6px}
+.dm-pane{position:relative;margin:0;background:var(--bg);border-radius:10px;min-width:0}
+.dm-pane figcaption{position:absolute;left:8px;top:6px;font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.dm-svg{display:block;width:100%;max-width:100%;height:auto;aspect-ratio:240/280}
+.dm-svg line{stroke-linecap:round}
+.dm-svg .dm-n{stroke:var(--ink);fill:var(--ink)}
+.dm-svg .dm-f{stroke:var(--dm-far);fill:var(--dm-far)}
+.dm-svg .dm-torso{fill:var(--dm-torso);stroke:var(--dm-torso);stroke-width:7;stroke-linejoin:round}
+.dm-svg .dm-halo{stroke:var(--bg)}
+.dm-svg .dm-ring{stroke:var(--bg);stroke-width:2}
 .dm-svg .dm-eye{fill:var(--bg)}
 .dm-svg .dm-ground{stroke:var(--line);stroke-width:2}
-.dm-svg .dm-shadow{fill:var(--line);opacity:.5}
-.dm-svg .dm-shaft{stroke:var(--ember);stroke-width:4}
-.dm-svg .dm-grip{stroke:var(--ink);stroke-width:6;opacity:.55}
+.dm-svg .dm-shadow{fill:var(--line)}
+.dm-svg .dm-shaft{stroke:var(--ember)}
+.dm-svg .dm-grip{stroke:color-mix(in srgb,var(--ember) 55%,var(--ink))}
 .dm-svg .dm-ball{fill:var(--ember)}
-.dm-svg .dm-behind .dm-shaft{stroke-dasharray:6 5}
+.dm-svg .dm-hid{opacity:.4;stroke-dasharray:5 4}
+.dm-svg .dm-trail{stroke:var(--ember);stroke-width:2.5;fill:none}
+.dm-scrub{width:100%;accent-color:var(--ember);margin:0 0 8px}
 .dm-steps{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:0 0 8px;padding:0}
 .dm-steps button{font-family:var(--mono);font-size:.75rem;border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:transparent;color:var(--ink);cursor:pointer}
 .dm-steps button[aria-current="step"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
