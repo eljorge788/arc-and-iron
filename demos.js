@@ -25,19 +25,21 @@ const mx=v=>[-v[0],v[1],v[2]];          // mirror left <-> right
 
 /* ---------- poses ---------- */
 const STAND={P:[0,94,0],pitch:0,yaw:0,feet:{L:[12,8,0],R:[-12,8,0]},turn:8,tL:0,tR:0,
-  G:[0,118,24],D:[0,1,0],eL:[1,-0.8,-0.3],eR:[-1,-0.8,-0.3],kneeOut:0.3};
+  G:[0,104,22],D:[0,1,0],eL:[1,-0.8,-0.3],eR:[-1,-0.8,-0.3],kneeOut:0.3};
+// STAND is the upright hold: mace vertical, hands stacked at the belly button, right hand on the bottom.
 
 function tenToTwo(){
-  // Starts over the left shoulder, the head swings low behind the back like a pendulum while the
-  // hands pass over the top of the head, then it is pulled over the right shoulder and reversed.
+  // From the upright hold, go to the top-hand (left) side first: over the left shoulder, the head
+  // swings low behind the back while the hands pass over the head, over the right shoulder, then
+  // back over the left shoulder and return to the upright hold.
   const shL={G:[14,135,14],D:[0.45,0.75,-0.48],eL:[1,-0.6,0],eR:[0,-1,0.5]};
   const q1={G:[10,163,4],D:[0.55,-0.45,-0.7],eL:[1,0,0.2],eR:[-0.5,-0.3,0.8],pass:true};
   const mid={G:[0,180,-2],D:[0,-0.92,-0.38],eL:[1,0.5,0.3],eR:[-1,0.5,0.3],pass:true};
   const q3={G:mx(q1.G),D:mx(q1.D),eL:[0.5,-0.3,0.8],eR:[-1,0,0.2],pass:true};
   const shR={G:mx(shL.G),D:mx(shL.D),eL:[0,-1,0.5],eR:[-1,-0.6,0]};
-  const start=Object.assign({},STAND,shL);
-  return [[0,start],[0.35,{}],[0.65,q1],[0.95,mid],[1.25,q3],[1.6,shR],[1.9,{}],
-    [2.2,q3],[2.5,mid],[2.8,q1],[3.15,shL],[3.45,{}]];
+  const hold={G:STAND.G,D:STAND.D,eL:STAND.eL,eR:STAND.eR};
+  return [[0,STAND],[0.25,{}],[0.75,shL],[0.9,{}],[1.2,q1],[1.5,mid],[1.8,q3],[2.15,shR],[2.3,{}],
+    [2.6,q3],[2.9,mid],[3.2,q1],[3.55,shL],[3.7,{}],[4.2,hold],[4.45,{}]];
 }
 function barbarianSquat(){
   const wide={L:[16,8,0],R:[-16,8,0]};
@@ -47,22 +49,22 @@ function barbarianSquat(){
 }
 function reverseLunge(side){            // side = the leg that steps back
   const feet=side==='L'?{L:[12,15,-88],R:[-12,8,6]}:{L:[12,8,6],R:[-12,15,-88]};
-  const bottom={P:[0,54,-36],pitch:5,feet,G:[0,80,-12],tL:side==='L'?1:0,tR:side==='R'?1:0};
+  const bottom={P:[0,54,-36],pitch:5,feet,G:[0,64,-15],tL:side==='L'?1:0,tR:side==='R'?1:0};
   return [[0,STAND],[0.8,bottom],[1.1,{}],[1.9,STAND],[2.2,{}]];
 }
 
 const MOVES={
   'mace:10-to-2':{kf:tenToTwo(),
-    cue:'Start with the mace over one shoulder. Swing it behind your back and pull it over the other shoulder, then reverse. Keep your head centered.'},
+    cue:'From the upright hold, go to your top-hand side first: over that shoulder, behind your back, over the other shoulder, then back again and return to the upright hold. Keep your head centered.'},
   'mace:barbarian squat':{kf:barbarianSquat(),
-    cue:'The mace drops behind your head as you squat and comes back to the front as you stand.'},
+    cue:'From the upright hold, the mace drops behind your head as you squat and returns to the upright hold as you stand.'},
   'mace:reverse lunge:left':{kf:reverseLunge('L'),
-    cue:'Left leg steps back. Front shin stays near vertical; the mace stays upright at the chest.'},
+    cue:'Left leg steps back. Front shin stays near vertical; the mace stays in the upright hold.'},
   'mace:reverse lunge:right':{kf:reverseLunge('R'),
-    cue:'Right leg steps back. Front shin stays near vertical; the mace stays upright at the chest.'}
+    cue:'Right leg steps back. Front shin stays near vertical; the mace stays in the upright hold.'}
 };
 MOVES['mace:reverse lunge']={kf:join([MOVES['mace:reverse lunge:left'],MOVES['mace:reverse lunge:right']]).kf.map(([t,p])=>[t/TEMPO,p]),
-  cue:'Alternate legs. Front shin stays near vertical; the mace stays upright at the chest.'};
+  cue:'Alternate legs. Front shin stays near vertical; the mace stays in the upright hold.'};
 
 /* ---------- names ---------- */
 function key(name,eq){
