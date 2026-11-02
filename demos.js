@@ -29,17 +29,17 @@ const STAND={P:[0,94,0],pitch:0,yaw:0,feet:{L:[12,8,0],R:[-12,8,0]},turn:8,tL:0,
 // STAND is the upright hold: mace vertical, hands stacked at the belly button, right hand on the bottom.
 
 function tenToTwo(){
-  // From the upright hold, go to the top-hand (left) side first: over the left shoulder, the head
-  // swings low behind the back while the hands pass over the head, over the right shoulder, then
-  // back over the left shoulder and return to the upright hold.
+  // Left hand on top, so the first swing goes to the side that hand points to (the right): over the
+  // right shoulder, the head swings low behind the back while the hands pass over the head, over the
+  // left shoulder, then back over the right shoulder and return to the upright hold.
   const shL={G:[14,135,14],D:[0.45,0.75,-0.48],eL:[1,-0.6,0],eR:[0,-1,0.5]};
   const q1={G:[10,163,4],D:[0.55,-0.45,-0.7],eL:[1,0,0.2],eR:[-0.5,-0.3,0.8],pass:true};
   const mid={G:[0,180,-2],D:[0,-0.92,-0.38],eL:[1,0.5,0.3],eR:[-1,0.5,0.3],pass:true};
   const q3={G:mx(q1.G),D:mx(q1.D),eL:[0.5,-0.3,0.8],eR:[-1,0,0.2],pass:true};
   const shR={G:mx(shL.G),D:mx(shL.D),eL:[0,-1,0.5],eR:[-1,-0.6,0]};
   const hold={G:STAND.G,D:STAND.D,eL:STAND.eL,eR:STAND.eR};
-  return [[0,STAND],[0.25,{}],[0.75,shL],[0.9,{}],[1.2,q1],[1.5,mid],[1.8,q3],[2.15,shR],[2.3,{}],
-    [2.6,q3],[2.9,mid],[3.2,q1],[3.55,shL],[3.7,{}],[4.2,hold],[4.45,{}]];
+  return [[0,STAND],[0.25,{}],[0.75,shR],[0.9,{}],[1.2,q3],[1.5,mid],[1.8,q1],[2.15,shL],[2.3,{}],
+    [2.6,q1],[2.9,mid],[3.2,q3],[3.55,shR],[3.7,{}],[4.2,hold],[4.45,{}]];
 }
 function barbarianSquat(){
   const wide={L:[16,8,0],R:[-16,8,0]};
@@ -55,7 +55,7 @@ function reverseLunge(side){            // side = the leg that steps back
 
 const MOVES={
   'mace:10-to-2':{kf:tenToTwo(),
-    cue:'From the upright hold, go to your top-hand side first: over that shoulder, behind your back, over the other shoulder, then back again and return to the upright hold. Keep your head centered.'},
+    cue:'From the upright hold, swing first to the side your top hand points to, the opposite side (left hand on top goes over the right shoulder). Then behind your back, over the other shoulder, back again, and return to the upright hold. Keep your head centered.'},
   'mace:barbarian squat':{kf:barbarianSquat(),
     cue:'From the upright hold, the mace drops behind your head as you squat and returns to the upright hold as you stand.'},
   'mace:reverse lunge:left':{kf:reverseLunge('L'),
