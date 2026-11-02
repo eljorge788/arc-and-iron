@@ -8,11 +8,11 @@
    easing to a stop there. Add moves to MOVES; flows chain them automatically. */
 (function(){
 'use strict';
-const S=1,GY=268,TEMPO=1.25;            // px per cm, ground line, slow everything a touch
+const S=0.84,GY=268,TEMPO=1.25;            // px per cm, ground line, slow everything a touch
 const TORSO=50,UARM=30,FARM=27,THIGH=44,SHIN=43,MACE=95,FOOT=17;
 const CAM={
   front:{x:p=>120+p[0]*S,depth:p=>p[2],label:'Front'},
-  side:{x:p=>140+p[2]*S,depth:p=>-p[0],label:'Side'}
+  side:{x:p=>136+p[2]*S,depth:p=>-p[0],label:'Side'}
 };
 
 /* ---------- vectors ---------- */
@@ -24,8 +24,37 @@ const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],sub=(a,b)=>[a[0]-b[0],a[1]-b[1]
 const mx=v=>[-v[0],v[1],v[2]];          // mirror left <-> right
 
 /* ---------- poses ---------- */
-const STAND={P:[0,94,0],pitch:0,yaw:0,feet:{L:[12,8,0],R:[-12,8,0]},turn:8,tL:0,tR:0,
-  G:[0,104,22],D:[0,1,0],eL:[1,-0.8,-0.3],eR:[-1,-0.8,-0.3],kneeOut:0.3};
+const STAND={P:[0,94,0],pitch:0,yaw:0,hipYaw:0,feet:{L:[12,8,0],R:[-12,8,0]},turn:8,fyL:0,fyR:0,tL:0,tR:0,
+  G:[0,104,22],D:[0,1,0],gR:0,gL:10,choke:6,offL:0,offR:0,freeL:[20,92,4],freeR:[-20,92,4],
+  eL:[1,-0.8,-0.3],eR:[-1,-0.8,-0.3],kneeOut:0.3};
+// Pose fields: P pelvis, pitch (forward lean, deg), yaw (torso turn, + toward the figure's left),
+// hipYaw, feet (ankle points), turn (toe-out), fyL/fyR (extra foot pivot), tL/tR (0..1 up on the toes),
+// G (reference point on the shaft) and D (shaft direction, toward the head), gR/gL (where each hand
+// sits along the shaft from G), choke (cm from the butt end to G), offL/offR (0..1 hand off the mace,
+// moving to freeL/freeR), eL/eR and kneeOut (which way elbows and knees bend).
+
+/* helpers for writing moves */
+function torsoFrame(P,pitch,yaw){
+  const l=rotY([1,0,0],yaw),f0=rotY([0,0,1],yaw),r=pitch*Math.PI/180;
+  const u=add(mul([0,1,0],Math.cos(r)),mul(f0,Math.sin(r))),f=sub(mul(f0,Math.cos(r)),mul([0,1,0],Math.sin(r)));
+  return {l,u,f,f0};
+}
+// a point fixed to the torso: lat toward the figure's left, h up the spine from the pelvis, fw forward
+function onBody(pose,lat,h,fw){const F=torsoFrame(pose.P,pose.pitch||0,pose.yaw||0);
+  return add(add(add(pose.P,mul(F.l,lat)),mul(F.u,h)),mul(F.f,fw))}
+// upright hold placed on the body (belly button) for whatever the hips and torso are doing
+const hold=pose=>Object.assign({G:onBody(pose,0,10,22),D:[0,1,0],eL:STAND.eL,eR:STAND.eR},pose);
+// mirror a pose left <-> right (also swaps which hand is on top)
+function mirror(p){
+  const o=Object.assign({},p),sw=(a,b,f)=>{if(a in p||b in p){const A=p[a],B=p[b];if(B!==undefined)o[a]=f(B);else delete o[a];if(A!==undefined)o[b]=f(A);else delete o[b]}};
+  const id=v=>v,neg=v=>-v;
+  for(const k of ['P','G','D'])if(p[k])o[k]=mx(p[k]);
+  if('yaw' in p)o.yaw=-p.yaw;if('hipYaw' in p)o.hipYaw=-p.hipYaw;
+  if(p.feet)o.feet={L:mx(p.feet.R),R:mx(p.feet.L)};
+  sw('eL','eR',mx);sw('freeL','freeR',mx);sw('gL','gR',id);sw('offL','offR',id);sw('tL','tR',id);sw('fyL','fyR',neg);
+  return o;
+}
+const mirrorKF=kf=>kf.map(([t,p])=>[t,mirror(p)]);
 // STAND is the upright hold: mace vertical, hands stacked at the belly button, right hand on the bottom.
 
 function tenToTwo(){
@@ -53,11 +82,39 @@ function reverseLunge(side){            // side = the leg that steps back
   return [[0,STAND],[0.8,bottom],[1.1,{}],[1.9,STAND],[2.2,{}]];
 }
 
+function frontSquat(){
+  const chest=pose=>Object.assign({G:onBody(pose,0,30,20),D:[0,1,0],eL:[1,-0.9,0],eR:[-1,-0.9,0]},pose);
+  const top=chest({P:STAND.P,pitch:0,yaw:0});
+  const wide={L:[16,8,0],R:[-16,8,0]};
+  const bottom=chest({P:[0,56,-14],pitch:22,yaw:0,feet:wide,turn:15});
+  return [[0,STAND],[0.45,top],[0.6,{feet:wide,turn:15}],[1.4,bottom],[1.65,{}],[2.45,Object.assign({},top,{feet:wide,turn:15})],
+    [2.6,{}],[3.05,Object.assign({},STAND)],[3.3,{}]];
+}
+function lateralLunge(){
+  // left foot steps out, sit into the left hip with the right leg straight; then the right side
+  const out=hold({P:[22,60,-14],pitch:28,yaw:0,hipYaw:0,feet:{L:[46,8,0],R:[-14,8,0]},turn:14,kneeOut:0.15});
+  const wideStand=hold({P:[16,92,0],pitch:0,yaw:0,feet:{L:[46,8,0],R:[-14,8,0]},turn:14});
+  const L=[[0,STAND],[0.5,wideStand],[1.2,out],[1.45,{}],[2.15,wideStand],[2.6,STAND]];
+  return L.concat(mirrorKF(L).slice(1).map(([t,p])=>[t+2.7,p])).concat([[5.6,{}]]);
+}
+function frontLunge(){
+  // left foot steps forward; front shin near vertical; then the right
+  const bottom=hold({P:[0,54,26],pitch:4,yaw:0,feet:{L:[12,8,72],R:[-12,15,-18]},tR:1});
+  const L=[[0,STAND],[0.8,bottom],[1.1,{}],[1.9,Object.assign({},STAND,{tR:0})]];
+  return L.concat(mirrorKF(L).slice(1).map(([t,p])=>[t+2.0,p])).concat([[4.2,{}]]);
+}
+
 const MOVES={
   'mace:10-to-2':{kf:tenToTwo(),
     cue:'From the upright hold, swing first to the side your top hand points to, the opposite side (left hand on top goes over the right shoulder). Then behind your back, over the other shoulder, back again, and return to the upright hold. Keep your head centered.'},
   'mace:barbarian squat':{kf:barbarianSquat(),
     cue:'From the upright hold, the mace drops behind your head as you squat and returns to the upright hold as you stand.'},
+  'mace:front squat':{kf:frontSquat(),
+    cue:'Bring the mace up to the chest with the shaft vertical. Sit down between your hips with your chest tall, then stand.'},
+  'mace:lateral lunge':{kf:lateralLunge(),
+    cue:'Upright hold. Step wide and sit back into one hip with the other leg straight, then push back to center. Both sides.'},
+  'mace:front lunge':{kf:frontLunge(),
+    cue:'Upright hold. Step forward into a lunge with the front shin near vertical, push back to standing. Both legs.'},
   'mace:reverse lunge:left':{kf:reverseLunge('L'),
     cue:'Left leg steps back. Front shin stays near vertical; the mace stays in the upright hold.'},
   'mace:reverse lunge:right':{kf:reverseLunge('R'),
@@ -104,10 +161,10 @@ function poseAt(kf,t){
     const [tb,b]=kf[i];if(t>tb)continue;const [ta,a]=kf[i-1];
     if(tb===ta)return b;
     const u=ease((t-ta)/(tb-ta),!a.pass,!b.pass);
-    return {P:vl(a.P,b.P,u),pitch:lerp(a.pitch,b.pitch,u),yaw:lerp(a.yaw,b.yaw,u),
-      feet:{L:vl(a.feet.L,b.feet.L,u),R:vl(a.feet.R,b.feet.R,u)},turn:lerp(a.turn,b.turn,u),
-      tL:lerp(a.tL,b.tL,u),tR:lerp(a.tR,b.tR,u),G:vl(a.G,b.G,u),D:norm(vl(a.D,b.D,u)),
-      eL:vl(a.eL,b.eL,u),eR:vl(a.eR,b.eR,u),kneeOut:lerp(a.kneeOut,b.kneeOut,u)};
+    const o={feet:{L:vl(a.feet.L,b.feet.L,u),R:vl(a.feet.R,b.feet.R,u)},D:norm(vl(a.D,b.D,u))};
+    for(const k of ['P','G','eL','eR','freeL','freeR'])o[k]=vl(a[k],b[k],u);
+    for(const k of ['pitch','yaw','hipYaw','turn','fyL','fyR','tL','tR','gR','gL','choke','offL','offR','kneeOut'])o[k]=lerp(a[k],b[k],u);
+    return o;
   }
   return kf[kf.length-1][1];
 }
@@ -121,26 +178,25 @@ function ik(A,T,a,b,pole){
   return [add(add(A,mul(u,x)),mul(norm(bend),h)),T];
 }
 function skeleton(p){
-  const l=rotY([1,0,0],p.yaw),f0=rotY([0,0,1],p.yaw),r=p.pitch*Math.PI/180;
-  const u=add(mul([0,1,0],Math.cos(r)),mul(f0,Math.sin(r))),f=sub(mul(f0,Math.cos(r)),mul([0,1,0],Math.sin(r)));
+  const {l,u,f,f0}=torsoFrame(p.P,p.pitch,p.yaw),lh=rotY([1,0,0],p.hipYaw),fh=rotY([0,0,1],p.hipYaw);
   const P=p.P,neck=add(P,mul(u,TORSO)),head=add(add(neck,mul(u,15)),mul(f,2));
   const sk={P,neck,head,u,f,l,f0};
   sk.sh={L:add(add(neck,mul(l,17)),mul(u,-4)),R:add(add(neck,mul(l,-17)),mul(u,-4))};
-  sk.hip={L:add(P,mul(l,9)),R:add(P,mul(l,-9))};
+  sk.hip={L:add(P,mul(lh,9)),R:add(P,mul(lh,-9))};
   const at=(h,lat,fw)=>add(add(add(P,mul(u,h)),mul(l,lat)),mul(f,fw));
   sk.torso=[at(46,14,0),at(46,-14,0),at(36,15,0),at(36,-15,0),at(36,0,10),at(38,0,-9),
     at(18,10.5,0),at(18,-10.5,0),at(18,0,8),at(18,0,-9),at(2,12.5,0),at(2,-12.5,0),at(2,0,8),at(4,0,-10),at(-3,0,0)];
   for(const s of ['L','R']){
     const sg=s==='L'?1:-1,toe=s==='L'?p.tL:p.tR;
-    const pole=norm(add(f0,mul(l,sg*p.kneeOut)));
+    const pole=norm(add(fh,mul(lh,sg*p.kneeOut)));
     const [knee,ank]=ik(sk.hip[s],p.feet[s],THIGH,SHIN,pole);
-    const h=rotY([sg*Math.sin(p.turn*Math.PI/180),0,Math.cos(p.turn*Math.PI/180)],p.yaw);
+    const h=rotY([sg*Math.sin(p.turn*Math.PI/180),0,Math.cos(p.turn*Math.PI/180)],p.hipYaw+(s==='L'?p.fyL:p.fyR));
     const fd=norm(add(mul(h,1-0.3*toe),[0,-0.3-0.6*toe,0]));
     sk['knee'+s]=knee;sk['ank'+s]=ank;sk['toe'+s]=add(ank,mul(fd,FOOT));
   }
-  sk.hand={R:p.G,L:add(p.G,mul(p.D,10))};
+  sk.hand={R:vl(add(p.G,mul(p.D,p.gR)),p.freeR,p.offR),L:vl(add(p.G,mul(p.D,p.gL)),p.freeL,p.offL)};
   for(const s of ['L','R']){const [elb,wr]=ik(sk.sh[s],sk.hand[s],UARM,FARM,norm(s==='L'?p.eL:p.eR));sk['elb'+s]=elb;sk['wr'+s]=wr}
-  sk.butt=sub(p.G,mul(p.D,6));sk.tip=add(p.G,mul(p.D,MACE));sk.gripTop=add(p.G,mul(p.D,16));
+  sk.butt=sub(p.G,mul(p.D,p.choke));sk.tip=add(sk.butt,mul(p.D,MACE));sk.gripTop=add(sk.butt,mul(p.D,22));
   return sk;
 }
 
@@ -201,7 +257,7 @@ function Player(views,tl,onMark){
   const reduce=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
   function render(){
     const sk=skeleton(poseAt(tl.kf,t));
-    const trail=[];for(let i=12;i>=1;i--){const tt=t-i*0.035;if(tt<0)continue;const q=poseAt(tl.kf,tt);trail.push(add(q.G,mul(q.D,MACE)))}
+    const trail=[];for(let i=12;i>=1;i--){const tt=t-i*0.035;if(tt<0)continue;const q=poseAt(tl.kf,tt);trail.push(add(sub(q.G,mul(q.D,q.choke)),mul(q.D,MACE)))}
     trail.push(sk.tip);
     for(const k in views)views[k].innerHTML=scene(CAM[k],sk,trail);
     let m=0;for(let i=0;i<tl.marks.length;i++)if(t>=tl.marks[i].t)m=i;
