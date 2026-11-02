@@ -86,14 +86,16 @@ function tenToTwo(){
     [2.6,q1],[2.9,mid],[3.2,q3],[3.55,shR],[3.7,{}],[4.2,hold],[4.45,{}]];
 }
 function barbarianSquat(){
-  // Standing pullover: the mace goes back over the head and hangs behind the back. Then squat as the mace
-  // comes back over the top into the upright hold in front, and stand with it there.
+  // Standing pullover: the mace goes back over the head and hangs behind the back, then comes back over
+  // the top all the way into the upright hold in front. Only then squat, and stand with it there.
   const wide2={L:[16,8,0],R:[-16,8,0]};
   const pull={G:[0,160,14],D:norm([0,0.5,-0.87]),eL:[1,0.3,0.4],eR:[-1,0.3,0.4],pass:true};
   const behind={G:[0,176,-4],D:norm([0,-0.92,-0.38]),eL:[1,0.6,0.3],eR:[-1,0.6,0.3]};
-  const over={P:[0,78,-8],pitch:12,feet:wide2,turn:15,G:[0,166,8],D:norm([0,0.75,-0.66]),eL:[1,0.3,0.4],eR:[-1,0.3,0.4],pass:true};
+  const over={G:[0,166,10],D:norm([0,0.6,-0.8]),eL:[1,0.3,0.4],eR:[-1,0.3,0.4],pass:true};
+  const front=Object.assign({},STAND,{feet:wide2,turn:15});
   const bottom=hold({P:[0,56,-14],pitch:22,yaw:0,feet:wide2,turn:15});
-  return [[0,STAND],[0.5,pull],[0.9,behind],[1.1,{}],[1.6,over],[2.1,bottom],[2.35,{}],[2.95,Object.assign({},STAND)],[3.2,{}]];
+  return [[0,STAND],[0.5,pull],[0.9,behind],[1.1,{}],[1.5,over],[1.95,front],[2.1,{}],[2.8,bottom],[3.05,{}],
+    [3.75,front],[3.9,{}],[4.2,Object.assign({},STAND)],[4.4,{}]];
 }
 
 function reverseLunge(side){            // side = the leg that steps back
@@ -111,16 +113,24 @@ function frontSquat(){
   return [[0,STAND],[0.55,top],[0.7,{}],[1.5,bottom],[1.75,{}],[2.55,top],[2.7,{}],[3.2,Object.assign({},STAND)],[3.4,{}]];
 }
 function lateralLunge(){
-  // left foot steps out and you sit into the left hip; the mace is punched out parallel to the straight right leg
+  // From the upright hold, shift the weight over the right leg (bent) with the left leg straight. The top
+  // hand (left) slides up to the head and punches it down parallel to the straight leg. The other side
+  // switches which hand is on top.
   const feet={L:[46,8,0],R:[-14,8,0]};
-  const P=[22,60,-14],pitch=20;
-  const legDir=shaft([P[0]-9,P[1],P[2]],[-14,8,0]);
-  const G=onBody({P,pitch,yaw:0},-12,44,30);
-  const out={P,pitch,yaw:0,hipYaw:0,feet,turn:14,kneeOut:0.15,G,D:legDir,eL:[0.6,-0.8,0],eR:[-1,-0.5,0]};
-  const wideStand=hold({P:[16,92,0],pitch:0,yaw:0,feet,turn:14});
-  const L=[[0,STAND],[0.5,wideStand],[1.2,out],[1.45,{}],[2.15,wideStand],[2.6,STAND],[2.7,{}]];
-  return both(L,false);
+  const P=[18,58,-12],legDir=shaft([P[0]-9,P[1],P[2]],[-14,8,0]);
+  const base=[18,112,24],head=add(base,mul(legDir,70));
+  const punchL=Object.assign({P,pitch:30,yaw:0,feet,turn:14,kneeOut:0.15,eL:[1,-0.8,0],eR:[-0.6,-0.8,0.3]},wide(base,head,'R'));
+  // sideL: right hand on top for this side; the hands return down the shaft to the upright hold
+  const topR={gR:10,gL:0,choke:6};
+  const wideStandL=Object.assign(hold({P:[16,92,0],pitch:0,yaw:0,feet,turn:14}),topR);
+  const sideL=[[0,Object.assign({},STAND,topR)],[0.5,wideStandL],[1.25,punchL],[1.5,{}],[2.2,wideStandL],[2.6,Object.assign({},STAND,topR)],[2.75,{}]];
+  // first rep lunges right so the left (top) hand punches along the straight left leg
+  const first=mirrorKF(sideL);
+  const swapTop=[[0,Object.assign({},STAND,topR)],[0.25,{}]];
+  const second=sideL;
+  return chain(first,swapTop,second.slice(1).map(([t,p])=>[t-0.5,p]),[[0,Object.assign({},STAND,{gR:0,gL:10})],[0.3,{}]]);
 }
+
 function frontLunge(){
   // left foot steps forward; front shin near vertical; then the right
   const bottom=hold({P:[0,54,26],pitch:4,yaw:0,feet:{L:[12,8,72],R:[-12,15,-18]},tR:1});
@@ -167,16 +177,18 @@ function gravedigger(){
     [3.75,Object.assign({},STAND)],[3.95,{}]];
 }
 function uppercut(){
-  // Wide grip, right side working: the right hand holds the head low behind the right hip, the left hand
-  // the base up in front. The hips drive the right hand forward and up to chin height while the left
-  // hand pulls the base down and back to the left hip, like a lever.
-  const load=Object.assign({P:[0,86,-4],pitch:10,yaw:-30,hipYaw:-16,feet:{L:[16,8,6],R:[-16,8,-4]},turn:12,tL:0,fyL:0},
-    wide([10,135,45],[-28,92,-12],'R',{eL:[0.6,-1,0.3],eR:[-1,-0.6,-0.2]}));
-  const mid=Object.assign({P:[0,88,-2],pitch:6,yaw:0,hipYaw:0,pass:true},wide([38,152,-4],[-12,104,40],'R',{eL:[1,-0.4,-0.3],eR:[-0.8,-0.8,0]}));
-  const fin=Object.assign({P:[0,92,0],pitch:0,yaw:28,hipYaw:16,tR:0.45,fyR:28},wide([48,100,-10],[0,150,35],'R',{eL:[1,-0.6,-0.2],eR:[-0.4,-1,0.3]}));
-  const home=Object.assign({},STAND,{tR:0,fyR:0,tL:0,fyL:0});
-  const one=[[0,STAND],[0.6,load],[0.8,{}],[1.1,mid],[1.45,fin],[1.65,{}],[2.0,Object.assign({},mid,{tR:0.2,fyR:10})],
-    [2.35,Object.assign({},load,{tR:0,fyR:0})],[2.55,{}],[2.85,mid],[3.2,fin],[3.4,{}],[3.9,home],[4.05,{}]];
+  // Wide grip, right side working (right hand on the head). Horizontal along the right side with the head
+  // toward the rear; the hips and shoulders turn it through a diagonal in front of the body (head up) to
+  // horizontal along the left side; then back down the same way.
+  const pose=(yaw,pitch,base,head,extra)=>Object.assign({P:[0,90,-2],pitch,yaw,hipYaw:yaw*0.5,feet:{L:[16,8,4],R:[-16,8,-4]},turn:12,
+    eL:[1,-0.8,-0.2],eR:[-1,-0.8,-0.2]},wide(base,head,'R'),extra||{});
+  const start=pose(-30,8,[-20,104,44],[-32,92,-36]);
+  const mid=pose(0,8,[-20,94,24],[12,146,38],{pass:true});
+  const end=pose(35,0,[30,112,-40],[22,128,38],{tR:0.4,fyR:24});
+  const back=Object.assign({},mid,{tR:0.15,fyR:8});
+  const home=Object.assign({},STAND,{tR:0,fyR:0});
+  const one=[[0,STAND],[0.6,start],[0.8,{}],[1.15,mid],[1.5,end],[1.7,{}],[2.05,back],[2.4,Object.assign({},start,{tR:0,fyR:0})],[2.6,{}],
+    [2.95,mid],[3.3,end],[3.5,{}],[3.85,back],[4.2,Object.assign({},start,{tR:0,fyR:0})],[4.4,{}],[5.0,home],[5.2,{}]];
   return both(one);
 }
 
@@ -206,16 +218,27 @@ function paddle(){
 }
 
 function handSwitches(){
-  // Wide grip: out level to the right with the right hand on the head and the left on the base. The head
-  // hand brings it to the center, mace upright, where the hands meet on the head prayer-style; then the left
-  // hand takes the head out level to the left with the right hand on the base. And back.
-  const right=wide([31,118,22],[-55,118,22],'R',{eL:[1,-0.8,-0.2],eR:[-1,-0.8,-0.2]});
-  const c=wide([0,48,36],[0,128,30],'R');
-  const center=Object.assign({},c,{gL:c.gR-4,eL:[1,-1,0.2],eR:[-1,-1,0.2]});
-  const left=mirror(right);
-  const home={G:STAND.G,D:STAND.D,choke:6,gL:10,gR:0,eL:STAND.eL,eR:STAND.eR};
-  return [[0,STAND],[0.6,right],[0.85,{}],[1.4,center],[1.6,{}],[2.15,left],[2.4,{}],[2.95,center],[3.15,{}],
-    [3.7,right],[3.95,{}],[4.5,center],[4.7,{}],[5.2,home],[5.4,{}]];
+  // Wide grip: right hand on the head out level to the right, left hand on the base. The head travels
+  // level to the center while the base swings down and the left hand slides up the shaft to meet the right
+  // at the head (prayer). Then the left hand carries the head out level to the left while the right hand
+  // slides down to the base. The head stays at the same height the whole time.
+  const H=124,X=52,SP=84,N=4;
+  const at=(k,dir)=>{                         // k: 0 at the side .. 1 at the center
+    const th=k*Math.PI/2,head=[dir*X*(1-k),H,24+6*k];
+    const D=norm([dir*Math.cos(th),Math.sin(th),-0.04*k]);
+    const G=sub(head,mul(D,SP));
+    const o={G,D,choke:MACE-SP-6,eL:[1,-0.8,-0.1],eR:[-1,-0.8,-0.1],pass:k>0&&k<1};
+    if(dir<0){o.gR=SP;o.gL=SP*0.95*k}else{o.gL=SP;o.gR=SP*0.95*k}
+    return o;
+  };
+  const toCenter=(dir,t0)=>{const out=[];for(let i=0;i<=N;i++)out.push([t0+0.6*i/N,at(i/N,dir)]);return out};
+  const fromCenter=(dir,t0)=>{const out=[];for(let i=N;i>=0;i--)out.push([t0+0.6*(N-i)/N,at(i/N,dir)]);return out};
+  // center pose: both hands on the head; the centers from each side are the same place
+  const seq=[[0,STAND],[0.6,at(0,-1)],[0.8,{}]]
+    .concat(toCenter(-1,0.8).slice(1)).concat(fromCenter(1,1.4).slice(1)).concat([[2.2,{}]])
+    .concat(toCenter(1,2.2).slice(1)).concat(fromCenter(-1,2.8).slice(1)).concat([[3.6,{}]])
+    .concat([[4.2,Object.assign({},STAND)],[4.4,{}]]);
+  return seq;
 }
 
 function offsetPress(){
@@ -303,11 +326,11 @@ const MOVES={
   'mace:10-to-2':{kf:tenToTwo(),
     cue:'From the upright hold, swing first to the side your top hand points to, the opposite side (left hand on top goes over the right shoulder). Then behind your back, over the other shoulder, back again, and return to the upright hold. Keep your head centered.'},
   'mace:barbarian squat':{kf:barbarianSquat(),
-    cue:'Pull the mace over your head so it hangs behind your back, then squat as you bring it back over the top into the upright hold in front. Stand with it there.'},
+    cue:'Pull the mace over your head so it hangs behind your back, then bring it back over the top all the way into the upright hold in front. Only then squat, and stand with it there.'},
   'mace:front squat':{kf:frontSquat(),
     cue:'Bring the mace up to the chest with the shaft vertical. Sit down between your hips with your chest tall, then stand.'},
   'mace:lateral lunge':{kf:lateralLunge(),
-    cue:'Upright hold. Step wide and sit back into one hip with the other leg straight, then push back to center. Both sides.'},
+    cue:'From the upright hold, shift your weight over one bent leg. The top hand slides up to the head and punches it down parallel to the straight leg. Switch the top hand for the other side.'},
   'mace:front lunge':{kf:frontLunge(),
     cue:'Upright hold. Step forward into a lunge with the front shin near vertical, push back to standing. Both legs.'},
   'mace:360:left':{kf:threeSixty(),
@@ -321,11 +344,11 @@ const MOVES={
   'mace:gravedigger:right':{kf:mirrorKF(gravedigger()),
     cue:'Shovel grip. From the left shoulder, dig the head down and across to the floor by your right foot, pivoting the back foot, then return to the shoulder.'},
   'mace:uppercut':{kf:uppercut(),
-    cue:'Wide grip with the working hand on the head, loaded low behind that hip. Drive from the back hip so the head hand rises to chin height while the base hand pulls down to the other hip. Both sides.'},
+    cue:'Wide grip, working hand on the head. Start level along one side with the head toward the rear. Turn the hips and chest to bring it through a diagonal in front of you to level on the other side, then back down the same way. Both sides.'},
   'mace:paddle':{kf:paddle(),
     cue:'Like an oar on the low-hand side: low hand overhand near the head, top hand on the end. Pull the head front to back along that side for your reps, then sword switch to the other side.'},
   'mace:hand switches':{kf:handSwitches(),
-    cue:'Wide grip: out level to one side with that hand on the head. Bring it to center, upright, and meet the other hand on the head prayer-style; the other hand takes the head out level to the opposite side.'},
+    cue:'Wide grip, hands at the head and the base. The lead hand brings the head to the center while the base hand slides up to meet it in prayer, then the other hand carries the head out to the other side. Keep it fluid with the head at the same height.'},
   'mace:offset press':{kf:offsetPress(),
     cue:'Mace level with the head out to one side. Press it from the clean-rack position straight overhead, keeping it level. Both sides.'},
   'mace:ballistic curl':{kf:curl(false),
