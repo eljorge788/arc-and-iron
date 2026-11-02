@@ -24,7 +24,7 @@ const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],sub=(a,b)=>[a[0]-b[0],a[1]-b[1]
 const mx=v=>[-v[0],v[1],v[2]];          // mirror left <-> right
 
 /* ---------- poses ---------- */
-const STAND={P:[0,94,0],pitch:0,yaw:0,hipYaw:0,feet:{L:[12,8,0],R:[-12,8,0]},turn:8,fyL:0,fyR:0,tL:0,tR:0,
+const STAND={P:[0,94,0],pitch:0,yaw:0,roll:0,hipYaw:0,feet:{L:[12,8,0],R:[-12,8,0]},turn:8,fyL:0,fyR:0,tL:0,tR:0,
   G:[0,104,22],D:[0,1,0],gR:0,gL:10,choke:6,offL:0,offR:0,freeL:[20,92,4],freeR:[-20,92,4],
   eL:[1,-0.8,-0.3],eR:[-1,-0.8,-0.3],kneeOut:0.3};
 // Pose fields: P pelvis, pitch (forward lean, deg), yaw (torso turn, + toward the figure's left),
@@ -34,13 +34,14 @@ const STAND={P:[0,94,0],pitch:0,yaw:0,hipYaw:0,feet:{L:[12,8,0],R:[-12,8,0]},tur
 // moving to freeL/freeR), eL/eR and kneeOut (which way elbows and knees bend).
 
 /* helpers for writing moves */
-function torsoFrame(P,pitch,yaw){
-  const l=rotY([1,0,0],yaw),f0=rotY([0,0,1],yaw),r=pitch*Math.PI/180;
-  const u=add(mul([0,1,0],Math.cos(r)),mul(f0,Math.sin(r))),f=sub(mul(f0,Math.cos(r)),mul([0,1,0],Math.sin(r)));
+function torsoFrame(P,pitch,yaw,roll=0){
+  let l=rotY([1,0,0],yaw);const f0=rotY([0,0,1],yaw),r=pitch*Math.PI/180;
+  let u=add(mul([0,1,0],Math.cos(r)),mul(f0,Math.sin(r)));const f=sub(mul(f0,Math.cos(r)),mul([0,1,0],Math.sin(r)));
+  if(roll){const q=roll*Math.PI/180,c=Math.cos(q),s=Math.sin(q);const u2=add(mul(u,c),mul(l,s));l=sub(mul(l,c),mul(u,s));u=u2}
   return {l,u,f,f0};
 }
 // a point fixed to the torso: lat toward the figure's left, h up the spine from the pelvis, fw forward
-function onBody(pose,lat,h,fw){const F=torsoFrame(pose.P,pose.pitch||0,pose.yaw||0);
+function onBody(pose,lat,h,fw){const F=torsoFrame(pose.P,pose.pitch||0,pose.yaw||0,pose.roll||0);
   return add(add(add(pose.P,mul(F.l,lat)),mul(F.u,h)),mul(F.f,fw))}
 // upright hold placed on the body (belly button) for whatever the hips and torso are doing
 const hold=pose=>Object.assign({G:onBody(pose,0,10,22),D:[0,1,0],eL:STAND.eL,eR:STAND.eR},pose);
@@ -49,7 +50,7 @@ function mirror(p,grip=true){
   const o=Object.assign({},p),sw=(a,b,f)=>{if(a in p||b in p){const A=p[a],B=p[b];if(B!==undefined)o[a]=f(B);else delete o[a];if(A!==undefined)o[b]=f(A);else delete o[b]}};
   const id=v=>v,neg=v=>-v;
   for(const k of ['P','G','D'])if(p[k])o[k]=mx(p[k]);
-  if('yaw' in p)o.yaw=-p.yaw;if('hipYaw' in p)o.hipYaw=-p.hipYaw;
+  if('yaw' in p)o.yaw=-p.yaw;if('hipYaw' in p)o.hipYaw=-p.hipYaw;if('roll' in p)o.roll=-p.roll;
   if(p.feet)o.feet={L:mx(p.feet.R),R:mx(p.feet.L)};
   sw('eL','eR',mx);sw('freeL','freeR',mx);if(grip){sw('gL','gR',id);sw('offL','offR',id)}sw('tL','tR',id);sw('fyL','fyR',neg);
   return o;
@@ -116,13 +117,14 @@ function lateralLunge(){
   // From the upright hold, shift the weight over the right leg (bent) with the left leg straight. The top
   // hand (left) slides up to the head and punches it down parallel to the straight leg. The other side
   // switches which hand is on top.
-  const feet={L:[46,8,0],R:[-14,8,0]};
-  const P=[18,58,-12],legDir=shaft([P[0]-9,P[1],P[2]],[-14,8,0]);
-  const base=[18,112,24],head=add(base,mul(legDir,70));
-  const punchL=Object.assign({P,pitch:30,yaw:0,feet,turn:14,kneeOut:0.15,eL:[1,-0.8,0],eR:[-0.6,-0.8,0.3]},wide(base,head,'R'));
+  // deep: the hips travel far over the bent left foot and the right leg locks out straight
+  const feet={L:[62,8,0],R:[-44,8,0]};
+  const P=[46,48,-14],legDir=shaft([P[0]-9,P[1],P[2]],[-44,8,0]);
+  const base=[42,116,26],head=add(base,mul(legDir,72));
+  const punchL=Object.assign({P,pitch:35,yaw:0,feet,turn:14,kneeOut:0.1,eL:[1,-0.8,0],eR:[-0.6,-0.8,0.3]},wide(base,head,'R'));
   // sideL: right hand on top for this side; the hands return down the shaft to the upright hold
   const topR={gR:10,gL:0,choke:6};
-  const wideStandL=Object.assign(hold({P:[16,92,0],pitch:0,yaw:0,feet,turn:14}),topR);
+  const wideStandL=Object.assign(hold({P:[9,80,0],pitch:0,yaw:0,feet,turn:14}),topR);
   const sideL=[[0,Object.assign({},STAND,topR)],[0.5,wideStandL],[1.25,punchL],[1.5,{}],[2.2,wideStandL],[2.6,Object.assign({},STAND,topR)],[2.75,{}]];
   // first rep lunges right so the left (top) hand punches along the straight left leg
   const first=mirrorKF(sideL);
@@ -182,13 +184,17 @@ function uppercut(){
   // horizontal along the left side; then back down the same way.
   const pose=(yaw,pitch,base,head,extra)=>Object.assign({P:[0,90,-2],pitch,yaw,hipYaw:yaw*0.5,feet:{L:[16,8,4],R:[-16,8,-4]},turn:12,
     eL:[1,-0.8,-0.2],eR:[-1,-0.8,-0.2]},wide(base,head,'R'),extra||{});
+  // start low and level along the right side, head to the rear; through a diagonal in front with the
+  // head low; finish level and high along the left side
   const start=pose(-30,8,[-20,104,44],[-32,92,-36]);
-  const mid=pose(0,8,[-20,94,24],[12,146,38],{pass:true});
-  const end=pose(35,0,[30,112,-40],[22,128,38],{tR:0.4,fyR:24});
+  const mid=Object.assign(pose(-10,16,[16,136,22],[-20,84,30],{pass:true}),{P:[0,88,-3]});
+  const end=Object.assign(pose(30,0,[30,162,-50],[18,164,20],{tR:0.4,fyR:24,eL:[1,0,-0.3],eR:[-0.6,-0.6,0.4]}),{P:[0,92,0]});
+  const swing=Object.assign(pose(-22,12,[-4,122,40],[-30,88,-4],{pass:true}),{P:[0,89,-3]});
   const back=Object.assign({},mid,{tR:0.15,fyR:8});
   const home=Object.assign({},STAND,{tR:0,fyR:0});
-  const one=[[0,STAND],[0.6,start],[0.8,{}],[1.15,mid],[1.5,end],[1.7,{}],[2.05,back],[2.4,Object.assign({},start,{tR:0,fyR:0})],[2.6,{}],
-    [2.95,mid],[3.3,end],[3.5,{}],[3.85,back],[4.2,Object.assign({},start,{tR:0,fyR:0})],[4.4,{}],[5.0,home],[5.2,{}]];
+  const st=Object.assign({},start,{tR:0,fyR:0}),sw2=Object.assign({},swing,{tR:0,fyR:0});
+  const one=[[0,STAND],[0.6,start],[0.8,{}],[1.0,swing],[1.2,mid],[1.55,end],[1.75,{}],[2.1,back],[2.3,sw2],[2.5,st],[2.7,{}],
+    [2.9,swing],[3.1,mid],[3.45,end],[3.65,{}],[4.0,back],[4.2,sw2],[4.4,st],[4.6,{}],[5.2,home],[5.4,{}]];
   return both(one);
 }
 
@@ -330,7 +336,7 @@ const MOVES={
   'mace:front squat':{kf:frontSquat(),
     cue:'Bring the mace up to the chest with the shaft vertical. Sit down between your hips with your chest tall, then stand.'},
   'mace:lateral lunge':{kf:lateralLunge(),
-    cue:'From the upright hold, shift your weight over one bent leg. The top hand slides up to the head and punches it down parallel to the straight leg. Switch the top hand for the other side.'},
+    cue:'From the upright hold, step wide and shift your hips well over one bent leg, keeping the other leg locked straight. The top hand slides up to the head and punches it out parallel to the straight leg. Switch the top hand for the other side.'},
   'mace:front lunge':{kf:frontLunge(),
     cue:'Upright hold. Step forward into a lunge with the front shin near vertical, push back to standing. Both legs.'},
   'mace:360:left':{kf:threeSixty(),
@@ -344,7 +350,7 @@ const MOVES={
   'mace:gravedigger:right':{kf:mirrorKF(gravedigger()),
     cue:'Shovel grip. From the left shoulder, dig the head down and across to the floor by your right foot, pivoting the back foot, then return to the shoulder.'},
   'mace:uppercut':{kf:uppercut(),
-    cue:'Wide grip, working hand on the head. Start level along one side with the head toward the rear. Turn the hips and chest to bring it through a diagonal in front of you to level on the other side, then back down the same way. Both sides.'},
+    cue:'Wide grip, working hand on the head. Start low and level along one side with the head to the rear. Drive through a diagonal in front with the head low, and finish level and high on the other side, turning the shoulders and chest. Back down the same way. Both sides.'},
   'mace:paddle':{kf:paddle(),
     cue:'Like an oar on the low-hand side: low hand overhand near the head, top hand on the end. Pull the head front to back along that side for your reps, then sword switch to the other side.'},
   'mace:hand switches':{kf:handSwitches(),
@@ -420,7 +426,7 @@ function poseAt(kf,t){
     const u=ease((t-ta)/(tb-ta),!a.pass,!b.pass);
     const o={feet:{L:vl(a.feet.L,b.feet.L,u),R:vl(a.feet.R,b.feet.R,u)},D:norm(vl(a.D,b.D,u))};
     for(const k of ['P','G','eL','eR','freeL','freeR'])o[k]=vl(a[k],b[k],u);
-    for(const k of ['pitch','yaw','hipYaw','turn','fyL','fyR','tL','tR','gR','gL','choke','offL','offR','kneeOut'])o[k]=lerp(a[k],b[k],u);
+    for(const k of ['pitch','yaw','roll','hipYaw','turn','fyL','fyR','tL','tR','gR','gL','choke','offL','offR','kneeOut'])o[k]=lerp(a[k],b[k],u);
     return o;
   }
   return kf[kf.length-1][1];
@@ -435,7 +441,7 @@ function ik(A,T,a,b,pole){
   return [add(add(A,mul(u,x)),mul(norm(bend),h)),T];
 }
 function skeleton(p){
-  const {l,u,f,f0}=torsoFrame(p.P,p.pitch,p.yaw),lh=rotY([1,0,0],p.hipYaw),fh=rotY([0,0,1],p.hipYaw);
+  const {l,u,f,f0}=torsoFrame(p.P,p.pitch,p.yaw,p.roll),lh=rotY([1,0,0],p.hipYaw),fh=rotY([0,0,1],p.hipYaw);
   const P=p.P,neck=add(P,mul(u,TORSO)),head=add(add(neck,mul(u,15)),mul(f,2));
   const sk={P,neck,head,u,f,l,f0};
   sk.sh={L:add(add(neck,mul(l,17)),mul(u,-4)),R:add(add(neck,mul(l,-17)),mul(u,-4))};
