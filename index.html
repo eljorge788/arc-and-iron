@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#1B2328">
 <link rel="manifest" href="manifest.webmanifest">
 <script src="keepawake.js" defer></script>
+<script src="demos.js"></script>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -160,6 +161,34 @@ a{color:var(--accent)}
 .hint{margin:0;font-size:.8rem;color:var(--muted)}
 .demo.vid{background:var(--accent);color:var(--accent-ink)}
 .demo.vid:hover{background:var(--accent);opacity:.88}
+button.demo{font-family:var(--mono);background:transparent;cursor:pointer}
+button.demo.vid{background:var(--accent)}
+button.steplink{font:inherit;font-weight:700;background:none;border:0;padding:0;cursor:pointer}
+/* animated demos */
+.dm-dialog{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);padding:16px;width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - 32px)}
+.dm-dialog::backdrop{background:rgba(10,14,17,.6)}
+.dm-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.dm-head h3{font-size:1.5rem;text-transform:uppercase}
+.dm-x{border:0;background:transparent;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:6px}
+.dm-x:hover{background:var(--accent-soft);color:var(--ink)}
+.dm-stage{position:relative;background:var(--bg);border-radius:10px;margin:10px 0}
+.dm-svg{display:block;width:100%;height:auto;aspect-ratio:240/270}
+.dm-view{position:absolute;left:10px;top:8px;font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.dm-svg line{stroke:var(--ink);stroke-width:7;stroke-linecap:round}
+.dm-svg circle{fill:var(--ink)}
+.dm-svg .dm-eye{fill:var(--bg)}
+.dm-svg .dm-ground{stroke:var(--line);stroke-width:2}
+.dm-svg .dm-shadow{fill:var(--line);opacity:.5}
+.dm-svg .dm-shaft{stroke:var(--ember);stroke-width:4}
+.dm-svg .dm-grip{stroke:var(--ink);stroke-width:6;opacity:.55}
+.dm-svg .dm-ball{fill:var(--ember)}
+.dm-svg .dm-behind .dm-shaft{stroke-dasharray:6 5}
+.dm-steps{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:0 0 8px;padding:0}
+.dm-steps button{font-family:var(--mono);font-size:.75rem;border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:transparent;color:var(--ink);cursor:pointer}
+.dm-steps button[aria-current="step"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.dm-cue{margin:0 0 10px;min-height:3em}
+.dm-ctl{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.dm-speed button{padding:6px 14px;font-family:var(--mono)}
 /* nav */
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
 .tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg);display:flex;gap:4px;padding-block:8px;border-bottom:1px solid var(--line);overflow-x:auto}
@@ -314,7 +343,7 @@ html.guiding,html.guiding body{overflow:hidden}
   <header>
     <div class="brand"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" class="logo" aria-hidden="true"> <defs> <path id="lg-top" d="M22 64 A42 42 0 0 1 106 64"/> <path id="lg-bot" d="M18 64 A46 46 0 0 0 110 64"/> <linearGradient id="lg-steel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E3E8EB"/><stop offset=".55" stop-color="#A9B4BB"/><stop offset="1" stop-color="#6E7A82"/></linearGradient> <linearGradient id="lg-steelV" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7C8890"/><stop offset=".45" stop-color="#E3E8EB"/><stop offset="1" stop-color="#7C8890"/></linearGradient> <linearGradient id="lg-cu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EE9F6E"/><stop offset="1" stop-color="#A9461A"/></linearGradient> </defs> <circle cx="64" cy="64" r="62" fill="#C2571A"/> <circle cx="64" cy="64" r="57" fill="#1B2328"/> <circle cx="64" cy="64" r="54" fill="none" stroke="#C2571A" stroke-width="1.2" stroke-dasharray="2 2.5"/> <text font-family="'Barlow Condensed','Arial Narrow',sans-serif" font-weight="700" font-size="15" letter-spacing="3" fill="#ECEFEE"><textPath href="#lg-top" startOffset="50%" text-anchor="middle">ARC &amp; IRON</textPath></text> <text font-family="'Barlow Condensed','Arial Narrow',sans-serif" font-weight="700" font-size="9" letter-spacing="2" fill="#EE9F6E"><textPath href="#lg-bot" startOffset="50%" text-anchor="middle">MACE · BELL · CLUB</textPath></text> <circle cx="22" cy="64" r="2" fill="#C2571A"/><circle cx="106" cy="64" r="2" fill="#C2571A"/> <g transform="translate(64 66) scale(.62) translate(-64 -66)"> <g transform="translate(68 70) rotate(-39)"> <path d="M-2.6 36 L-3 6 C-3.6 -12 -10.5 -34 -10.5 -54 A10.5 10.5 0 0 1 10.5 -54 C10.5 -34 3.6 -12 3 6 L2.6 36 Z" fill="url(#lg-steelV)" stroke="#1B2328" stroke-width="2"/> <ellipse cx="0" cy="38" rx="5" ry="3.2" fill="url(#lg-steelV)" stroke="#1B2328" stroke-width="1.5"/> </g> <line x1="34" y1="100" x2="94" y2="28" stroke="#1B2328" stroke-width="9" stroke-linecap="round"/> <line x1="34" y1="100" x2="94" y2="28" stroke="url(#lg-steelV)" stroke-width="6" stroke-linecap="round"/> <circle cx="100" cy="21" r="13" fill="url(#lg-cu)" stroke="#1B2328" stroke-width="2"/> <circle cx="96" cy="17" r="4" fill="#F6C3A2"/> <path d="M44 66 V50 a20 20 0 0 1 40 0 V66 H74 V51 a10 10 0 0 0 -20 0 V66z" fill="url(#lg-steel)" stroke="#1B2328" stroke-width="4"/> <path d="M36 82 a28 28 0 1 1 56 0 c0 10-4 18-9 22 H45 c-5-4-9-12-9-22z" fill="url(#lg-steel)" stroke="#1B2328" stroke-width="4"/> <path d="M47 80 a17 17 0 0 1 11-12" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" opacity=".75"/> <path d="M55 88 l9 -6 l9 6 l-9 6z" fill="url(#lg-cu)"/> </g> </svg><div><div class="eyebrow">Kettlebell · Steel mace · Steel club</div>
     <h1>Arc &amp; Iron</h1></div></div>
-    <p class="lede">Tell it what you own and how long you have. It builds a session or a week from flows, complexes, intervals and strength sets, using weights from your own rack. New to a move? Tap <b>▶ Watch demo</b> beside it for a video.</p>
+    <p class="lede">Tell it what you own and how long you have. It builds a session or a week from flows, complexes, intervals and strength sets, using weights from your own rack. New to a move? Tap <b>▶ Watch demo</b> beside it to see how it moves.</p>
   </header>
 
   <nav class="tabs" aria-label="Sections">
@@ -782,10 +811,14 @@ function videoFor(name,eq){
   return null;
 }
 const PLAIN_STEP=/^(mirror|return|stand|switch hands|repeat|lower to rack)/i;
-const demo=(name,eq)=>{const v=videoFor(name,eq);return v
+const hasAnim=(name,eq)=>!!(window.Demos&&eq&&Demos.has(name,eq));
+const hasFlowAnim=f=>!!(window.Demos&&Demos.hasFlow(f));
+const flowDemoBtn=f=>`<button type="button" class="demo vid" data-flowdemo="${esc(f.name)}">▶ Watch the flow</button>`;
+const demo=(name,eq)=>{if(hasAnim(name,eq))return `<button type="button" class="demo vid" data-demo="${esc(name)}" data-eq="${eq}" aria-label="Watch a demo of ${esc(name)}">▶ Watch demo</button>`;
+  const v=videoFor(name,eq);return v
   ?`<a class="demo vid" href="${v}" target="_blank" rel="noopener" aria-label="Watch a demo of ${esc(name)}">▶ Watch demo</a>`
   :`<a class="demo" href="${demoUrl(name,eq)}" target="_blank" rel="noopener" aria-label="Find demos of ${esc(name)}">▶ Find demos</a>`};
-const stepLink=(s,eq)=>PLAIN_STEP.test(s)?esc(s):`<a class="steplink" href="${videoFor(s,eq)||demoUrl(s,eq)}" target="_blank" rel="noopener">${esc(s)}</a>`;
+const stepLink=(s,eq)=>PLAIN_STEP.test(s)?esc(s):hasAnim(s,eq)?`<button type="button" class="steplink" data-demo="${esc(s)}" data-eq="${eq}">${esc(s)}</button>`:`<a class="steplink" href="${videoFor(s,eq)||demoUrl(s,eq)}" target="_blank" rel="noopener">${esc(s)}</a>`;
 
 function warmBlock(eqs,min){
   const items=[...WARM.gen.slice(0,3).map(n=>[n,'']),...eqs.flatMap(k=>WARM[k].map(n=>[n,k])).slice(0,3)];
@@ -953,7 +986,7 @@ function blockHTML(b,bi,wi){
   if(b.flow){
     const lt=lastTxt(b.flow.name,b.flow.eq);
     body=`<ol class="flowsteps">${b.flow.steps.map(s=>`<li>${stepLink(s,b.flow.eq)}</li>`).join('')}</ol><p class="fmt">${esc(b.note)} <span class="wt">${esc(b.wt)}</span>${lt?` <span class="last">${esc(lt)}</span>`:''}</p><p class="hint">Tap any step to watch a demo of that move.</p>
-      <div class="go">${b.flow.video?`<a class="demo vid" href="https://www.youtube.com/watch?v=${b.flow.video}" target="_blank" rel="noopener">▶ Watch a similar sequence</a>`:''}<button class="link" data-sf="${wi}:${bi}">⇄ Different flow</button></div>`;
+      <div class="go">${hasFlowAnim(b.flow)?flowDemoBtn(b.flow):b.flow.video?`<a class="demo vid" href="https://www.youtube.com/watch?v=${b.flow.video}" target="_blank" rel="noopener">▶ Watch a similar sequence</a>`:''}<button class="link" data-sf="${wi}:${bi}">⇄ Different flow</button></div>`;
   }else{
     body=`<ol class="moves">${b.moves.map((m,mi)=>{const lt=m.eq?lastTxt(m.name,m.eq):'';
       return `<li><span class="mv-name">${m.tag?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}${m.wt?`<span class="wt">${esc(m.wt)}</span>`:''}</span><span class="mv-dose">${esc(m.dose)}</span>${lt?`<span class="last">${esc(lt)}</span>`:''}<span class="mv-cue">${m.cue?esc(m.cue)+' ':''}${demo(m.name,m.eq)}${SWAPPABLE(b)&&m.eq?` <button class="link swap" data-sw="${wi}:${bi}:${mi}" aria-label="Swap ${esc(m.name)} for a similar move">⇄ Swap</button>`:''}</span></li>`}).join('')}</ol>`;
@@ -1013,7 +1046,7 @@ function render(){
 }
 function renderLib(){
   const g=$('libgrid');
-  g.innerHTML=['mace','club','kb'].map(k=>`<h3>${EQ[k].name}</h3>`+FLOWS.filter(f=>f.eq===k).map(f=>`<div class="flowcard"><div class="block-head"><b>${esc(f.name)}</b><span class="tag">${LEVELS[f.lvl-1]}</span></div><ol class="flowsteps">${f.steps.map(s=>`<li>${stepLink(s,f.eq)}</li>`).join('')}</ol><p>${esc(f.note)}</p><p>${f.video?`<a class="demo vid" href="https://www.youtube.com/watch?v=${f.video}" target="_blank" rel="noopener">▶ Watch a similar sequence</a> `:''}<a class="demo" href="https://www.youtube.com/results?search_query=${encodeURIComponent(EQWORD[f.eq]+' flow beginner')}" target="_blank" rel="noopener">▶ See full ${EQWORD[f.eq]} flows</a></p></div>`).join('')).join('');
+  g.innerHTML=['mace','club','kb'].map(k=>`<h3>${EQ[k].name}</h3>`+FLOWS.filter(f=>f.eq===k).map(f=>`<div class="flowcard"><div class="block-head"><b>${esc(f.name)}</b><span class="tag">${LEVELS[f.lvl-1]}</span></div><ol class="flowsteps">${f.steps.map(s=>`<li>${stepLink(s,f.eq)}</li>`).join('')}</ol><p>${esc(f.note)}</p><p>${hasFlowAnim(f)?flowDemoBtn(f):`${f.video?`<a class="demo vid" href="https://www.youtube.com/watch?v=${f.video}" target="_blank" rel="noopener">▶ Watch a similar sequence</a> `:''}<a class="demo" href="https://www.youtube.com/results?search_query=${encodeURIComponent(EQWORD[f.eq]+' flow beginner')}" target="_blank" rel="noopener">▶ See full ${EQWORD[f.eq]} flows</a>`}</p></div>`).join('')).join('');
 }
 
 /* ---------- copy ---------- */
@@ -1214,7 +1247,7 @@ function gDraw(){
   $('gWt').innerHTML=s.wt?`<span class="wt">${esc(s.wt)}</span>`:'';
   $('gLast').textContent=s.lastKey?lastTxt(s.lastKey[0],s.lastKey[1]):'';
   $('gCue').textContent=s.cue||'';
-  $('gDemo').innerHTML=(!s.rest&&s.eq&&!s.list)?demo(s.flow?s.flow.steps[0]:s.name,s.eq):'';
+  $('gDemo').innerHTML=(!s.rest&&s.eq&&!s.list)?(s.flow&&hasFlowAnim(s.flow)?flowDemoBtn(s.flow):demo(s.flow?s.flow.steps[0]:s.name,s.eq)):'';
   gClock();
   let ex='';
   if(s.flow)ex=`<ol class="flowsteps">${s.flow.steps.map(t=>`<li>${stepLink(t,s.flow.eq)}</li>`).join('')}</ol>`;
@@ -1639,6 +1672,12 @@ $('bkFile').onchange=async e=>{
   }catch(err){m.textContent='That file is not an Arc & Iron backup.'}
   m.hidden=false;e.target.value='';
 };
+/* ---- animated demos ---- */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-demo],[data-flowdemo]');if(!b||!window.Demos)return;
+  if(b.dataset.flowdemo){const f=FLOWS.find(x=>x.name===b.dataset.flowdemo);if(f)Demos.openFlow(f)}
+  else Demos.open(b.dataset.demo,b.dataset.eq);
+});
 /* ---- offline + updates ---- */
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
 </script>
