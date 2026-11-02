@@ -63,6 +63,13 @@ function chain(...parts){
 }
 const both=(kf,grip=true)=>chain(kf,mirrorKF(kf,grip));
 const shaft=(G,tip)=>norm(sub(tip,G));   // direction from the hands toward where the head should be
+// wide grip: one hand on the base, the working hand right at the head. Places the shaft through both
+// hands and slides the butt so the head sits just past the working hand.
+function wide(base,head,work='R',extra){
+  const d=len(sub(head,base)),o={G:base,D:norm(sub(head,base)),choke:Math.max(0,MACE-d-6)};
+  if(work==='R'){o.gL=0;o.gR=d}else{o.gR=0;o.gL=d}
+  return Object.assign(o,{offL:0,offR:0},extra||{});
+}
 // STAND is the upright hold: mace vertical, hands stacked at the belly button, right hand on the bottom.
 
 function tenToTwo(){
@@ -79,11 +86,16 @@ function tenToTwo(){
     [2.6,q1],[2.9,mid],[3.2,q3],[3.55,shR],[3.7,{}],[4.2,hold],[4.45,{}]];
 }
 function barbarianSquat(){
-  const wide={L:[16,8,0],R:[-16,8,0]};
-  const up={P:[0,80,-6],pitch:12,feet:wide,turn:15,G:[0,150,14],D:[0,0.75,-0.66],eL:[1,0.2,0.5],eR:[-1,0.2,0.5],pass:true};
-  return [[0,STAND],[0.5,up],[1.0,{P:[0,56,-14],pitch:28,G:[0,124,-4],D:[0,-0.9,-0.43]}],[1.3,{}],
-    [1.8,up],[2.3,STAND],[2.6,{}]];
+  // Standing pullover: the mace goes back over the head and hangs behind the back. Then squat as the mace
+  // comes back over the top into the upright hold in front, and stand with it there.
+  const wide2={L:[16,8,0],R:[-16,8,0]};
+  const pull={G:[0,160,14],D:norm([0,0.5,-0.87]),eL:[1,0.3,0.4],eR:[-1,0.3,0.4],pass:true};
+  const behind={G:[0,176,-4],D:norm([0,-0.92,-0.38]),eL:[1,0.6,0.3],eR:[-1,0.6,0.3]};
+  const over={P:[0,78,-8],pitch:12,feet:wide2,turn:15,G:[0,166,8],D:norm([0,0.75,-0.66]),eL:[1,0.3,0.4],eR:[-1,0.3,0.4],pass:true};
+  const bottom=hold({P:[0,56,-14],pitch:22,yaw:0,feet:wide2,turn:15});
+  return [[0,STAND],[0.5,pull],[0.9,behind],[1.1,{}],[1.6,over],[2.1,bottom],[2.35,{}],[2.95,Object.assign({},STAND)],[3.2,{}]];
 }
+
 function reverseLunge(side){            // side = the leg that steps back
   const feet=side==='L'?{L:[12,15,-88],R:[-12,8,6]}:{L:[12,8,6],R:[-12,15,-88]};
   const bottom={P:[0,54,-36],pitch:5,feet,G:[0,64,-15],tL:side==='L'?1:0,tR:side==='R'?1:0};
@@ -155,16 +167,19 @@ function gravedigger(){
     [3.75,Object.assign({},STAND)],[3.95,{}]];
 }
 function uppercut(){
-  // right side: loaded low behind the right hip, the hips drive the head forward and up over the left shoulder
-  const load={P:[0,86,-4],pitch:10,yaw:-32,hipYaw:-16,feet:{L:[16,8,6],R:[-16,8,-4]},turn:12,
-    G:[-18,100,16],D:norm([-0.35,-0.55,-0.76]),eL:[0.4,-1,0.2],eR:[-1,-0.6,-0.2],tL:0,fyL:0};
-  const mid={P:[0,88,-2],pitch:6,yaw:0,hipYaw:0,G:[-6,110,32],D:norm([-0.3,-0.2,0.93]),eL:[0.8,-0.8,0],eR:[-0.8,-0.8,0],pass:true};
-  const fin={P:[0,92,0],pitch:0,yaw:30,hipYaw:16,G:[12,138,22],D:norm([0.4,0.82,-0.4]),eL:[1,-0.6,0],eR:[-0.3,-1,0.4],tR:0.45,fyR:28};
-  const rest=Object.assign({},STAND,{tR:0,fyR:0,tL:0,fyL:0});
-  const one=[[0,STAND],[0.55,load],[0.75,{}],[1.05,mid],[1.4,fin],[1.6,{}],[1.95,Object.assign({},mid,{tR:0.2,fyR:10})],
-    [2.3,Object.assign({},load,{tR:0,fyR:0})],[2.5,{}],[2.8,mid],[3.15,fin],[3.35,{}],[3.85,rest],[4.0,{}]];
+  // Wide grip, right side working: the right hand holds the head low behind the right hip, the left hand
+  // the base up in front. The hips drive the right hand forward and up to chin height while the left
+  // hand pulls the base down and back to the left hip, like a lever.
+  const load=Object.assign({P:[0,86,-4],pitch:10,yaw:-30,hipYaw:-16,feet:{L:[16,8,6],R:[-16,8,-4]},turn:12,tL:0,fyL:0},
+    wide([10,135,45],[-28,92,-12],'R',{eL:[0.6,-1,0.3],eR:[-1,-0.6,-0.2]}));
+  const mid=Object.assign({P:[0,88,-2],pitch:6,yaw:0,hipYaw:0,pass:true},wide([38,152,-4],[-12,104,40],'R',{eL:[1,-0.4,-0.3],eR:[-0.8,-0.8,0]}));
+  const fin=Object.assign({P:[0,92,0],pitch:0,yaw:28,hipYaw:16,tR:0.45,fyR:28},wide([48,100,-10],[0,150,35],'R',{eL:[1,-0.6,-0.2],eR:[-0.4,-1,0.3]}));
+  const home=Object.assign({},STAND,{tR:0,fyR:0,tL:0,fyL:0});
+  const one=[[0,STAND],[0.6,load],[0.8,{}],[1.1,mid],[1.45,fin],[1.65,{}],[2.0,Object.assign({},mid,{tR:0.2,fyR:10})],
+    [2.35,Object.assign({},load,{tR:0,fyR:0})],[2.55,{}],[2.85,mid],[3.2,fin],[3.4,{}],[3.9,home],[4.05,{}]];
   return both(one);
 }
+
 function paddle(){
   // Like an oar on the low-hand side only. Left hand low and overhand near the head, right hand on the
   // end of the handle; three strokes front to back along the left, then a sword switch to the right side.
@@ -191,14 +206,18 @@ function paddle(){
 }
 
 function handSwitches(){
-  // horizontal out to the right in the right hand, to the center to meet the left hand prayer-style,
-  // then the left hand carries it out horizontal to the left; and back
-  const right={G:[-30,120,24],D:norm([-1,0.06,0.12]),gR:0,gL:0,offL:1,offR:0,eR:[-1,-0.8,-0.2]};
-  const center={G:[0,122,28],D:[0,1,0.05],gR:0,gL:4,offL:0,offR:0,eL:[1,-0.8,-0.3],eR:[-1,-0.8,-0.3]};
-  const left={G:[30,120,24],D:norm([1,0.06,0.12]),gR:0,gL:0,offL:0,offR:1,eL:[1,-0.8,-0.2]};
-  return [[0,STAND],[0.55,right],[0.8,{}],[1.35,center],[1.6,{}],[2.15,left],[2.4,{}],[2.95,center],[3.2,{}],
-    [3.75,right],[4.0,{}],[4.55,center],[4.75,{}],[5.15,Object.assign({},STAND)],[5.35,{}]];
+  // Wide grip: out level to the right with the right hand on the head and the left on the base. The head
+  // hand brings it to the center, mace upright, where the hands meet on the head prayer-style; then the left
+  // hand takes the head out level to the left with the right hand on the base. And back.
+  const right=wide([31,118,22],[-55,118,22],'R',{eL:[1,-0.8,-0.2],eR:[-1,-0.8,-0.2]});
+  const c=wide([0,48,36],[0,128,30],'R');
+  const center=Object.assign({},c,{gL:c.gR-4,eL:[1,-1,0.2],eR:[-1,-1,0.2]});
+  const left=mirror(right);
+  const home={G:STAND.G,D:STAND.D,choke:6,gL:10,gR:0,eL:STAND.eL,eR:STAND.eR};
+  return [[0,STAND],[0.6,right],[0.85,{}],[1.4,center],[1.6,{}],[2.15,left],[2.4,{}],[2.95,center],[3.15,{}],
+    [3.7,right],[3.95,{}],[4.5,center],[4.7,{}],[5.2,home],[5.4,{}]];
 }
+
 function offsetPress(){
   // mace horizontal with the head out to the left; pressed from the clean-rack position to overhead
   const rack={G:[-10,132,18],D:[1,0,0.04],eL:[0.6,-1,0],eR:[-1,-1,0]};
@@ -209,21 +228,20 @@ function offsetPress(){
   return both(one);
 }
 function curl(sw){
-  // Hands spread from the base to the head, head down, shaft centered in front of the body so the curling
-  // arm (right) moves nearly straight up: from the thigh to the front of the shoulder. Base hand (left)
-  // stays near the middle of the chest.
-  const spread=50;
-  const low={G:[8,128,24],D:norm([-30,-40,-2]),gL:0,gR:spread,eL:[1,-1,0],eR:[-0.5,-1,-0.2]};
-  const top={G:[30,126,24],D:norm([-1,0.02,0]),gL:0,gR:spread,eL:[1,-1,0],eR:[-0.4,-1,0.3]};
-  const home={G:STAND.G,D:STAND.D,gL:10,gR:0,eL:STAND.eL,eR:STAND.eR};
+  // Wide grip: the working hand (right) holds the head, the left hand the base. The shaft runs from
+  // the left chest down to the right thigh; the right hand curls nearly straight up to the front of the
+  // shoulder while the base swings out to the left.
+  const low=wide([30,140,26],[-20,88,22],'R',{eL:[1,-1,0],eR:[-0.4,-1,-0.2]});
+  const top=wide([50,128,22],[-20,132,26],'R',{eL:[1,-1,0],eR:[-0.4,-1,0.3]});
+  const home={G:STAND.G,D:STAND.D,choke:6,gL:10,gR:0,eL:STAND.eL,eR:STAND.eR};
   if(!sw){
     const one=[[0,STAND],[0.75,low],[0.95,{}],[1.25,top],[1.45,{}],[1.95,low],[2.1,{}],[2.4,top],[2.6,{}],[3.1,home],[3.3,{}]];
     return both(one);
   }
-  // switch curl: the curl keeps going up into an arc over the top; the hands meet in the middle of the
-  // arc (like prayer, but with more snap) and the other hand catches it in the low curl position
-  const arc={G:[0,150,26],D:norm([0,1,0.1]),gL:0,gR:8,eL:[1,-1,0.2],eR:[-1,-1,0.2],pass:true};
-  const arcR=Object.assign({},arc,{gL:8,gR:0});
+  // switch curl: keep the curl going up into an arc over the top; the hands meet at the head in the
+  // middle of the arc and the left hand catches it into the low curl position on the left
+  const arc=Object.assign(wide([0,88,22],[0,168,26],'R',{eL:[1,-1,0.3],eR:[-1,-1,0.3],pass:true}),{gL:wide([0,88,22],[0,168,26]).gR-4});
+  const arcR=mirror(arc);
   const topL=mirror(top),lowL=mirror(low);
   return [[0,STAND],[0.75,low],[0.95,{}],[1.25,top],[1.55,arc],[1.85,topL],[2.2,lowL],[2.4,{}],
     [2.7,topL],[3.0,arcR],[3.3,top],[3.65,low],[3.85,{}],[4.15,top],[4.45,arc],[4.75,topL],[5.1,lowL],[5.3,{}],
@@ -269,14 +287,14 @@ function plankPullThrough(){
   // it across to the right side, then the left hand drags it back.
   const feet={L:[16,8,-108],R:[-16,8,-108]};
   const plank=Object.assign({},STAND,{P:[0,40,-28],pitch:70,yaw:0,hipYaw:0,feet,turn:0,tL:1,tR:1,
-    G:[18,4,26],D:[0.15,0,-0.99],gR:0,gL:0,choke:6,offL:1,offR:1,freeL:[17,3,18],freeR:[-17,3,18],
+    G:[18,4,-50],D:[0,0,1],gR:70,gL:70,choke:6,offL:1,offR:1,freeL:[17,3,18],freeR:[-17,3,18],
     eL:[1,0,-0.5],eR:[-1,0,-0.5]});
   const dip={P:[0,34,-28],pitch:72};
   const grabR=Object.assign({offR:0,eR:[-0.6,0.4,-0.4]},dip);
-  const dragR={G:[-18,4,26],D:[-0.15,0,-0.99],P:[0,38,-28],pitch:70};
+  const dragR={G:[-18,4,-50],D:[0,0,1],P:[0,38,-28],pitch:70};
   const relR={offR:1,eR:[-1,0,-0.5]};
   const grabL=Object.assign({offL:0,eL:[0.6,0.4,-0.4]},dip);
-  const dragL={G:[18,4,26],D:[0.15,0,-0.99],P:[0,38,-28],pitch:70};
+  const dragL={G:[18,4,-50],D:[0,0,1],P:[0,38,-28],pitch:70};
   const relL={offL:1,eL:[1,0,-0.5]};
   return [[0,plank],[0.5,{}],[1.0,grabR],[1.7,dragR],[2.0,relR],[2.4,{}],[2.9,grabL],[3.6,dragL],[3.9,relL],[4.3,{}]];
 }
@@ -285,7 +303,7 @@ const MOVES={
   'mace:10-to-2':{kf:tenToTwo(),
     cue:'From the upright hold, swing first to the side your top hand points to, the opposite side (left hand on top goes over the right shoulder). Then behind your back, over the other shoulder, back again, and return to the upright hold. Keep your head centered.'},
   'mace:barbarian squat':{kf:barbarianSquat(),
-    cue:'From the upright hold, the mace drops behind your head as you squat and returns to the upright hold as you stand.'},
+    cue:'Pull the mace over your head so it hangs behind your back, then squat as you bring it back over the top into the upright hold in front. Stand with it there.'},
   'mace:front squat':{kf:frontSquat(),
     cue:'Bring the mace up to the chest with the shaft vertical. Sit down between your hips with your chest tall, then stand.'},
   'mace:lateral lunge':{kf:lateralLunge(),
@@ -303,17 +321,17 @@ const MOVES={
   'mace:gravedigger:right':{kf:mirrorKF(gravedigger()),
     cue:'Shovel grip. From the left shoulder, dig the head down and across to the floor by your right foot, pivoting the back foot, then return to the shoulder.'},
   'mace:uppercut':{kf:uppercut(),
-    cue:'Load the mace low behind one hip, then drive from that back hip so the head swings forward and up across the body over the other shoulder. Both sides.'},
+    cue:'Wide grip with the working hand on the head, loaded low behind that hip. Drive from the back hip so the head hand rises to chin height while the base hand pulls down to the other hip. Both sides.'},
   'mace:paddle':{kf:paddle(),
     cue:'Like an oar on the low-hand side: low hand overhand near the head, top hand on the end. Pull the head front to back along that side for your reps, then sword switch to the other side.'},
   'mace:hand switches':{kf:handSwitches(),
-    cue:'Hold the mace out to one side, level. That hand brings it to the center to meet the other hand prayer-style, and the other hand carries it out level to the opposite side.'},
+    cue:'Wide grip: out level to one side with that hand on the head. Bring it to center, upright, and meet the other hand on the head prayer-style; the other hand takes the head out level to the opposite side.'},
   'mace:offset press':{kf:offsetPress(),
     cue:'Mace level with the head out to one side. Press it from the clean-rack position straight overhead, keeping it level. Both sides.'},
   'mace:ballistic curl':{kf:curl(false),
-    cue:'Hands spread from the base to the head, head down, shaft centered in front of you. Curl the low hand nearly straight up from the thigh to the shoulder. Both sides.'},
+    cue:'Wide grip: the curling hand holds the head, the other hand the base, shaft centered and head down. Curl the head hand nearly straight up to the shoulder. Both sides.'},
   'mace:switch curl':{kf:curl(true),
-    cue:'Curl up, then keep the mace arcing over the top. The hands meet mid-arc and the other hand catches it in the low curl position on the other side.'},
+    cue:'Wide grip with the curling hand on the head. Curl up, keep the mace arcing over the top, meet the hands at the head mid-arc and catch it with the other hand in the low curl position.'},
   'mace:offset bent-over row':{kf:offsetRow(),
     cue:'Hinge with a flat back. Two hands on the handle, mace level with the head out to one side. Row to the ribs. Both sides.'},
   'mace:offset march':{kf:offsetMarch(),
