@@ -166,16 +166,28 @@ function uppercut(){
   return both(one);
 }
 function paddle(){
-  // Like an oar: right hand on the butt end near the chest, left hand down the shaft, head down in the
-  // "water" at the side. Pull the head from front to back along the left side, lift it across, then the right.
-  const grip={gR:0,gL:46};
-  const catchL=Object.assign({P:[0,92,-3],pitch:8,yaw:24,G:[-8,132,10],D:shaft([-8,132,10],[36,22,48]),eL:[1,-0.6,0.2],eR:[-1,-0.4,0.4]},grip);
-  const finishL={yaw:-8,G:[-8,124,10],D:shaft([-8,124,10],[36,22,-26])};
-  const lift={yaw:0,pitch:4,G:[0,134,16],D:norm([0,-0.55,0.84]),gL:28,pass:true};
-  const L=[[0,catchL],[0.75,finishL],[1.15,lift]];
-  // right side: same grip, so the left hand reaches across; turn a little further and hold a little higher
-  const R=mirrorKF([[0,Object.assign({},catchL,{yaw:32,gL:38})],[0.75,Object.assign({},finishL,{yaw:0})],[1.15,lift]],false);
-  return chain([[0,STAND],[0.4,Object.assign({},lift,{pass:true})]],L,R,L,R,[[0,Object.assign({},STAND)],[0.25,{}]]);
+  // Like an oar on the low-hand side only. Left hand low and overhand near the head, right hand on the
+  // end of the handle; three strokes front to back along the left, then a sword switch to the right side.
+  const grip={gR:0,gL:62,offL:0,offR:0};
+  const bend=[1,-0.6,0.2],bendR=[-1,-0.4,0.4];
+  const at=(pitch,yaw,G,tip,extra)=>Object.assign({P:[0,80,-pitch/3],pitch,yaw,G,D:shaft(G,tip),eL:bend,eR:bendR},extra||{});
+  const catchL=at(34,26,[6,126,16],[34,14,40],grip);
+  const finishL=at(10,-6,[0,126,16],[34,14,-24]);
+  const recoverL=at(22,10,[4,130,20],[30,40,10],{pass:true});
+  const strokes=K=>[[0,K.c],[0.8,K.f],[1.15,K.r],[1.5,K.c],[2.3,K.f],[2.65,K.r],[3.0,K.c],[3.8,K.f]];
+  const left=strokes({c:catchL,f:finishL,r:recoverL});
+  const right=mirrorKF(left);              // hands trade jobs: right hand low near the head, left on the end
+  // sword switch: top hand lets go, the low hand drives the mace forward like a sword thrust, the other
+  // hand catches it there and carries it down to the start on the other side
+  const thrustL=[6,118,46],dirL=norm([0,-0.05,-1]);
+  const lowL=at(22,4,[4,126,16],[34,16,4],{offR:1});
+  const thrust={P:[0,90,0],pitch:0,yaw:0,G:sub(thrustL,mul(dirL,62)),D:dirL,gL:62,gR:62,offR:1,offL:0,eL:[1,-0.5,-0.2],eR:[-1,-0.5,-0.2]};
+  const caught=Object.assign({},thrust,{offR:0});
+  const handed=Object.assign({},caught,{offL:1});
+  const sword=[[0,lowL],[0.55,thrust],[0.75,caught],[0.9,handed]];
+  const startR=mirror(catchL);
+  return chain([[0,STAND],[0.6,catchL]],left,sword.concat([[1.45,mirror(lowL)],[1.85,startR]]),right.slice(1).map(([t,p])=>[t-0.7,p]),
+    [[0,Object.assign({},STAND,{offL:0,offR:0})],[0.25,{}]]);
 }
 
 function handSwitches(){
@@ -197,24 +209,25 @@ function offsetPress(){
   return both(one);
 }
 function curl(sw){
-  // Hands spread from the base to the head, head down. Lowered diagonally on the curl side (right),
-  // then curled up to the chest. sw: at the chest the hands switch in one motion so the head goes to
-  // the other side, and that rep lowers on the left.
-  const spread=60;
-  const low={P:[0,86,-8],pitch:24,G:[14,112,24],D:norm([-0.9,-0.65,0.15]),gL:0,gR:spread,eL:[1,-0.8,0],eR:[-0.8,-0.8,0]};
-  const chest={P:[0,94,0],pitch:0,G:[16,118,20],D:norm([-1,-0.15,0.05]),gL:0,gR:spread,eL:[1,-1,0],eR:[-1,-1,0]};
+  // Hands spread from the base to the head, head down, shaft centered in front of the body so the curling
+  // arm (right) moves nearly straight up: from the thigh to the front of the shoulder. Base hand (left)
+  // stays near the middle of the chest.
+  const spread=50;
+  const low={G:[8,128,24],D:norm([-30,-40,-2]),gL:0,gR:spread,eL:[1,-1,0],eR:[-0.5,-1,-0.2]};
+  const top={G:[30,126,24],D:norm([-1,0.02,0]),gL:0,gR:spread,eL:[1,-1,0],eR:[-0.4,-1,0.3]};
   const home={G:STAND.G,D:STAND.D,gL:10,gR:0,eL:STAND.eL,eR:STAND.eR};
   if(!sw){
-    const one=[[0,STAND],[0.85,low],[1.05,{}],[1.35,chest],[1.55,{}],[2.05,low],[2.2,{}],[2.5,chest],[2.7,{}],
-      [3.15,Object.assign({},home,{P:STAND.P,pitch:0})],[3.35,{}]];
+    const one=[[0,STAND],[0.75,low],[0.95,{}],[1.25,top],[1.45,{}],[1.95,low],[2.1,{}],[2.4,top],[2.6,{}],[3.1,home],[3.3,{}]];
     return both(one);
   }
-  // switch: through vertical (head down) at the chest while the hands trade ends
-  const flip={G:[0,132,22],D:[0,-1,0.12],gL:spread/2,gR:-spread/2,pass:true};
-  const chestL=mirror(chest),lowL=mirror(low);
-  return [[0,STAND],[0.85,low],[1.05,{}],[1.35,chest],[1.6,flip],[1.85,chestL],[2.35,lowL],[2.55,{}],
-    [2.85,chestL],[3.1,Object.assign({},flip,{gL:-spread/2,gR:spread/2})],[3.35,chest],[3.85,low],[4.05,{}],[4.35,chest],[4.55,{}],
-    [5.0,Object.assign({},home,{P:STAND.P,pitch:0})],[5.2,{}]];
+  // switch curl: the curl keeps going up into an arc over the top; the hands meet in the middle of the
+  // arc (like prayer, but with more snap) and the other hand catches it in the low curl position
+  const arc={G:[0,150,26],D:norm([0,1,0.1]),gL:0,gR:8,eL:[1,-1,0.2],eR:[-1,-1,0.2],pass:true};
+  const arcR=Object.assign({},arc,{gL:8,gR:0});
+  const topL=mirror(top),lowL=mirror(low);
+  return [[0,STAND],[0.75,low],[0.95,{}],[1.25,top],[1.55,arc],[1.85,topL],[2.2,lowL],[2.4,{}],
+    [2.7,topL],[3.0,arcR],[3.3,top],[3.65,low],[3.85,{}],[4.15,top],[4.45,arc],[4.75,topL],[5.1,lowL],[5.3,{}],
+    [5.8,Object.assign({},home,{gL:0,gR:10})],[6.1,home],[6.3,{}]];
 }
 
 function offsetRow(){
@@ -292,15 +305,15 @@ const MOVES={
   'mace:uppercut':{kf:uppercut(),
     cue:'Load the mace low behind one hip, then drive from that back hip so the head swings forward and up across the body over the other shoulder. Both sides.'},
   'mace:paddle':{kf:paddle(),
-    cue:'Like an oar: top hand on the end of the handle, bottom hand down the shaft, head down at your side. Pull it front to back along one side, lift it across, then the other side.'},
+    cue:'Like an oar on the low-hand side: low hand overhand near the head, top hand on the end. Pull the head front to back along that side for your reps, then sword switch to the other side.'},
   'mace:hand switches':{kf:handSwitches(),
     cue:'Hold the mace out to one side, level. That hand brings it to the center to meet the other hand prayer-style, and the other hand carries it out level to the opposite side.'},
   'mace:offset press':{kf:offsetPress(),
     cue:'Mace level with the head out to one side. Press it from the clean-rack position straight overhead, keeping it level. Both sides.'},
   'mace:ballistic curl':{kf:curl(false),
-    cue:'Hands spread from the base to the head, head down. Lower it diagonally on the curl side, then flick from the hips and curl it up to the chest. Both sides.'},
+    cue:'Hands spread from the base to the head, head down, shaft centered in front of you. Curl the low hand nearly straight up from the thigh to the shoulder. Both sides.'},
   'mace:switch curl':{kf:curl(true),
-    cue:'Like the ballistic curl, hands spread and head down. At the chest, switch hands in one motion so the next rep lowers on the other side.'},
+    cue:'Curl up, then keep the mace arcing over the top. The hands meet mid-arc and the other hand catches it in the low curl position on the other side.'},
   'mace:offset bent-over row':{kf:offsetRow(),
     cue:'Hinge with a flat back. Two hands on the handle, mace level with the head out to one side. Row to the ribs. Both sides.'},
   'mace:offset march':{kf:offsetMarch(),
