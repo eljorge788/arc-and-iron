@@ -44,17 +44,25 @@ function onBody(pose,lat,h,fw){const F=torsoFrame(pose.P,pose.pitch||0,pose.yaw|
   return add(add(add(pose.P,mul(F.l,lat)),mul(F.u,h)),mul(F.f,fw))}
 // upright hold placed on the body (belly button) for whatever the hips and torso are doing
 const hold=pose=>Object.assign({G:onBody(pose,0,10,22),D:[0,1,0],eL:STAND.eL,eR:STAND.eR},pose);
-// mirror a pose left <-> right (also swaps which hand is on top)
-function mirror(p){
+// mirror a pose left <-> right; grip:true also swaps which hand is on top
+function mirror(p,grip=true){
   const o=Object.assign({},p),sw=(a,b,f)=>{if(a in p||b in p){const A=p[a],B=p[b];if(B!==undefined)o[a]=f(B);else delete o[a];if(A!==undefined)o[b]=f(A);else delete o[b]}};
   const id=v=>v,neg=v=>-v;
   for(const k of ['P','G','D'])if(p[k])o[k]=mx(p[k]);
   if('yaw' in p)o.yaw=-p.yaw;if('hipYaw' in p)o.hipYaw=-p.hipYaw;
   if(p.feet)o.feet={L:mx(p.feet.R),R:mx(p.feet.L)};
-  sw('eL','eR',mx);sw('freeL','freeR',mx);sw('gL','gR',id);sw('offL','offR',id);sw('tL','tR',id);sw('fyL','fyR',neg);
+  sw('eL','eR',mx);sw('freeL','freeR',mx);if(grip){sw('gL','gR',id);sw('offL','offR',id)}sw('tL','tR',id);sw('fyL','fyR',neg);
   return o;
 }
-const mirrorKF=kf=>kf.map(([t,p])=>[t,mirror(p)]);
+const mirrorKF=(kf,grip=true)=>kf.map(([t,p])=>[t,mirror(p,grip)]);
+// play keyframe lists one after another
+function chain(...parts){
+  const out=[];let t0=0;
+  parts.forEach((kf,i)=>{const off=i?t0+0.1:0;kf.forEach(([t,p])=>out.push([t+off,p]));t0=out[out.length-1][0]});
+  return out;
+}
+const both=(kf,grip=true)=>chain(kf,mirrorKF(kf,grip));
+const shaft=(G,tip)=>norm(sub(tip,G));   // direction from the hands toward where the head should be
 // STAND is the upright hold: mace vertical, hands stacked at the belly button, right hand on the bottom.
 
 function tenToTwo(){
@@ -83,25 +91,166 @@ function reverseLunge(side){            // side = the leg that steps back
 }
 
 function frontSquat(){
-  const chest=pose=>Object.assign({G:onBody(pose,0,30,20),D:[0,1,0],eL:[1,-0.9,0],eR:[-1,-0.9,0]},pose);
-  const top=chest({P:STAND.P,pitch:0,yaw:0});
+  // mace pressed out in front, still vertical, held there through the squat
+  const out=pose=>Object.assign({G:onBody(pose,0,28,44),D:[0,1,0],eL:[1,-0.6,-0.4],eR:[-1,-0.6,-0.4]},pose);
   const wide={L:[16,8,0],R:[-16,8,0]};
-  const bottom=chest({P:[0,56,-14],pitch:22,yaw:0,feet:wide,turn:15});
-  return [[0,STAND],[0.45,top],[0.6,{feet:wide,turn:15}],[1.4,bottom],[1.65,{}],[2.45,Object.assign({},top,{feet:wide,turn:15})],
-    [2.6,{}],[3.05,Object.assign({},STAND)],[3.3,{}]];
+  const top=out({P:STAND.P,pitch:0,yaw:0,feet:wide,turn:15});
+  const bottom=out({P:[0,56,-14],pitch:22,yaw:0,feet:wide,turn:15});
+  return [[0,STAND],[0.55,top],[0.7,{}],[1.5,bottom],[1.75,{}],[2.55,top],[2.7,{}],[3.2,Object.assign({},STAND)],[3.4,{}]];
 }
 function lateralLunge(){
-  // left foot steps out, sit into the left hip with the right leg straight; then the right side
-  const out=hold({P:[22,60,-14],pitch:28,yaw:0,hipYaw:0,feet:{L:[46,8,0],R:[-14,8,0]},turn:14,kneeOut:0.15});
-  const wideStand=hold({P:[16,92,0],pitch:0,yaw:0,feet:{L:[46,8,0],R:[-14,8,0]},turn:14});
-  const L=[[0,STAND],[0.5,wideStand],[1.2,out],[1.45,{}],[2.15,wideStand],[2.6,STAND]];
-  return L.concat(mirrorKF(L).slice(1).map(([t,p])=>[t+2.7,p])).concat([[5.6,{}]]);
+  // left foot steps out and you sit into the left hip; the mace is punched out parallel to the straight right leg
+  const feet={L:[46,8,0],R:[-14,8,0]};
+  const P=[22,60,-14],pitch=20;
+  const legDir=shaft([P[0]-9,P[1],P[2]],[-14,8,0]);
+  const G=onBody({P,pitch,yaw:0},-12,44,30);
+  const out={P,pitch,yaw:0,hipYaw:0,feet,turn:14,kneeOut:0.15,G,D:legDir,eL:[0.6,-0.8,0],eR:[-1,-0.5,0]};
+  const wideStand=hold({P:[16,92,0],pitch:0,yaw:0,feet,turn:14});
+  const L=[[0,STAND],[0.5,wideStand],[1.2,out],[1.45,{}],[2.15,wideStand],[2.6,STAND],[2.7,{}]];
+  return both(L,false);
 }
 function frontLunge(){
   // left foot steps forward; front shin near vertical; then the right
   const bottom=hold({P:[0,54,26],pitch:4,yaw:0,feet:{L:[12,8,72],R:[-12,15,-18]},tR:1});
   const L=[[0,STAND],[0.8,bottom],[1.1,{}],[1.9,Object.assign({},STAND,{tR:0})]];
-  return L.concat(mirrorKF(L).slice(1).map(([t,p])=>[t+2.0,p])).concat([[4.2,{}]]);
+  return both(L.concat([[2.0,{}]]),false);
+}
+
+function threeSixty(){
+  // left hand on top: over the right shoulder, behind the back, around the left side, back to the front
+  const shR={G:[-14,135,14],D:[-0.45,0.75,-0.48],eL:[0,-1,0.5],eR:[-1,-0.6,0],pass:true};
+  const q3={G:[-10,163,4],D:[-0.55,-0.45,-0.7],eL:[0.5,-0.3,0.8],eR:[-1,0,0.2],pass:true};
+  const mid={G:[0,180,-2],D:[0,-0.92,-0.38],eL:[1,0.5,0.3],eR:[-1,0.5,0.3],pass:true};
+  const q1={G:[10,163,4],D:[0.55,-0.45,-0.7],eL:[1,0,0.2],eR:[-0.5,-0.3,0.8],pass:true};
+  const outL={G:[14,130,16],D:[0.9,0.1,-0.42],eL:[1,-0.6,0],eR:[0,-1,0.5],pass:true};
+  const frontL={G:[8,112,24],D:[0.6,0.2,0.77],eL:[1,-0.8,-0.2],eR:[-0.6,-0.8,0.2],pass:true};
+  return [[0,STAND],[0.25,{}],[0.65,shR],[0.95,q3],[1.2,mid],[1.45,q1],[1.75,outL],[2.05,frontL],
+    [2.4,{G:STAND.G,D:STAND.D,eL:STAND.eL,eR:STAND.eR}],[2.65,{}]];
+}
+function pendulum(){
+  // choked up, arms long, head hanging down in front; small side-to-side arcs
+  const hang={G:[0,101,24],D:[0,-1,0.1],choke:32,gL:7,eL:[1,-0.6,-0.4],eR:[-1,-0.6,-0.4]};
+  const tip={G:[0,104,30],D:[0,0.1,1],choke:20,pass:true};
+  const sw=x=>({G:[-x*0.12,102,24],D:norm([x,-0.9,0.08])});
+  return [[0,STAND],[0.4,tip],[0.8,hang],[1.25,sw(0.42)],[1.75,sw(-0.42)],[2.25,sw(0.42)],[2.75,sw(-0.42)],
+    [3.15,hang],[3.55,tip],[3.95,{G:STAND.G,D:STAND.D,choke:6,gL:10,pass:false}],[4.2,{}]];
+}
+function gravedigger(){
+  // left: shovel grip, load over the right shoulder, dig the head down to the floor by the left foot
+  const grip={gR:0,gL:22};
+  const loadG=[8,116,22];
+  const load=Object.assign({P:[0,92,-2],yaw:-20,hipYaw:-10,feet:{L:[18,8,6],R:[-18,8,-4]},turn:12,
+    G:loadG,D:norm([-0.6,0.74,-0.33]),eL:[0.3,-1,0.4],eR:[-0.6,-1,0.2],tR:0,fyR:0},grip);
+  const dP=[0,80,-4],dPitch=30,dYaw=28;
+  const digG=onBody({P:dP,pitch:dPitch,yaw:dYaw},-10,18,18);
+  const dig={P:dP,pitch:dPitch,yaw:dYaw,hipYaw:18,G:digG,D:shaft(digG,[44,12,46]),eL:[1,-0.4,0.5],eR:[-0.8,-0.8,0],tR:0.6,fyR:35};
+  const swing={P:[0,84,-4],pitch:18,yaw:8,hipYaw:4,G:[2,104,36],D:norm([0.3,-0.35,0.9]),pass:true};
+  return [[0,STAND],[0.45,Object.assign({},STAND,grip,{pass:true})],[0.9,load],[1.1,{}],[1.55,swing],[1.95,dig],[2.25,{}],
+    [2.65,Object.assign({},swing,{tR:0.3,fyR:15})],[3.05,Object.assign({},load,{tR:0,fyR:0})],[3.25,{}],
+    [3.75,Object.assign({},STAND)],[3.95,{}]];
+}
+function uppercut(){
+  // right side: loaded low behind the right hip, the hips drive the head forward and up over the left shoulder
+  const load={P:[0,86,-4],pitch:10,yaw:-32,hipYaw:-16,feet:{L:[16,8,6],R:[-16,8,-4]},turn:12,
+    G:[-18,100,16],D:norm([-0.35,-0.55,-0.76]),eL:[0.4,-1,0.2],eR:[-1,-0.6,-0.2],tL:0,fyL:0};
+  const mid={P:[0,88,-2],pitch:6,yaw:0,hipYaw:0,G:[-6,110,32],D:norm([-0.3,-0.2,0.93]),eL:[0.8,-0.8,0],eR:[-0.8,-0.8,0],pass:true};
+  const fin={P:[0,92,0],pitch:0,yaw:30,hipYaw:16,G:[12,138,22],D:norm([0.4,0.82,-0.4]),eL:[1,-0.6,0],eR:[-0.3,-1,0.4],tR:0.45,fyR:28};
+  const rest=Object.assign({},STAND,{tR:0,fyR:0,tL:0,fyL:0});
+  const one=[[0,STAND],[0.55,load],[0.75,{}],[1.05,mid],[1.4,fin],[1.6,{}],[1.95,Object.assign({},mid,{tR:0.2,fyR:10})],
+    [2.3,Object.assign({},load,{tR:0,fyR:0})],[2.5,{}],[2.8,mid],[3.15,fin],[3.35,{}],[3.85,rest],[4.0,{}]];
+  return both(one);
+}
+function paddle(){
+  // head up, hands spread; the bottom of the shaft rows front to back on one side, then the other
+  const grip={gR:0,gL:42};
+  const front={P:[0,90,-2],pitch:8,yaw:-18,G:[-19,98,28],D:norm([0.3,0.85,-0.42]),eL:[0.4,-1,0.3],eR:[-1,-0.7,0]};
+  const back={yaw:16,G:[-19,98,-10],D:norm([0.3,0.85,0.42])};
+  const cross=Object.assign({},grip,{yaw:0,G:[0,100,26],D:[0,1,0.15],pass:true});
+  const one=[[0,STAND],[0.45,Object.assign({},STAND,grip)],[0.9,Object.assign({},front,grip)],[1.55,back],[2.0,cross]];
+  const other=mirrorKF([[0,Object.assign({},front,grip)],[0.65,back],[1.1,cross]],false);
+  return chain(one,other,one.slice(2),other,[[0,Object.assign({},STAND)],[0.25,{}]]);
+}
+function handSwitches(){
+  // horizontal out to the right in the right hand, to the center to meet the left hand prayer-style,
+  // then the left hand carries it out horizontal to the left; and back
+  const right={G:[-30,120,24],D:norm([-1,0.06,0.12]),gR:0,gL:0,offL:1,offR:0,eR:[-1,-0.8,-0.2]};
+  const center={G:[0,122,28],D:[0,1,0.05],gR:0,gL:4,offL:0,offR:0,eL:[1,-0.8,-0.3],eR:[-1,-0.8,-0.3]};
+  const left={G:[30,120,24],D:norm([1,0.06,0.12]),gR:0,gL:0,offL:0,offR:1,eL:[1,-0.8,-0.2]};
+  return [[0,STAND],[0.55,right],[0.8,{}],[1.35,center],[1.6,{}],[2.15,left],[2.4,{}],[2.95,center],[3.2,{}],
+    [3.75,right],[4.0,{}],[4.55,center],[4.75,{}],[5.15,Object.assign({},STAND)],[5.35,{}]];
+}
+function offsetPress(){
+  // mace horizontal with the head out to the left; pressed from the clean-rack position to overhead
+  const rack={G:[-10,132,18],D:[1,0,0.04],eL:[0.6,-1,0],eR:[-1,-1,0]};
+  const tilt={G:[-6,122,24],D:norm([0.7,0.7,0.1]),pass:true};
+  const top={G:[-10,190,6],D:[1,0,0.02],eL:[1,0.2,-0.2],eR:[-1,0.2,-0.2]};
+  const one=[[0,STAND],[0.35,tilt],[0.7,rack],[0.95,{}],[1.55,top],[1.8,{}],[2.4,rack],[2.6,{}],[3.2,top],[3.45,{}],
+    [4.05,rack],[4.25,{}],[4.6,tilt],[4.95,{G:STAND.G,D:STAND.D,eL:STAND.eL,eR:STAND.eR}],[5.1,{}]];
+  return both(one);
+}
+function curl(sw){
+  // mace diagonal and lowered on the curl side (right), then curled up to the chest.
+  // sw: the top hand switches at the chest in one motion and the next rep is on the other side.
+  const low={P:[0,92,0],pitch:4,G:[-16,90,20],D:norm([0.55,0.8,0.22]),eL:[0.6,-1,0],eR:[-1,-0.8,0]};
+  const chest={pitch:0,G:[0,122,22],D:[0,1,0.05],gR:0,gL:10,eL:[1,-1,0.2],eR:[-1,-1,0.2]};
+  const swapped=Object.assign({},chest,{gR:10,gL:0});
+  if(!sw){
+    const one=[[0,STAND],[0.6,low],[0.8,{}],[1.15,chest],[1.35,{}],[1.95,low],[2.1,{}],[2.45,chest],[2.65,{}],[3.2,Object.assign({},STAND)],[3.4,{}]];
+    return both(one);
+  }
+  const lowL=mirror(Object.assign({},low,{gR:10,gL:0}),false);
+  return [[0,STAND],[0.6,low],[0.8,{}],[1.15,chest],[1.45,swapped],[2.05,lowL],[2.25,{}],[2.6,swapped],[2.9,chest],
+    [3.5,Object.assign({},low,{gR:0,gL:10})],[3.7,{}],[4.05,chest],[4.6,Object.assign({},STAND)],[4.8,{}]];
+}
+function offsetRow(){
+  // hinge; two-hand hold with the mace horizontal and the head out to the left; row to the ribs
+  const base={P:[0,86,-18],pitch:55,yaw:0,feet:{L:[16,8,4],R:[-16,8,4]},turn:12};
+  const hang=Object.assign({},base,{G:onBody(base,-6,44,52),D:[1,0,0.05],eL:[1,-0.3,-0.4],eR:[-1,-0.3,-0.4]});
+  const row=Object.assign({},base,{G:onBody(base,-6,24,16),eL:[0.6,0.6,-0.6],eR:[-0.6,0.6,-0.6]});
+  const set={G:[-6,98,26],D:norm([0.8,0.5,0.1]),pass:true};
+  const one=[[0,STAND],[0.4,set],[0.95,hang],[1.15,{}],[1.65,row],[1.85,{}],[2.35,hang],[2.5,{}],[3.0,row],[3.2,{}],[3.7,hang],
+    [4.15,Object.assign({},set,{P:STAND.P,pitch:0,feet:STAND.feet,turn:STAND.turn})],[4.5,Object.assign({},STAND)],[4.7,{}]];
+  return both(one);
+}
+function offsetMarch(){
+  // bar horizontal at chest height with the weight out to the left; slow marching steps
+  const hold={G:[-8,124,24],D:[1,0,0.05],eL:[0.6,-1,0],eR:[-1,-1,0]};
+  const set={G:[-4,116,26],D:norm([0.7,0.7,0.1]),pass:true};
+  const kneeL={feet:{L:[12,42,18],R:[-12,8,0]}},kneeR={feet:{L:[12,8,0],R:[-12,42,18]}},down={feet:STAND.feet};
+  const one=[[0,STAND],[0.35,set],[0.7,hold],[0.9,{}],[1.35,kneeL],[1.8,down],[2.25,kneeR],[2.7,down],[3.15,kneeL],[3.6,down],
+    [4.05,kneeR],[4.5,down],[4.85,set],[5.2,{G:STAND.G,D:STAND.D,eL:STAND.eL,eR:STAND.eR}],[5.4,{}]];
+  return both(one);
+}
+function shoulderedLunge(){
+  // mace resting on the right shoulder, head behind; reverse lunge each leg
+  const sh={G:[-8,124,18],D:norm([-0.3,0.6,-0.74]),eL:[0.4,-1,0.5],eR:[-0.8,-1,0]};
+  const set={G:[-6,118,24],D:norm([-0.2,0.9,-0.2]),pass:true};
+  const bottom=side=>{const feet=side==='L'?{L:[12,15,-88],R:[-12,8,6]}:{L:[12,8,6],R:[-12,15,-88]};
+    const pose={P:[0,54,-36],pitch:5,yaw:0,feet,tL:side==='L'?1:0,tR:side==='R'?1:0};
+    return Object.assign(pose,{G:onBody(pose,-8,30,18),D:sh.D})};
+  const up=Object.assign({},sh,{P:STAND.P,pitch:0,feet:STAND.feet,tL:0,tR:0});
+  return [[0,STAND],[0.4,set],[0.8,sh],[1.0,{}],[1.8,bottom('L')],[2.1,{}],[2.9,up],[3.1,{}],[3.9,bottom('R')],[4.2,{}],[5.0,up],
+    [5.2,{}],[5.55,set],[5.9,{G:STAND.G,D:STAND.D,eL:STAND.eL,eR:STAND.eR}],[6.1,{}]];
+}
+function lungeTo360(){
+  const lunge=reverseLunge('L'),turn=threeSixty();
+  return both(chain(lunge,turn));
+}
+function plankPullThrough(){
+  // high plank; the mace lies on the floor to the left. The right hand reaches under the chest and drags
+  // it across to the right side, then the left hand drags it back.
+  const feet={L:[16,8,-108],R:[-16,8,-108]};
+  const plank=Object.assign({},STAND,{P:[0,40,-28],pitch:70,yaw:0,hipYaw:0,feet,turn:0,tL:1,tR:1,
+    G:[18,4,26],D:[0.15,0,-0.99],gR:0,gL:0,choke:6,offL:1,offR:1,freeL:[17,3,18],freeR:[-17,3,18],
+    eL:[1,0,-0.5],eR:[-1,0,-0.5]});
+  const dip={P:[0,34,-28],pitch:72};
+  const grabR=Object.assign({offR:0,eR:[-0.6,0.4,-0.4]},dip);
+  const dragR={G:[-18,4,26],D:[-0.15,0,-0.99],P:[0,38,-28],pitch:70};
+  const relR={offR:1,eR:[-1,0,-0.5]};
+  const grabL=Object.assign({offL:0,eL:[0.6,0.4,-0.4]},dip);
+  const dragL={G:[18,4,26],D:[0.15,0,-0.99],P:[0,38,-28],pitch:70};
+  const relL={offL:1,eL:[1,0,-0.5]};
+  return [[0,plank],[0.5,{}],[1.0,grabR],[1.7,dragR],[2.0,relR],[2.4,{}],[2.9,grabL],[3.6,dragL],[3.9,relL],[4.3,{}]];
 }
 
 const MOVES={
@@ -115,20 +264,59 @@ const MOVES={
     cue:'Upright hold. Step wide and sit back into one hip with the other leg straight, then push back to center. Both sides.'},
   'mace:front lunge':{kf:frontLunge(),
     cue:'Upright hold. Step forward into a lunge with the front shin near vertical, push back to standing. Both legs.'},
+  'mace:360:left':{kf:threeSixty(),
+    cue:'Left hand on top: over the right shoulder, behind the back, around the left side and back to the upright hold.'},
+  'mace:360:right':{kf:mirrorKF(threeSixty()),
+    cue:'Right hand on top: over the left shoulder, behind the back, around the right side and back to the upright hold.'},
+  'mace:pendulum swing':{kf:pendulum(),
+    cue:'Choke up and let the head hang down in front with your arms long. Small, controlled arcs side to side.'},
+  'mace:gravedigger:left':{kf:gravedigger(),
+    cue:'Shovel grip. From the right shoulder, dig the head down and across to the floor by your left foot, pivoting the back foot, then return to the shoulder.'},
+  'mace:gravedigger:right':{kf:mirrorKF(gravedigger()),
+    cue:'Shovel grip. From the left shoulder, dig the head down and across to the floor by your right foot, pivoting the back foot, then return to the shoulder.'},
+  'mace:uppercut':{kf:uppercut(),
+    cue:'Load the mace low behind one hip, then drive from that back hip so the head swings forward and up across the body over the other shoulder. Both sides.'},
+  'mace:paddle':{kf:paddle(),
+    cue:'Spread your hands with the head up. Row the bottom of the shaft from front to back along one side like a canoe paddle, then the other.'},
+  'mace:hand switches':{kf:handSwitches(),
+    cue:'Hold the mace out to one side, level. That hand brings it to the center to meet the other hand prayer-style, and the other hand carries it out level to the opposite side.'},
+  'mace:offset press':{kf:offsetPress(),
+    cue:'Mace level with the head out to one side. Press it from the clean-rack position straight overhead, keeping it level. Both sides.'},
+  'mace:ballistic curl':{kf:curl(false),
+    cue:'Lower the mace diagonally on the curl side, then flick from the hips and curl it up to the chest. Both sides.'},
+  'mace:switch curl':{kf:curl(true),
+    cue:'Like the ballistic curl, but switch which hand is on top in one motion at the chest, so the next rep lowers on the other side.'},
+  'mace:offset bent-over row':{kf:offsetRow(),
+    cue:'Hinge with a flat back. Two hands on the handle, mace level with the head out to one side. Row to the ribs. Both sides.'},
+  'mace:offset march':{kf:offsetMarch(),
+    cue:'Hold the mace level at chest height with the weight out to one side. March slowly without leaning. Both sides.'},
+  'mace:shouldered reverse lunge':{kf:shoulderedLunge(),
+    cue:'Mace resting on one shoulder. Reverse lunge on each leg and resist the lean. Switch shoulders halfway through your set.'},
+  'mace:lunge to 360':{kf:lungeTo360(),
+    cue:'Reverse lunge in the upright hold, stand, and drive straight into a 360. Then the other side.'},
+  'mace:plank pull-through':{kf:plankPullThrough(),
+    cue:'High plank with the mace on the floor beside you. Reach under your chest with the far hand and drag it across. Keep your hips level.'},
   'mace:reverse lunge:left':{kf:reverseLunge('L'),
     cue:'Left leg steps back. Front shin stays near vertical; the mace stays in the upright hold.'},
   'mace:reverse lunge:right':{kf:reverseLunge('R'),
     cue:'Right leg steps back. Front shin stays near vertical; the mace stays in the upright hold.'}
 };
+MOVES['mace:360']={kf:both(threeSixty()),cue:'One 360 each way: over the shoulder, behind the back, around the other side and back to the upright hold.'};
+MOVES['mace:gravedigger']={kf:both(gravedigger()),cue:'Shovel grip. Dig the head down and across to the floor by the opposite foot, pivoting the back foot. Both sides.'};
 MOVES['mace:reverse lunge']={kf:join([MOVES['mace:reverse lunge:left'],MOVES['mace:reverse lunge:right']]).kf.map(([t,p])=>[t/TEMPO,p]),
   cue:'Alternate legs. Front shin stays near vertical; the mace stays in the upright hold.'};
 
 /* ---------- names ---------- */
+const ALIAS={mace:{'hand switch':'hand switches','rotational uppercut':'uppercut','overhead press':'offset press',
+  'squat':'front squat','bent-over row':'offset bent-over row','offset row':'offset bent-over row','pendulum swings':'pendulum swing'}};
 function key(name,eq){
   let n=String(name).toLowerCase().replace(/\s*[×x]\s*\d.*$/,'').replace(/\(.*?\)/g,'').trim();
   let side='';
-  const m=n.match(/,?\s*\b(left|right)\b.*$/);if(m){side=m[1];n=n.slice(0,m.index)}
-  n=n.replace(/^(mace|steel mace)\s+/,'').replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
+  const sh=n.match(/\s*\bover the (left|right) shoulder\b/);
+  if(sh){side=sh[1]==='right'?'left':'right';n=n.replace(sh[0],'')} // over the right shoulder first = left hand on top
+  else{const m=n.match(/,?\s*\b(left|right)\b.*$/);if(m){side=m[1];n=n.slice(0,m.index)}}
+  n=n.replace(/,.*$/,'').replace(/^(mace|steel mace)\s+/,'').replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
+  n=(ALIAS[eq]&&ALIAS[eq][n])||n;
   if(side&&MOVES[eq+':'+n+':'+side])return eq+':'+n+':'+side;
   return MOVES[eq+':'+n]?eq+':'+n:null;
 }
@@ -339,6 +527,6 @@ window.Demos={
   openFlow(flow){const ks=flowKeys(flow);if(!ks)return false;
     show(flow.name,'Flow demo',join(ks.map(k=>MOVES[k[0]]),ks.map(k=>k[1])),ks.map(k=>k[1]));return true},
   // for previews and tests
-  _Player:Player,_join:join,_MOVES:MOVES,_key:key,_poseAt:poseAt,_skeleton:skeleton
+  _Player:Player,_join:join,_MOVES:MOVES,_key:key,_poseAt:poseAt,_skeleton:skeleton,_onBody:onBody,_STAND:STAND,_shaft:shaft,_norm:norm
 };
 })();
