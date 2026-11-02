@@ -117,16 +117,21 @@ function frontLunge(){
 }
 
 function threeSixty(){
-  // left hand on top: over the right shoulder, behind the back, around the left side, back to the front
-  const shR={G:[-14,135,14],D:[-0.45,0.75,-0.48],eL:[0,-1,0.5],eR:[-1,-0.6,0],pass:true};
-  const q3={G:[-10,163,4],D:[-0.55,-0.45,-0.7],eL:[0.5,-0.3,0.8],eR:[-1,0,0.2],pass:true};
-  const mid={G:[0,180,-2],D:[0,-0.92,-0.38],eL:[1,0.5,0.3],eR:[-1,0.5,0.3],pass:true};
-  const q1={G:[10,163,4],D:[0.55,-0.45,-0.7],eL:[1,0,0.2],eR:[-0.5,-0.3,0.8],pass:true};
-  const outL={G:[14,130,16],D:[0.9,0.1,-0.42],eL:[1,-0.6,0],eR:[0,-1,0.5],pass:true};
-  const frontL={G:[8,112,24],D:[0.6,0.2,0.77],eL:[1,-0.8,-0.2],eR:[-0.6,-0.8,0.2],pass:true};
-  return [[0,STAND],[0.25,{}],[0.65,shR],[0.95,q3],[1.2,mid],[1.45,q1],[1.75,outL],[2.05,frontL],
-    [2.4,{G:STAND.G,D:STAND.D,eL:STAND.eL,eR:STAND.eR}],[2.65,{}]];
+  // Left hand on top. Elbows stay vertical and tight to the head the whole time.
+  // Vertical press just off to the right, pull over the right shoulder, the head circles low behind
+  // the back, comes up over the left shoulder, and finishes in a vertical press just off to the left.
+  const up=[-0.3,1,0.15],upL=[0.3,1,0.15];
+  const pressR={G:[-9,150,18],D:norm([-0.1,1,0]),eL:[0.4,-1,0.4],eR:[-0.4,-1,0.4]};
+  const overR={G:[-7,172,-4],D:norm([-0.3,0.35,-0.88]),eL:upL,eR:up,pass:true};
+  const behindR={G:[-3,175,-6],D:norm([-0.45,-0.55,-0.7]),eL:upL,eR:up,pass:true};
+  const low={G:[0,176,-6],D:norm([0,-0.92,-0.38]),eL:upL,eR:up,pass:true};
+  const behindL={G:[3,175,-6],D:norm([0.45,-0.55,-0.7]),eL:upL,eR:up,pass:true};
+  const overL={G:[7,172,-4],D:norm([0.3,0.35,-0.88]),eL:upL,eR:up,pass:true};
+  const pressL={G:[9,150,18],D:norm([0.1,1,0]),eL:[0.4,-1,0.4],eR:[-0.4,-1,0.4]};
+  return [[0,STAND],[0.25,{}],[0.65,pressR],[0.8,{}],[1.1,overR],[1.35,behindR],[1.6,low],[1.85,behindL],[2.1,overL],
+    [2.45,pressL],[2.6,{}],[3.0,{G:STAND.G,D:STAND.D,eL:STAND.eL,eR:STAND.eR}],[3.2,{}]];
 }
+
 function pendulum(){
   // choked up, arms long, head hanging down in front; small side-to-side arcs
   const hang={G:[0,101,24],D:[0,-1,0.1],choke:32,gL:7,eL:[1,-0.6,-0.4],eR:[-1,-0.6,-0.4]};
@@ -161,15 +166,18 @@ function uppercut(){
   return both(one);
 }
 function paddle(){
-  // head up, hands spread; the bottom of the shaft rows front to back on one side, then the other
-  const grip={gR:0,gL:42};
-  const front={P:[0,90,-2],pitch:8,yaw:-18,G:[-19,98,28],D:norm([0.3,0.85,-0.42]),eL:[0.4,-1,0.3],eR:[-1,-0.7,0]};
-  const back={yaw:16,G:[-19,98,-10],D:norm([0.3,0.85,0.42])};
-  const cross=Object.assign({},grip,{yaw:0,G:[0,100,26],D:[0,1,0.15],pass:true});
-  const one=[[0,STAND],[0.45,Object.assign({},STAND,grip)],[0.9,Object.assign({},front,grip)],[1.55,back],[2.0,cross]];
-  const other=mirrorKF([[0,Object.assign({},front,grip)],[0.65,back],[1.1,cross]],false);
-  return chain(one,other,one.slice(2),other,[[0,Object.assign({},STAND)],[0.25,{}]]);
+  // Like an oar: right hand on the butt end near the chest, left hand down the shaft, head down in the
+  // "water" at the side. Pull the head from front to back along the left side, lift it across, then the right.
+  const grip={gR:0,gL:46};
+  const catchL=Object.assign({P:[0,92,-3],pitch:8,yaw:24,G:[-8,132,10],D:shaft([-8,132,10],[36,22,48]),eL:[1,-0.6,0.2],eR:[-1,-0.4,0.4]},grip);
+  const finishL={yaw:-8,G:[-8,124,10],D:shaft([-8,124,10],[36,22,-26])};
+  const lift={yaw:0,pitch:4,G:[0,134,16],D:norm([0,-0.55,0.84]),gL:28,pass:true};
+  const L=[[0,catchL],[0.75,finishL],[1.15,lift]];
+  // right side: same grip, so the left hand reaches across; turn a little further and hold a little higher
+  const R=mirrorKF([[0,Object.assign({},catchL,{yaw:32,gL:38})],[0.75,Object.assign({},finishL,{yaw:0})],[1.15,lift]],false);
+  return chain([[0,STAND],[0.4,Object.assign({},lift,{pass:true})]],L,R,L,R,[[0,Object.assign({},STAND)],[0.25,{}]]);
 }
+
 function handSwitches(){
   // horizontal out to the right in the right hand, to the center to meet the left hand prayer-style,
   // then the left hand carries it out horizontal to the left; and back
@@ -189,19 +197,26 @@ function offsetPress(){
   return both(one);
 }
 function curl(sw){
-  // mace diagonal and lowered on the curl side (right), then curled up to the chest.
-  // sw: the top hand switches at the chest in one motion and the next rep is on the other side.
-  const low={P:[0,92,0],pitch:4,G:[-16,90,20],D:norm([0.55,0.8,0.22]),eL:[0.6,-1,0],eR:[-1,-0.8,0]};
-  const chest={pitch:0,G:[0,122,22],D:[0,1,0.05],gR:0,gL:10,eL:[1,-1,0.2],eR:[-1,-1,0.2]};
-  const swapped=Object.assign({},chest,{gR:10,gL:0});
+  // Hands spread from the base to the head, head down. Lowered diagonally on the curl side (right),
+  // then curled up to the chest. sw: at the chest the hands switch in one motion so the head goes to
+  // the other side, and that rep lowers on the left.
+  const spread=60;
+  const low={P:[0,86,-8],pitch:24,G:[14,112,24],D:norm([-0.9,-0.65,0.15]),gL:0,gR:spread,eL:[1,-0.8,0],eR:[-0.8,-0.8,0]};
+  const chest={P:[0,94,0],pitch:0,G:[16,118,20],D:norm([-1,-0.15,0.05]),gL:0,gR:spread,eL:[1,-1,0],eR:[-1,-1,0]};
+  const home={G:STAND.G,D:STAND.D,gL:10,gR:0,eL:STAND.eL,eR:STAND.eR};
   if(!sw){
-    const one=[[0,STAND],[0.6,low],[0.8,{}],[1.15,chest],[1.35,{}],[1.95,low],[2.1,{}],[2.45,chest],[2.65,{}],[3.2,Object.assign({},STAND)],[3.4,{}]];
+    const one=[[0,STAND],[0.85,low],[1.05,{}],[1.35,chest],[1.55,{}],[2.05,low],[2.2,{}],[2.5,chest],[2.7,{}],
+      [3.15,Object.assign({},home,{P:STAND.P,pitch:0})],[3.35,{}]];
     return both(one);
   }
-  const lowL=mirror(Object.assign({},low,{gR:10,gL:0}),false);
-  return [[0,STAND],[0.6,low],[0.8,{}],[1.15,chest],[1.45,swapped],[2.05,lowL],[2.25,{}],[2.6,swapped],[2.9,chest],
-    [3.5,Object.assign({},low,{gR:0,gL:10})],[3.7,{}],[4.05,chest],[4.6,Object.assign({},STAND)],[4.8,{}]];
+  // switch: through vertical (head down) at the chest while the hands trade ends
+  const flip={G:[0,132,22],D:[0,-1,0.12],gL:spread/2,gR:-spread/2,pass:true};
+  const chestL=mirror(chest),lowL=mirror(low);
+  return [[0,STAND],[0.85,low],[1.05,{}],[1.35,chest],[1.6,flip],[1.85,chestL],[2.35,lowL],[2.55,{}],
+    [2.85,chestL],[3.1,Object.assign({},flip,{gL:-spread/2,gR:spread/2})],[3.35,chest],[3.85,low],[4.05,{}],[4.35,chest],[4.55,{}],
+    [5.0,Object.assign({},home,{P:STAND.P,pitch:0})],[5.2,{}]];
 }
+
 function offsetRow(){
   // hinge; two-hand hold with the mace horizontal and the head out to the left; row to the ribs
   const base={P:[0,86,-18],pitch:55,yaw:0,feet:{L:[16,8,4],R:[-16,8,4]},turn:12};
@@ -265,9 +280,9 @@ const MOVES={
   'mace:front lunge':{kf:frontLunge(),
     cue:'Upright hold. Step forward into a lunge with the front shin near vertical, push back to standing. Both legs.'},
   'mace:360:left':{kf:threeSixty(),
-    cue:'Left hand on top: over the right shoulder, behind the back, around the left side and back to the upright hold.'},
+    cue:'Left hand on top. Keep the elbows vertical and tight to your head. Press up just off to the right, pull over that shoulder, circle behind the back, come over the left shoulder and finish in a press just off to the left.'},
   'mace:360:right':{kf:mirrorKF(threeSixty()),
-    cue:'Right hand on top: over the left shoulder, behind the back, around the right side and back to the upright hold.'},
+    cue:'Right hand on top. Keep the elbows vertical and tight to your head. Press up just off to the left, pull over that shoulder, circle behind the back, come over the right shoulder and finish in a press just off to the right.'},
   'mace:pendulum swing':{kf:pendulum(),
     cue:'Choke up and let the head hang down in front with your arms long. Small, controlled arcs side to side.'},
   'mace:gravedigger:left':{kf:gravedigger(),
@@ -277,15 +292,15 @@ const MOVES={
   'mace:uppercut':{kf:uppercut(),
     cue:'Load the mace low behind one hip, then drive from that back hip so the head swings forward and up across the body over the other shoulder. Both sides.'},
   'mace:paddle':{kf:paddle(),
-    cue:'Spread your hands with the head up. Row the bottom of the shaft from front to back along one side like a canoe paddle, then the other.'},
+    cue:'Like an oar: top hand on the end of the handle, bottom hand down the shaft, head down at your side. Pull it front to back along one side, lift it across, then the other side.'},
   'mace:hand switches':{kf:handSwitches(),
     cue:'Hold the mace out to one side, level. That hand brings it to the center to meet the other hand prayer-style, and the other hand carries it out level to the opposite side.'},
   'mace:offset press':{kf:offsetPress(),
     cue:'Mace level with the head out to one side. Press it from the clean-rack position straight overhead, keeping it level. Both sides.'},
   'mace:ballistic curl':{kf:curl(false),
-    cue:'Lower the mace diagonally on the curl side, then flick from the hips and curl it up to the chest. Both sides.'},
+    cue:'Hands spread from the base to the head, head down. Lower it diagonally on the curl side, then flick from the hips and curl it up to the chest. Both sides.'},
   'mace:switch curl':{kf:curl(true),
-    cue:'Like the ballistic curl, but switch which hand is on top in one motion at the chest, so the next rep lowers on the other side.'},
+    cue:'Like the ballistic curl, hands spread and head down. At the chest, switch hands in one motion so the next rep lowers on the other side.'},
   'mace:offset bent-over row':{kf:offsetRow(),
     cue:'Hinge with a flat back. Two hands on the handle, mace level with the head out to one side. Row to the ribs. Both sides.'},
   'mace:offset march':{kf:offsetMarch(),
@@ -301,7 +316,7 @@ const MOVES={
   'mace:reverse lunge:right':{kf:reverseLunge('R'),
     cue:'Right leg steps back. Front shin stays near vertical; the mace stays in the upright hold.'}
 };
-MOVES['mace:360']={kf:both(threeSixty()),cue:'One 360 each way: over the shoulder, behind the back, around the other side and back to the upright hold.'};
+MOVES['mace:360']={kf:both(threeSixty()),cue:'One 360 each way. Elbows vertical and tight to the head: press just off one side, pull over, circle behind the back, finish in a press just off the other side.'};
 MOVES['mace:gravedigger']={kf:both(gravedigger()),cue:'Shovel grip. Dig the head down and across to the floor by the opposite foot, pivoting the back foot. Both sides.'};
 MOVES['mace:reverse lunge']={kf:join([MOVES['mace:reverse lunge:left'],MOVES['mace:reverse lunge:right']]).kf.map(([t,p])=>[t/TEMPO,p]),
   cue:'Alternate legs. Front shin stays near vertical; the mace stays in the upright hold.'};
