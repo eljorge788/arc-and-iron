@@ -28,14 +28,16 @@ const STAND={P:[0,94,0],pitch:0,yaw:0,feet:{L:[12,8,0],R:[-12,8,0]},turn:8,tL:0,
   G:[0,118,24],D:[0,1,0],eL:[1,-0.8,-0.3],eR:[-1,-0.8,-0.3],kneeOut:0.3};
 
 function tenToTwo(){
-  // left side first (mace drops behind the left shoulder), then mirror to the right
-  const passL={G:[9,138,16],D:[0.5,0.55,-0.67],eL:[1,-0.3,0.2],eR:[-0.4,-0.6,0.8],pass:true};
-  const backL={G:[13,156,3],D:[-0.15,-0.92,-0.36],eL:[1,-0.6,0.3],eR:[0,-0.4,1]};
-  const passR={G:mx(passL.G),D:mx(passL.D),eL:[0.4,-0.6,0.8],eR:[-1,-0.3,0.2],pass:true};
-  const backR={G:mx(backL.G),D:mx(backL.D),eL:[0,-0.4,1],eR:[-1,-0.6,0.3]};
-  const mid={G:STAND.G,D:STAND.D,eL:STAND.eL,eR:STAND.eR};
-  return [[0,STAND],[0.35,passL],[0.85,backL],[1.05,{}],[1.4,passL],[1.8,mid],
-    [2.15,passR],[2.65,backR],[2.85,{}],[3.2,passR],[3.6,mid],[3.9,{}]];
+  // Starts over the left shoulder, the head swings low behind the back like a pendulum while the
+  // hands pass over the top of the head, then it is pulled over the right shoulder and reversed.
+  const shL={G:[14,135,14],D:[0.45,0.75,-0.48],eL:[1,-0.6,0],eR:[0,-1,0.5]};
+  const q1={G:[10,163,4],D:[0.55,-0.45,-0.7],eL:[1,0,0.2],eR:[-0.5,-0.3,0.8],pass:true};
+  const mid={G:[0,180,-2],D:[0,-0.92,-0.38],eL:[1,0.5,0.3],eR:[-1,0.5,0.3],pass:true};
+  const q3={G:mx(q1.G),D:mx(q1.D),eL:[0.5,-0.3,0.8],eR:[-1,0,0.2],pass:true};
+  const shR={G:mx(shL.G),D:mx(shL.D),eL:[0,-1,0.5],eR:[-1,-0.6,0]};
+  const start=Object.assign({},STAND,shL);
+  return [[0,start],[0.35,{}],[0.65,q1],[0.95,mid],[1.25,q3],[1.6,shR],[1.9,{}],
+    [2.2,q3],[2.5,mid],[2.8,q1],[3.15,shL],[3.45,{}]];
 }
 function barbarianSquat(){
   const wide={L:[16,8,0],R:[-16,8,0]};
@@ -51,7 +53,7 @@ function reverseLunge(side){            // side = the leg that steps back
 
 const MOVES={
   'mace:10-to-2':{kf:tenToTwo(),
-    cue:'Stack the hands and swing the mace behind the back to each side, head centered.'},
+    cue:'Start with the mace over one shoulder. Swing it behind your back and pull it over the other shoulder, then reverse. Keep your head centered.'},
   'mace:barbarian squat':{kf:barbarianSquat(),
     cue:'The mace drops behind your head as you squat and comes back to the front as you stand.'},
   'mace:reverse lunge:left':{kf:reverseLunge('L'),
