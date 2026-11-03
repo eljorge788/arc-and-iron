@@ -9,7 +9,7 @@
 (function(){
 'use strict';
 const S=0.84,GY=268,TEMPO=1.25;            // px per cm, ground line, slow everything a touch
-const TORSO=50,UARM=30,FARM=27,THIGH=44,SHIN=43,MACE=95,FOOT=17;
+const TORSO=50,UARM=30,FARM=27,THIGH=44,SHIN=43,MACE=95,CLUB=62,FOOT=17;
 const CAM={
   front:{x:p=>120+p[0]*S,depth:p=>p[2],label:'Front'},
   side:{x:p=>136+p[2]*S,depth:p=>-p[0],label:'Side'}
@@ -25,13 +25,14 @@ const mx=v=>[-v[0],v[1],v[2]];          // mirror left <-> right
 
 /* ---------- poses ---------- */
 const STAND={P:[0,94,0],pitch:0,yaw:0,roll:0,hipYaw:0,feet:{L:[12,8,0],R:[-12,8,0]},turn:8,fyL:0,fyR:0,tL:0,tR:0,
-  G:[0,104,22],D:[0,1,0],gR:0,gL:10,choke:6,offL:0,offR:0,freeL:[20,92,4],freeR:[-20,92,4],
+  G:[0,104,22],D:[0,1,0],gR:0,gL:10,choke:6,len:MACE,offL:0,offR:0,freeL:[20,92,4],freeR:[-20,92,4],
   eL:[1,-0.8,-0.3],eR:[-1,-0.8,-0.3],kneeOut:0.3};
 // Pose fields: P pelvis, pitch (forward lean, deg), yaw (torso turn, + toward the figure's left),
 // hipYaw, feet (ankle points), turn (toe-out), fyL/fyR (extra foot pivot), tL/tR (0..1 up on the toes),
 // G (reference point on the shaft) and D (shaft direction, toward the head), gR/gL (where each hand
 // sits along the shaft from G), choke (cm from the butt end to G), offL/offR (0..1 hand off the mace,
-// moving to freeL/freeR), eL/eR and kneeOut (which way elbows and knees bend).
+// moving to freeL/freeR), eL/eR and kneeOut (which way elbows and knees bend), len (implement length:
+// MACE or CLUB; a club is drawn as a short handle that swells toward the end).
 
 /* helpers for writing moves */
 function torsoFrame(P,pitch,yaw,roll=0){
@@ -352,6 +353,78 @@ function plankPullThrough(){
   return [[0,plank],[0.5,{}],[1.0,grabR],[1.7,dragR],[2.0,relR],[2.4,{}],[2.9,grabL],[3.6,dragL],[3.9,relL],[4.3,{}]];
 }
 
+
+/* ---------- steel club ----------
+   Reference: "5 Best Steel Club Exercises for Beginners" (Dangerously Fit). One club. The right hand
+   works by default (gR:0 sits at G, just above the knob); one-handed moves park the left hand at the
+   hip (offL:1). Two-handed moves stack the left hand above the right. both() mirrors to the other side. */
+const CB2={len:CLUB,choke:3,gR:0,gL:7,offL:0,offR:0};                 // two hands, stacked
+const CB1={len:CLUB,choke:3,gR:0,gL:7,offL:1,offR:0,freeL:[21,87,3]};  // right hand only
+const C_ORDER2={G:[0,112,24],D:[0,1,0],eL:[1,-0.8,-0.3],eR:[-1,-0.8,-0.3]};     // order position, chest
+const C_ORDER1={G:[-16,118,22],D:[0,1,0],eR:[-0.8,-1,-0.1]};                   // order position, right shoulder
+const C_TWO=Object.assign({},STAND,CB2,C_ORDER2),C_ONE=Object.assign({},STAND,CB1,C_ORDER1);
+const HINGE={P:[0,88,-3],pitch:16,feet:{L:[23,8,0],R:[-23,8,0]},turn:14,kneeOut:0.6};
+const UPRIGHT={P:STAND.P,pitch:0,yaw:0,hipYaw:0,feet:STAND.feet,turn:STAND.turn,kneeOut:STAND.kneeOut};
+
+function sideRocker(){
+  // Two hands, wide hinge, club hanging in front of the shins. Rock it side to side like a pendulum and
+  // shift onto the leg it swings toward.
+  const hang=Object.assign({},HINGE,{G:[0,86,27],D:[0,-1,0.06],eL:[1,-0.5,-0.4],eR:[-1,-0.5,-0.4]});
+  const to=x=>({P:[x*6,88,-3],yaw:x*6,hipYaw:x*3,G:[x*7,87,27],D:norm([x*0.62,-0.78,0.06])});
+  return [[0,C_TWO],[0.25,{}],[0.75,hang],[1.25,to(1)],[1.8,to(-1)],[2.35,to(1)],[2.9,to(-1)],[3.4,{P:HINGE.P,yaw:0,hipYaw:0,G:hang.G,D:hang.D}],
+    [3.95,Object.assign({},UPRIGHT,C_ORDER2)],[4.2,{}]];
+}
+function lateralSwing(){
+  // One hand (right), wide hinge. The club swings across the front from outside the right leg to outside
+  // the left; the torso turns with it and the free arm moves the other way.
+  const hang=Object.assign({},HINGE,{G:[-8,86,26],D:[0,-1,0.06],eR:[-1,-0.5,-0.4],freeL:[22,83,12]});
+  const R={P:[-6,88,-3],yaw:-14,hipYaw:-6,G:[-13,90,22],D:norm([-0.8,-0.58,0.1]),freeL:[17,88,27]};
+  const L={P:[6,88,-3],yaw:16,hipYaw:7,G:[7,89,25],D:norm([0.82,-0.55,0.1]),freeL:[27,88,-10]};
+  return [[0,C_ONE],[0.25,{}],[0.75,hang],[1.25,R],[1.8,L],[2.35,R],[2.9,L],[3.4,{P:HINGE.P,yaw:0,hipYaw:0,G:hang.G,D:hang.D,freeL:hang.freeL}],
+    [3.95,Object.assign({},UPRIGHT,C_ORDER1,{freeL:CB1.freeL})],[4.2,{}]];
+}
+function armCast(two){
+  // From the order position the club tips back and drops behind the shoulder to hang down the back, the
+  // elbow pointing up beside the head. It circles out around the outside, the arm casts it to the front,
+  // and it returns to vertical in front of the shoulder. The body stays still.
+  const x=two?-13:-15,base=two?C_TWO:C_ONE,order=two?C_ORDER2:C_ORDER1;
+  const el2=two?{eL:[0.5,1,0.2],eR:[-0.4,1,0.2]}:{eR:[-0.3,0.4,1]};
+  const tip={G:[x,146,14],D:norm([-0.1,0.25,-1]),pass:true};
+  const behind=Object.assign({G:[x,two?163:158,-2],D:norm([-0.08,-0.9,-0.42])},el2);
+  const out=Object.assign({G:[x-2,two?164:160,8],D:norm([-0.95,-0.15,-0.25]),pass:true},el2);
+  const cast={G:[x,140,38],D:norm([-0.05,0.55,0.83]),eL:[1,-0.6,0],eR:[-1,-0.6,0]};
+  return [[0,base],[0.25,{}],[0.6,tip],[0.95,behind],[1.15,{}],[1.45,out],[1.8,cast],[2.25,Object.assign({},order)],[2.45,{}]];
+}
+function swipe(){
+  // Two hands. Club resting back on the right shoulder; hinge and sweep it down and across the front in a
+  // big low arc, the hips and knees driving it, out past the left knee; then back the same way and up to
+  // the shoulder as you stand.
+  const rest={G:[-8,122,20],D:norm([-0.3,0.62,-0.72]),eL:[0.8,-1,0.3],eR:[-1,-1,0]};
+  const low={P:[0,84,-4],pitch:30,feet:{L:[25,8,0],R:[-25,8,0]},turn:14,kneeOut:0.6};
+  const lowR=Object.assign({},low,{yaw:-16,hipYaw:-8,G:[-8,86,30],D:norm([-0.62,-0.68,0.38]),eL:[1,-0.4,-0.3],eR:[-1,-0.4,-0.3],pass:true});
+  const mid={P:[0,82,-4],yaw:0,hipYaw:0,G:[0,80,36],D:norm([0,-0.5,0.87]),pass:true};
+  const lowL={P:[4,84,-4],yaw:18,hipYaw:9,G:[8,85,31],D:norm([0.8,-0.5,0.32])};
+  return [[0,C_TWO],[0.25,{}],[0.7,rest],[0.85,{}],[1.25,lowR],[1.55,mid],[1.9,lowL],[2.05,{}],
+    [2.4,Object.assign({},mid)],[2.7,Object.assign({},lowR,{pass:true})],[3.15,Object.assign({},UPRIGHT,rest)],[3.3,{}],
+    [3.7,Object.assign({},C_ORDER2)],[3.9,{}]];
+}
+function shieldCast(){
+  // Two hands, club upright in front of the chest and close to the body like a shield. Hands rise beside
+  // the right side of the head and the club drops behind that shoulder to hang down the back; the head of
+  // the club circles round behind and comes back out over the same shoulder to the front.
+  const shield={G:[-4,122,18],D:norm([0.28,0.96,0]),eL:[1,-1,0.1],eR:[-1,-1,0.1]};
+  const behind={G:[-13,163,-2],D:norm([0.12,-0.9,-0.42]),eL:[0.5,1,0.2],eR:[-0.4,1,0.2]};
+  const round={G:[-15,164,5],D:norm([-0.9,-0.2,-0.35]),pass:true};
+  const over={G:[-10,152,16],D:norm([-0.45,0.6,0.66]),eL:[1,-0.6,0.2],eR:[-1,-0.6,0.2],pass:true};
+  return [[0,C_TWO],[0.25,{}],[0.6,shield],[1.0,behind],[1.2,{}],[1.55,round],[1.85,over],[2.25,Object.assign({},C_ORDER2)],[2.45,{}]];
+}
+function torchPress(){
+  // One hand. Club upright like a torch at the shoulder; press straight up and lower, club vertical.
+  const rack={G:[-17,128,12],D:[0,1,0],eR:[-0.5,-1,0.3]};
+  const top={G:[-17,195,3],D:[0,1,0],eR:[-1,-0.2,0.2]};
+  return [[0,C_ONE],[0.4,rack],[0.6,{}],[1.2,top],[1.45,{}],[2.05,rack],[2.25,{}],[2.65,Object.assign({},C_ORDER1)],[2.8,{}]];
+}
+
 const MOVES={
   'mace:10-to-2':{kf:tenToTwo(),
     cue:'From the upright hold, swing first to the side your top hand points to, the opposite side (left hand on top goes over the right shoulder). Then behind your back, over the other shoulder, back again, and return to the upright hold. Keep your head centered.'},
@@ -400,6 +473,22 @@ const MOVES={
   'mace:reverse lunge:right':{kf:reverseLunge('R'),
     cue:'Right leg steps back. Front shin stays near vertical; the mace stays in the upright hold.'}
 };
+Object.assign(MOVES,{
+  'club:side rocker':{kf:sideRocker(),
+    cue:'Feet wide, knees soft, slight hinge, both hands on the handle with the club hanging in front of your shins. Rock it side to side like a pendulum and shift your weight onto the leg it moves toward.'},
+  'club:lateral swing':{kf:both(lateralSwing()),
+    cue:'Same hinged stance, one hand. Swing the club across the front from outside one leg to outside the other; let your torso turn with it and your free arm move the other way. Both hands.'},
+  'club:arm cast':{kf:both(armCast(false)),
+    cue:'One hand, standing tall, club upright at the shoulder. Let it drop behind the shoulder to hang down your back, circle it round, and cast it back up to vertical in front. The arm and shoulder move; the body stays still. Both arms.'},
+  'club:two-hand arm cast':{kf:both(armCast(true)),
+    cue:'Both hands on the handle. Let the club drop behind one shoulder to hang down your back, circle it round and cast it to the front, back to upright. Alternate shoulders.'},
+  'club:swipe':{kf:both(swipe()),
+    cue:'Club resting back on the shoulder. Hinge and sweep it down and across the front in a big low arc, like swiping a table clear, driving with the hips and knees. Stand and bring it back to the shoulder. Both sides.'},
+  'club:shield cast':{kf:both(shieldCast()),
+    cue:'Both hands, club upright and close in front of the chest like a shield. Drop it behind one shoulder, circle it round behind your head and bring it back to the front. Alternate sides.'},
+  'club:torch press':{kf:both(torchPress()),
+    cue:'Club upright like a torch at the shoulder. Press it straight up, keeping it vertical, and lower under control. Both arms.'}
+});
 MOVES['mace:360']={kf:both(threeSixty()),cue:'One 360 each way. Elbows vertical and tight to the head: press just off one side, pull over, circle behind the back, finish in a press just off the other side.'};
 MOVES['mace:gravedigger']={kf:both(gravedigger()),cue:'Shovel grip. Dig the head down and across to the floor by the opposite foot, pivoting the back foot. Both sides.'};
 MOVES['mace:reverse lunge']={kf:join([MOVES['mace:reverse lunge:left'],MOVES['mace:reverse lunge:right']]).kf.map(([t,p])=>[t/TEMPO,p]),
@@ -407,14 +496,17 @@ MOVES['mace:reverse lunge']={kf:join([MOVES['mace:reverse lunge:left'],MOVES['ma
 
 /* ---------- names ---------- */
 const ALIAS={mace:{'hand switch':'hand switches','rotational uppercut':'uppercut','overhead press':'offset press',
-  'squat':'front squat','bent-over row':'offset bent-over row','offset row':'offset bent-over row','pendulum swings':'pendulum swing'}};
+  'squat':'front squat','bent-over row':'offset bent-over row','offset row':'offset bent-over row','pendulum swings':'pendulum swing'},
+  club:{'two-hand side swing':'side rocker','two-hand side swings':'side rocker','side rock-it':'side rocker','side rocket':'side rocker',
+    'swing':'lateral swing','swings':'lateral swing','one-arm arm cast':'arm cast','two-hand swipe':'swipe','swipes':'swipe',
+    'two-hand shield cast':'shield cast'}};
 function key(name,eq){
   let n=String(name).toLowerCase().replace(/\s*[×x]\s*\d.*$/,'').replace(/\(.*?\)/g,'').trim();
   let side='';
   const sh=n.match(/\s*\bover the (left|right) shoulder\b/);
   if(sh){side=sh[1]==='right'?'left':'right';n=n.replace(sh[0],'')} // over the right shoulder first = left hand on top
   else{const m=n.match(/,?\s*\b(left|right)\b.*$/);if(m){side=m[1];n=n.slice(0,m.index)}}
-  n=n.replace(/,.*$/,'').replace(/^(mace|steel mace)\s+/,'').replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
+  n=n.replace(/,.*$/,'').replace(/^(mace|steel mace|club|steel club)\s+/,'').replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
   n=(ALIAS[eq]&&ALIAS[eq][n])||n;
   if(side&&MOVES[eq+':'+n+':'+side])return eq+':'+n+':'+side;
   return MOVES[eq+':'+n]?eq+':'+n:null;
@@ -450,7 +542,7 @@ function poseAt(kf,t){
     const u=ease((t-ta)/(tb-ta),!a.pass,!b.pass);
     const o={feet:{L:vl(a.feet.L,b.feet.L,u),R:vl(a.feet.R,b.feet.R,u)},D:norm(vl(a.D,b.D,u))};
     for(const k of ['P','G','eL','eR','freeL','freeR'])o[k]=vl(a[k],b[k],u);
-    for(const k of ['pitch','yaw','roll','hipYaw','turn','fyL','fyR','tL','tR','gR','gL','choke','offL','offR','kneeOut'])o[k]=lerp(a[k],b[k],u);
+    for(const k of ['pitch','yaw','roll','hipYaw','turn','fyL','fyR','tL','tR','gR','gL','choke','offL','offR','kneeOut','len'])o[k]=lerp(a[k],b[k],u);
     return o;
   }
   return kf[kf.length-1][1];
@@ -483,7 +575,8 @@ function skeleton(p){
   }
   sk.hand={R:vl(add(p.G,mul(p.D,p.gR)),p.freeR,p.offR),L:vl(add(p.G,mul(p.D,p.gL)),p.freeL,p.offL)};
   for(const s of ['L','R']){const [elb,wr]=ik(sk.sh[s],sk.hand[s],UARM,FARM,norm(s==='L'?p.eL:p.eR));sk['elb'+s]=elb;sk['wr'+s]=wr}
-  sk.butt=sub(p.G,mul(p.D,p.choke));sk.tip=add(sk.butt,mul(p.D,MACE));sk.gripTop=add(sk.butt,mul(p.D,22));
+  sk.len=p.len;sk.butt=sub(p.G,mul(p.D,p.choke));sk.tip=add(sk.butt,mul(p.D,p.len));
+  sk.gripTop=add(sk.butt,mul(p.D,p.len<80?16:22));
   return sk;
 }
 
@@ -522,11 +615,22 @@ function scene(cam,sk,trail){
     seg(sk['elb'+s],sk['wr'+s],8,shade(sk['elb'+s],sk['wr'+s]));
   }
   // mace, cut into pieces so each piece sorts in front of or behind the body on its own
-  const N=8;
-  for(let i=0;i<N;i++){const a=vl(sk.butt,sk.tip,i/N),b=vl(sk.butt,sk.tip,(i+1)/N);
-    seg(a,b,4,'dm-shaft'+((dz(a)+dz(b))/2<body-6?' dm-hid':''))}
-  seg(sk.butt,sk.gripTop,7,'dm-grip'+(dz(sk.butt)<body-6?' dm-hid':''));
-  const T=pr(sk.tip);items.push({z:dz(sk.tip),s:`<circle cx="${f1(T[0])}" cy="${f1(T[1])}" r="8" class="dm-ball${dz(sk.tip)<body-6?' dm-hid':' dm-ring'}"/>`});
+  const hid=(a,b)=>((dz(a)+dz(b))/2<body-6?' dm-hid':'');
+  if(sk.len<80){
+    // club: knob, handle, then a body that swells toward a rounded end
+    const N=7,neck=sk.gripTop;
+    seg(sk.butt,neck,4.5,'dm-grip'+hid(sk.butt,neck));
+    const K=pr(sk.butt);items.push({z:dz(sk.butt),s:`<circle cx="${f1(K[0])}" cy="${f1(K[1])}" r="3.6" class="dm-ball${hid(sk.butt,sk.butt)}"/>`});
+    for(let i=0;i<N;i++){const a=vl(neck,sk.tip,i/N),b=vl(neck,sk.tip,(i+1)/N),w=5+8*Math.sqrt((i+0.5)/N);
+      seg(a,b,w,'dm-shaft'+hid(a,b))}
+    const T=pr(sk.tip);items.push({z:dz(sk.tip),s:`<circle cx="${f1(T[0])}" cy="${f1(T[1])}" r="6.5" class="dm-ball${hid(sk.tip,sk.tip)||' dm-ring'}"/>`});
+  }else{
+    const N=8;
+    for(let i=0;i<N;i++){const a=vl(sk.butt,sk.tip,i/N),b=vl(sk.butt,sk.tip,(i+1)/N);
+      seg(a,b,4,'dm-shaft'+hid(a,b))}
+    seg(sk.butt,sk.gripTop,7,'dm-grip'+(dz(sk.butt)<body-6?' dm-hid':''));
+    const T=pr(sk.tip);items.push({z:dz(sk.tip),s:`<circle cx="${f1(T[0])}" cy="${f1(T[1])}" r="8" class="dm-ball${dz(sk.tip)<body-6?' dm-hid':' dm-ring'}"/>`});
+  }
   items.sort((a,b)=>a.z-b.z);
   // ground, shadow and the path the mace head just travelled
   const px=cam.x(sk.P);
@@ -544,7 +648,7 @@ function Player(views,tl,onMark){
   const reduce=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
   function render(){
     const sk=skeleton(poseAt(tl.kf,t));
-    const trail=[];for(let i=12;i>=1;i--){const tt=t-i*0.035;if(tt<0)continue;const q=poseAt(tl.kf,tt);trail.push(add(sub(q.G,mul(q.D,q.choke)),mul(q.D,MACE)))}
+    const trail=[];for(let i=12;i>=1;i--){const tt=t-i*0.035;if(tt<0)continue;const q=poseAt(tl.kf,tt);trail.push(add(sub(q.G,mul(q.D,q.choke)),mul(q.D,q.len)))}
     trail.push(sk.tip);
     for(const k in views)views[k].innerHTML=scene(CAM[k],sk,trail);
     let m=0;for(let i=0;i<tl.marks.length;i++)if(t>=tl.marks[i].t)m=i;
@@ -626,6 +730,6 @@ window.Demos={
   openFlow(flow){const ks=flowKeys(flow);if(!ks)return false;
     show(flow.name,'Flow demo',join(ks.map(k=>MOVES[k[0]]),ks.map(k=>k[1])),ks.map(k=>k[1]));return true},
   // for previews and tests
-  _Player:Player,_join:join,_MOVES:MOVES,_key:key,_poseAt:poseAt,_skeleton:skeleton,_onBody:onBody,_STAND:STAND,_shaft:shaft,_norm:norm
+  _Player:Player,_join:join,_MOVES:MOVES,_key:key,_poseAt:poseAt,_skeleton:skeleton,_onBody:onBody,_STAND:STAND,_shaft:shaft,_norm:norm,_scene:scene,_CAM:CAM
 };
 })();
