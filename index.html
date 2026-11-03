@@ -10,6 +10,7 @@
 <script>try{var _s=JSON.parse(localStorage.getItem('ironflow')||'{}');if(_s.skin&&_s.skin!=='forge')document.documentElement.dataset.skin=_s.skin;if(_s.appearance==='light'||_s.appearance==='dark')document.documentElement.dataset.theme=_s.appearance}catch(e){}</script>
 <script src="keepawake.js" defer></script>
 <script src="demos.js"></script>
+<script src="art.js"></script>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -181,6 +182,21 @@ a{color:var(--accent)}
 button.demo{font-family:var(--mono);background:transparent;cursor:pointer}
 button.demo.vid{background:var(--accent)}
 button.steplink{font:inherit;font-weight:700;background:none;border:0;padding:0;cursor:pointer}
+/* artwork */
+.view{position:relative}
+.view>*:not(.vart){position:relative}
+.vart{position:absolute;top:-10px;right:calc(-1*max(16px,env(safe-area-inset-right,0px)));width:min(360px,72%);height:132px;pointer-events:none;
+  -webkit-mask-image:linear-gradient(to left,#000 35%,transparent),linear-gradient(to bottom,#000 62%,transparent 100%);-webkit-mask-composite:source-in;
+  mask-image:linear-gradient(to left,#000 35%,transparent),linear-gradient(to bottom,#000 62%,transparent 100%);mask-composite:intersect}
+.vart.art-poster{opacity:.55}
+.vart.art-engraved{opacity:.45}
+.vart svg,.art svg{display:block;width:100%;height:100%}
+.art{height:128px;margin:-14px -14px 4px;border-radius:11px 11px 0 0;overflow:hidden;border-bottom:1px solid var(--line);background:var(--bg)}
+.pathcard>summary .art{margin:-14px -14px 4px}
+.progactive .art{border-radius:9px 9px 0 0}
+.ccard .art{height:110px}
+@media (max-width:480px){.art{height:110px}.vart{height:118px}}
+.setupseg,.seg{background:var(--surface)}
 /* theme picker */
 .skins{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 .skin{font:inherit;text-align:left;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:10px;display:grid;gap:4px;cursor:pointer;min-width:0}
@@ -481,6 +497,7 @@ html.guiding,html.guiding body{overflow:hidden}
     <div class="libgrid">
       <div class="skins" id="skins" role="group" aria-label="Theme"></div>
       <div class="field"><span>Light or dark</span><div class="seg" id="appearance"></div></div>
+      <div class="field"><span>Artwork</span><div class="seg" id="artStyle"></div><span class="hint">Drawings of the gear behind each tab and on every program. They take on the theme's colors.</span></div>
     </div>
   </details>
 
@@ -1511,7 +1528,7 @@ function renderPrograms(){
   const sp=$('paths');if(!sp)return;
   sp.innerHTML=Object.entries(PATHS).map(([eq,P])=>{
     const nx=nextStep(eq),cnt=P.steps.filter((s,i)=>mastered(eq,i)).length;
-    return `<details class="pathcard" ${openPath===eq?'open':''} data-path="${eq}"><summary><span><b>${P.name} path</b><small>${cnt} of ${P.steps.length} mastered${nx<P.steps.length?' · Next: '+esc(P.steps[nx].t):' · Complete'}</small></span><span class="meter"><i class="s-ready" style="width:${Math.round(cnt/P.steps.length*100)}%"></i></span></summary>
+    return `<details class="pathcard" ${openPath===eq?'open':''} data-path="${eq}"><summary>${artHTML(PATH_ART[eq])}<span><b>${P.name} path</b><small>${cnt} of ${P.steps.length} mastered${nx<P.steps.length?' · Next: '+esc(P.steps[nx].t):' · Complete'}</small></span><span class="meter"><i class="s-ready" style="width:${Math.round(cnt/P.steps.length*100)}%"></i></span></summary>
       <ol class="steps">${P.steps.map((s,i)=>{const st=mastered(eq,i)?'done':i===nx?'now':'locked';
         return `<li class="st-${st}"><span class="num">${st==='done'?'✓':i+1}</span><div><b>${esc(s.t)}</b><p>${esc(s.goal)}</p><p class="hint">Moves: ${s.m.map(esc).join(', ')}</p>
           <div class="go">${demo(s.m[0],eq)}${st==='done'?`<button class="link" data-sk="${eq}:${i}:0">Undo</button>`:st==='now'?`<button class="btn small" data-sk="${eq}:${i}:1">Mark mastered</button>`:'<span class="hint">Unlocks after the step above</span>'}</div></div></li>`}).join('')}</ol></details>`}).join('');
@@ -1525,7 +1542,7 @@ function renderPrograms(){
   let html='';
   if(active){
     const nx=progNext(active,st),doneN=Object.keys(st.done||{}).length,tot=active.weeks*active.days;
-    html+=`<div class="progactive"><div class="eyebrow">Your program</div><h3>${esc(active.name)}</h3><p class="hint">${doneN} of ${tot} sessions done</p>`;
+    html+=`<div class="progactive">${artHTML(PROG_ART[active.id])}<div class="eyebrow">Your program</div><h3>${esc(active.name)}</h3><p class="hint">${doneN} of ${tot} sessions done</p>`;
     if(nx){const spec=active.day(nx.w,nx.d);html+=`<div class="nextup"><div><b>Next: Week ${nx.w} · Day ${nx.d}</b><span>${esc(spec.label)} · ${spec.min} min</span><p class="hint">${esc(active.notes[nx.w-1])}</p></div>
       <div class="go">${progAvail(active)?`<button class="btn" data-po="${nx.w}:${nx.d}">Open workout</button>`:'<span class="hint">Turn on the gear this program needs under Build › Your gear.</span>'}<button class="btn ghost small" data-pd="${progKey(nx.w,nx.d)}">Mark done</button></div></div>`}
     else html+=`<p class="tip good"><b>Program complete.</b> Pick another below or rerun this one.</p>`;
@@ -1535,7 +1552,7 @@ function renderPrograms(){
       <button class="link" id="leaveProg">Leave program</button></div>`;
   }
   html+=PROGRAMS.filter(p=>!active||p.id!==active.id).map(p=>{const ok=progAvail(p);
-    return `<div class="progcard"><div class="block-head"><b>${esc(p.name)}</b><span class="tag">${p.level}</span></div><p>${esc(p.blurb)}</p><p class="hint">${p.weeks} weeks · ${p.days} days a week · ${p.needs==='any2'?'any two implements':p.needs.map(k=>EQ[k].name).join(', ')}</p>
+    return `<div class="progcard">${artHTML(PROG_ART[p.id])}<div class="block-head"><b>${esc(p.name)}</b><span class="tag">${p.level}</span></div><p>${esc(p.blurb)}</p><p class="hint">${p.weeks} weeks · ${p.days} days a week · ${p.needs==='any2'?'any two implements':p.needs.map(k=>EQ[k].name).join(', ')}</p>
       ${ok?`<button class="btn ghost small" data-ps="${p.id}">${active?'Switch to this program':'Start program'}</button>`:`<span class="hint">Needs ${p.needs==='any2'?'two implements':p.needs.map(k=>EQ[k].name.toLowerCase()).join(', ')} turned on in your gear.</span>`}</div>`}).join('');
   pl.innerHTML=html;
   pl.querySelectorAll('[data-po]').forEach(b=>b.onclick=()=>{const[w,d]=b.dataset.po.split(':').map(Number);if(progAvail(active))openProgramDay(active,w,d)});
@@ -1750,6 +1767,19 @@ function renderTrack(){
   renderPrograms();renderContinue();
 }
 
+/* ---- artwork ---- */
+const PROG_ART={'mace-found':'mace360','club-found':'clubs','swing':'swing','hybrid':'hybrid'};
+const PATH_ART={mace:'mace360',club:'clubs',kb:'swing'};
+const VIEW_ART={continue:'resume',build:'rack',programs:'hybrid',log:'ledger',progress:'progress',recovery:'recovery'};
+const artStyle=()=>S.art||'poster';
+function artHTML(scene,cls='art'){if(!window.Art||artStyle()==='off'||!scene)return '';return `<div class="${cls} art-${artStyle()}" aria-hidden="true">${Art.scene(scene,artStyle())}</div>`}
+function paintViewArt(){
+  Object.entries(VIEW_ART).forEach(([v,scene])=>{const el=$('v-'+v);if(!el)return;
+    let a=el.querySelector(':scope>.vart');if(a)a.remove();
+    const h=artHTML(scene,'vart').replace('xMidYMid slice','xMidYMax slice');if(h)el.insertAdjacentHTML('afterbegin',h)});
+}
+function repaintArt(){paintViewArt();renderPrograms();renderContinue()}
+
 /* ---- theme ---- */
 const SKINS=[
   {id:'forge',name:'Forge',blurb:'Slate, steel blue and copper. The original.'},
@@ -1772,6 +1802,8 @@ function renderLook(){
   box.querySelectorAll('[data-skin-pick]').forEach(b=>b.onclick=()=>{S.skin=b.dataset.skinPick;save();applyLook();renderLook()});
   if(!S.appearance)S.appearance='auto';
   seg('appearance',[['auto','Match phone'],['light','Light'],['dark','Dark']],'appearance',applyLook);
+  if(!S.art)S.art='poster';
+  seg('artStyle',[['poster','Poster'],['engraved','Engraved'],['off','Off']],'art',repaintArt);
 }
 
 /* ---- continue ---- */
@@ -1812,7 +1844,7 @@ function renderContinue(){
       <p class="hint">Next: <b>${w.day}</b> · ${GOALS[w.type]} · ${w.minutes} min · ${esc(eqLabel(w.eqs))}</p>
       <div class="go"><button class="btn" data-c="wday:${nx}">Open ${w.day}'s workout</button><button class="btn ghost small" data-c="wdone:${nx}">Mark ${w.day} done</button></div></article>`}
   if(items.includes('program')){const prog=PROGRAMS.find(x=>x.id===st.program.id),nx=progNext(prog,st.program),spec=prog.day(nx.w,nx.d),doneN=Object.keys(st.program.done||{}).length,tot=prog.weeks*prog.days;
-    h+=`<article class="ccard"><div class="eyebrow">Program · ${doneN} of ${tot} sessions</div><h3>${esc(prog.name)}</h3>
+    h+=`<article class="ccard">${artHTML(PROG_ART[prog.id])}<div class="eyebrow">Program · ${doneN} of ${tot} sessions</div><h3>${esc(prog.name)}</h3>
       <span class="meter"><i class="s-ready" style="width:${Math.round(doneN/tot*100)}%"></i></span>
       <p class="hint">Next: <b>Week ${nx.w} · Day ${nx.d}</b> · ${esc(spec.label)} · ${spec.min} min</p>
       <div class="go">${progAvail(prog)?`<button class="btn" data-c="prog">Open next session</button>`:'<span class="hint">Turn on the gear this program needs in your setup.</span>'}<button class="btn ghost small" data-c="progs">See program</button></div></article>`}
@@ -1867,7 +1899,7 @@ $('suDel').onclick=()=>{const b=$('suDel');if(S.setups.length<2)return;
   S.setups=S.setups.filter(x=>x.id!==S.active);S.active=S.setups[0].id;linkSetups();save();b.classList.remove('armed');b.textContent='Delete this setup';renderRack()};
 $('todayReset').onclick=()=>{S.today=null;save();renderSetupBar()};
 {let setup=false;try{setup=localStorage.getItem('ironflow-setup')==='1'}catch(e){}$('gearBox').open=!setup&&!fromStore}
-applyLook();renderRack();renderSettings();renderLib();renderSoreForm();renderLook();
+applyLook();renderRack();renderSettings();renderLib();renderSoreForm();renderLook();paintViewArt();
 Store.loadLocal();
 if(Store.state.lastBuilt&&Store.state.lastBuilt.blocks){current={single:Store.state.lastBuilt};render()}else generate();
 {const h=(location.hash||'').slice(1);go(VIEWS.includes(h)?h:(contItems().some(x=>x!=='skills')?'continue':'build'),true)}

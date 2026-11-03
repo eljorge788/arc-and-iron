@@ -7,6 +7,7 @@ https://eljorge788.github.io/arc-and-iron/
 - `index.html`: the whole app (markup, CSS and JS in one file, no build step).
 - `sw.js`: service worker. Network-first for the page so updates reach phones on next open. Bump `CACHE` when changing icons or the manifest.
 - `demos.js`: animated move demos (front and side views).
+- `art.js`: theme-aware SVG artwork (tab backgrounds, program and skill-path heroes). Brief in `art.brief.md`. `S.art` picks poster, engraved or off.
 - `keepawake.js`: keeps the screen on during guided workouts (Wake Lock API, with the NoSleep.js video fallback, MIT).
 - `manifest.webmanifest` and `icons/`: home-screen install. `icons/badge.svg` is the master logo.
 
