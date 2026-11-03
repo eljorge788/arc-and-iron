@@ -142,7 +142,25 @@ button:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible{o
 .tags{display:flex;gap:6px;flex-wrap:wrap}
 .tag{font-family:var(--mono);font-size:.72rem;border:1px solid var(--line);border-radius:4px;padding:2px 7px;color:var(--muted)}
 .block{display:grid;gap:8px}
+details.block{border-top:2px solid var(--line);padding-top:10px}
+details.block>summary{list-style:none;cursor:pointer}
+details.block>summary::-webkit-details-marker{display:none}
 .block-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+details.block>summary.block-head{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 10px}
+.bh-t{display:flex;align-items:baseline;gap:8px;min-width:0}
+.bh-t h3{min-width:0}
+.bh-t h3 small{white-space:nowrap;display:inline-block}
+input[type=checkbox]{flex:0 0 auto}
+.bh-a{display:flex;align-items:center;gap:10px}
+.chev{width:9px;height:9px;flex:0 0 auto;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s;align-self:center}
+details.block[open] .chev{transform:rotate(45deg)}
+.bh-peek{grid-column:1/-1;font-size:.82rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+details.block[open] .bh-peek{display:none}
+.block-body{display:grid;gap:8px;margin-top:8px}
+.foldbar{display:flex;gap:14px;justify-content:flex-end}
+.skipped{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border:1px dashed var(--line);border-radius:8px;padding:8px 12px;color:var(--muted);font-size:.9rem}
+.skipped b{color:var(--ink)}
+.prepset{display:grid;gap:4px}
 .block-head h3 small{font-family:var(--mono);font-size:.75rem;color:var(--muted);font-weight:500;margin-left:8px}
 .fmt{margin:0;color:var(--muted);font-size:.93rem;max-width:62ch}
 ol.moves{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
@@ -470,6 +488,7 @@ html.guiding,html.guiding body{overflow:hidden}
       <div class="field"><span>Conditioning style</span><div class="seg" id="format"></div><span class="hint" id="fmtHint"></span></div>
       <div class="voicerow" id="voiceRow"><label class="pairrow check"><input type="checkbox" id="voiceSet"> Voice coach in guided workouts (says each step and counts down the last seconds)</label>
         <div class="range vol"><span class="unit">Volume</span><input type="range" id="voiceVol" min="10" max="100" step="10" aria-label="Voice volume"><output id="voiceVolOut"></output><button class="btn ghost small" id="voiceTest" type="button">Test</button></div></div>
+      <div class="prepset"><label class="pairrow check"><input type="checkbox" id="warmSet"> Include a warm-up</label><label class="pairrow check"><input type="checkbox" id="coolSet"> Include a cool-down</label><span class="hint">When one is off, its minutes go to the main workout. You can also skip either on any single workout.</span></div>
       <label class="pairrow check"><input type="checkbox" id="recov"> Work around muscles that need rest (from your Recovery tab)</label>
       <div class="field" id="minField"><span>Time for this workout</span>
         <div class="range"><input type="range" id="minutes" min="10" max="60" step="5" aria-label="Minutes per workout"><output id="minOut"></output></div></div>
@@ -846,6 +865,8 @@ function renderSettings(){
   seg('format',Object.entries(FORMATS),'format',()=>{$('fmtHint').textContent=fmtHints[S.format]});$('fmtHint').textContent=fmtHints[S.format];
   $('voiceRow').hidden=!VOICE_OK;$('voiceSet').checked=S.voice!==false;$('voiceSet').onchange=e=>{S.voice=e.target.checked;save();syncVoiceUI();if(S.voice)say('Voice coach on.',{interrupt:true})};
   bindVol('voiceVol','voiceVolOut');$('voiceTest').onclick=testVoice;syncVoiceUI();
+  $('warmSet').checked=S.warm!==false;$('warmSet').onchange=e=>{S.warm=e.target.checked;save()};
+  $('coolSet').checked=S.cool!==false;$('coolSet').onchange=e=>{S.cool=e.target.checked;save()};
   $('recov').checked=S.recov!==false;$('recov').onchange=e=>{S.recov=e.target.checked;save()};
   const modeUI=()=>{const wk=S.mode==='week';if($('todayNote'))renderSetupBar();$('daysField').hidden=!wk;$('minField').hidden=wk;$('gen').textContent=wk?'Build week':'Build workout'};
   seg('mode',[['single','Single workout'],['week','Weekly plan']],'mode',modeUI);
@@ -1022,8 +1043,9 @@ function buildWorkout(type,eqs,minutes,opts){
   const rest=S.recov!==false?restingGroups():[];
   BUILD_CTX={rest,avoided:false};
   const p=pool(eqs,S.level);
-  const warm=Math.max(3,Math.min(8,Math.round(minutes*.15))),cool=Math.max(2,Math.min(6,Math.round(minutes*.1)));
-  const main=minutes-warm-cool;const blocks=[warmBlock(eqs,warm)];const used=new Set();
+  const useWarm=S.warm!==false,useCool=S.cool!==false;
+  const warm=useWarm?Math.max(3,Math.min(8,Math.round(minutes*.15))):0,cool=useCool?Math.max(2,Math.min(6,Math.round(minutes*.1))):0;
+  const main=minutes-warm-cool;const blocks=useWarm?[warmBlock(eqs,warm)]:[];const used=new Set();
   const flowEqs=eqs.filter(k=>k!=='kb').length?eqs.filter(k=>k!=='kb'):eqs;
   const fmt=opts.format||S.format||'auto';
   const add=b=>b&&blocks.push(b);
@@ -1041,7 +1063,7 @@ function buildWorkout(type,eqs,minutes,opts){
     if(main<15){const[a,b]=split(main,[.5,.5]);add(flowBlock(flowEqs,a,used));add(condBlock(p,b,fmt,opts))}
     else{const[a,b,c]=split(main,[.35,.35,.3]);add(flowBlock(flowEqs,a,used));add(strengthBlock(p,b));add(condBlock(p,c,fmt,opts))}
   }
-  blocks.push(coolBlock(cool));
+  if(useCool)blocks.push(coolBlock(cool));
   const ctx=BUILD_CTX;BUILD_CTX=null;
   return{id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),type,eqs,minutes,blocks,opts,avoided:ctx.avoided?rest:[],built:Date.now()};
 }
@@ -1112,8 +1134,23 @@ function blockHTML(b,bi,wi){
     body=`<ol class="moves">${b.moves.map((m,mi)=>{const lt=m.eq?lastTxt(m.name,m.eq):'';
       return `<li class="${m.eq?'has-eq eq-'+m.eq:''}">${m.eq?eqBanner(m.eq,m.wt,{light:!m.wt}):''}<span class="mv-name">${m.tag?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}</span><span class="mv-dose">${esc(m.dose)}</span>${lt?`<span class="last">${esc(lt)}</span>`:''}<span class="mv-cue">${m.cue?esc(m.cue)+' ':''}${demo(m.name,m.eq)}${SWAPPABLE(b)&&m.eq?` <button class="link swap" data-sw="${wi}:${bi}:${mi}" aria-label="Swap ${esc(m.name)} for a similar move">⇄ Swap</button>`:''}</span></li>`}).join('')}</ol>`;
   }
-  return `<div class="block"><div class="block-head"><h3>${esc(b.title)}<small>${b.kind} · ${b.min} min</small></h3><button class="btn ghost small" data-t="${wi}:${bi}">Start here</button></div><p class="fmt">${esc(b.fmt)}</p>${body}</div>`;
+  const prep=b.kind==='Warm-up'||b.kind==='Cool-down';
+  const peek=b.flow?b.flow.steps.slice(0,3).join(' → ')+(b.flow.steps.length>3?' …':''):(b.moves||[]).map(m=>m.name).slice(0,3).join(', ')+((b.moves||[]).length>3?` +${b.moves.length-3} more`:'');
+  const count=b.flow?`${b.flow.steps.length} steps`:`${(b.moves||[]).length} moves`;
+  return `<details class="block" data-kind="${esc(b.kind)}" ${foldOpen(b.kind)?'open':''}>
+    <summary class="block-head"><span class="bh-t"><span class="chev" aria-hidden="true"></span><h3>${esc(b.title)}<small>${b.title===b.kind?'':b.kind+' · '}${b.min} min</small></h3></span>
+      <span class="bh-a">${prep?`<button class="link" data-skip="${wi}:${bi}" type="button">Skip</button>`:''}<button class="btn ghost small" data-t="${wi}:${bi}" type="button">Start here</button></span>
+      <span class="bh-peek">${count} · ${esc(peek)}</span></summary>
+    <div class="block-body"><p class="fmt">${esc(b.fmt)}</p>${body}</div></details>`;
 }
+// collapsed state is remembered per kind of block (Warm-up, Flow, Strength ...)
+const foldOpen=kind=>!((S.fold||{})[kind]);
+function skippedHTML(w,wi,key){const b=w.skipped&&w.skipped[key];if(!b)return '';
+  return `<div class="skipped"><span><b>${esc(b.title)} skipped</b> · ${b.min} min</span><button class="link" data-unskip="${wi}:${key}" type="button">Add it back</button></div>`}
+function skipPrep(w,bi){const b=w.blocks[bi];if(!b)return;const key=b.kind==='Warm-up'?'warm':'cool';
+  w.skipped=Object.assign({},w.skipped,{[key]:b});w.blocks.splice(bi,1);w.minutes=Math.max(1,w.minutes-b.min)}
+function unskipPrep(w,key){const b=w.skipped&&w.skipped[key];if(!b)return;
+  if(key==='warm')w.blocks.unshift(b);else w.blocks.push(b);w.minutes+=b.min;delete w.skipped[key]}
 function avoidedNote(w){
   if(!w.avoided||!w.avoided.length)return '';
   return `<p class="tip good"><b>Built around your recovery:</b> went easy on your ${esc(w.avoided.map(g=>GROUPS[g].toLowerCase()).join(', '))}, which still need rest.</p>`;
@@ -1123,7 +1160,8 @@ function workoutHTML(w,wi,heading){
     <div class="tags"><span class="tag">${esc(activeSetup().name)}</span><span class="tag">${LEVELS[S.level-1]}</span>${w.eqs.map(k=>`<span class="tag tag-eq eq-${k}">${EQ_ICON[k]}${EQ[k].name}</span>`).join('')}</div></div>
     <button class="btn startbtn" data-start="${wi}">▶ Start workout</button>
     ${avoidedNote(w)}${recoveryTip(w)}
-    ${w.blocks.map((b,bi)=>blockHTML(b,bi,wi)).join('')}
+    <div class="foldbar"><button class="link" data-foldall="0" type="button">Collapse all</button><button class="link" data-foldall="1" type="button">Expand all</button></div>
+    ${skippedHTML(w,wi,'warm')}${w.blocks.map((b,bi)=>blockHTML(b,bi,wi)).join('')}${skippedHTML(w,wi,'cool')}
     <div class="go"><button class="btn" id="logThis">Log this workout</button><button class="btn ghost" id="reroll">Build a different ${S.mode==='week'&&!current.single?'version of this day':'workout'}</button></div></div>`;
 }
 function wkAt(wi){return current.single||current.week[wi]}
@@ -1169,7 +1207,12 @@ function render(){
   out.querySelectorAll('[data-sw]').forEach(b=>b.onclick=()=>{const[wi,bi,mi]=b.dataset.sw.split(':').map(Number);if(swapMove(wkAt(wi),bi,mi)){if(current.single)keepBuilt();render()}else{b.textContent='No other options';b.disabled=true}});
   out.querySelectorAll('[data-sf]').forEach(b=>b.onclick=()=>{const[wi,bi]=b.dataset.sf.split(':').map(Number);const w=wkAt(wi),old=w.blocks[bi];
     const nb=flowBlock([old.flow.eq],old.min,new Set([old.flow.name]));if(nb&&nb.flow.name!==old.flow.name){w.blocks[bi]=nb;if(current.single)keepBuilt();render()}else{b.textContent='No other flows at your level';b.disabled=true}});
-  out.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{const[wi,bi]=b.dataset.t.split(':').map(Number);startGuided(wkAt(wi),bi)});
+  const after=()=>{if(current.single)keepBuilt();render()};
+  out.querySelectorAll('[data-skip]').forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();const[wi,bi]=b.dataset.skip.split(':').map(Number);skipPrep(wkAt(wi),bi);after()});
+  out.querySelectorAll('[data-unskip]').forEach(b=>b.onclick=()=>{const[wi,key]=b.dataset.unskip.split(':');unskipPrep(wkAt(+wi),key);after()});
+  out.querySelectorAll('details.block').forEach(d=>d.addEventListener('toggle',()=>{S.fold=Object.assign({},S.fold);if(d.open)delete S.fold[d.dataset.kind];else S.fold[d.dataset.kind]=true;save()}));
+  out.querySelectorAll('[data-foldall]').forEach(b=>b.onclick=()=>{const open=b.dataset.foldall==='1';out.querySelectorAll('details.block').forEach(d=>{d.open=open})});
+  out.querySelectorAll('[data-t]').forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();const[wi,bi]=b.dataset.t.split(':').map(Number);startGuided(wkAt(wi),bi)});
   out.querySelectorAll('[data-start]').forEach(b=>b.onclick=()=>startGuided(wkAt(+b.dataset.start),0));
 }
 function renderLib(){
