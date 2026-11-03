@@ -9,7 +9,8 @@
 (function(){
 'use strict';
 const S=0.84,GY=268,TEMPO=1.25;            // px per cm, ground line, slow everything a touch
-const TORSO=50,UARM=30,FARM=27,THIGH=44,SHIN=43,MACE=95,FOOT=17;
+const TORSO=50,UARM=30,FARM=27,THIGH=44,SHIN=43,MACE=95,CLUB=60,FOOT=17;
+const implLen=p=>p.impl==='club'?CLUB:MACE;
 const CAM={
   front:{x:p=>120+p[0]*S,depth:p=>p[2],label:'Front'},
   side:{x:p=>136+p[2]*S,depth:p=>-p[0],label:'Side'}
@@ -50,6 +51,8 @@ function mirror(p,grip=true){
   const o=Object.assign({},p),sw=(a,b,f)=>{if(a in p||b in p){const A=p[a],B=p[b];if(B!==undefined)o[a]=f(B);else delete o[a];if(A!==undefined)o[b]=f(A);else delete o[b]}};
   const id=v=>v,neg=v=>-v;
   for(const k of ['P','G','D'])if(p[k])o[k]=mx(p[k]);
+  if(p.G2||p.D2){if(p.G2){o.G=mx(p.G2);o.G2=p.G?mx(p.G):undefined}if(p.D2){o.D=mx(p.D2);o.D2=p.D?mx(p.D):undefined}
+    if('choke2' in p){o.choke=p.choke2;o.choke2=p.choke}}
   if('yaw' in p)o.yaw=-p.yaw;if('hipYaw' in p)o.hipYaw=-p.hipYaw;if('roll' in p)o.roll=-p.roll;
   if(p.feet)o.feet={L:mx(p.feet.R),R:mx(p.feet.L)};
   sw('eL','eR',mx);sw('freeL','freeR',mx);if(grip){sw('gL','gR',id);sw('offL','offR',id)}sw('tL','tR',id);sw('fyL','fyR',neg);
@@ -84,6 +87,8 @@ function wide(base,head,work='R',extra){
   return Object.assign(o,{offL:0,offR:0},extra||{});
 }
 // STAND is the upright hold: mace vertical, hands stacked at the belly button, right hand on the bottom.
+// CSTAND is the club order position: club vertical in front of the chest, hands stacked on the handle.
+const CSTAND=Object.assign({},STAND,{impl:'club',G:[0,110,22],D:[0,1,0],gR:0,gL:8,choke:4,dual:false});
 
 function tenToTwo(){
   // Left hand on top, so the first swing goes to the side that hand points to (the right): over the
@@ -450,6 +455,8 @@ function poseAt(kf,t){
     const u=ease((t-ta)/(tb-ta),!a.pass,!b.pass);
     const o={feet:{L:vl(a.feet.L,b.feet.L,u),R:vl(a.feet.R,b.feet.R,u)},D:norm(vl(a.D,b.D,u))};
     for(const k of ['P','G','eL','eR','freeL','freeR'])o[k]=vl(a[k],b[k],u);
+    o.impl=b.impl||a.impl;o.dual=u<0.5?a.dual:b.dual;
+    if(a.G2&&b.G2){o.G2=vl(a.G2,b.G2,u);o.D2=norm(vl(a.D2,b.D2,u));o.choke2=lerp(a.choke2,b.choke2,u)}
     for(const k of ['pitch','yaw','roll','hipYaw','turn','fyL','fyR','tL','tR','gR','gL','choke','offL','offR','kneeOut'])o[k]=lerp(a[k],b[k],u);
     return o;
   }
@@ -481,9 +488,12 @@ function skeleton(p){
     const fd=norm(add(mul(h,1-0.3*toe),[0,-0.3-0.6*toe,0]));
     sk['knee'+s]=knee;sk['ank'+s]=ank;sk['toe'+s]=add(ank,mul(fd,FOOT));
   }
-  sk.hand={R:vl(add(p.G,mul(p.D,p.gR)),p.freeR,p.offR),L:vl(add(p.G,mul(p.D,p.gL)),p.freeL,p.offL)};
+  const leftOn=p.dual&&p.G2?p.G2:add(p.G,mul(p.D,p.gL));
+  sk.hand={R:vl(add(p.G,mul(p.D,p.gR)),p.freeR,p.offR),L:vl(leftOn,p.freeL,p.offL)};
   for(const s of ['L','R']){const [elb,wr]=ik(sk.sh[s],sk.hand[s],UARM,FARM,norm(s==='L'?p.eL:p.eR));sk['elb'+s]=elb;sk['wr'+s]=wr}
-  sk.butt=sub(p.G,mul(p.D,p.choke));sk.tip=add(sk.butt,mul(p.D,MACE));sk.gripTop=add(sk.butt,mul(p.D,22));
+  const L=implLen(p);sk.impl=p.impl||'mace';
+  sk.butt=sub(p.G,mul(p.D,p.choke));sk.tip=add(sk.butt,mul(p.D,L));sk.gripTop=add(sk.butt,mul(p.D,sk.impl==='club'?14:22));
+  if(p.dual&&p.G2){sk.butt2=sub(p.G2,mul(p.D2,p.choke2));sk.tip2=add(sk.butt2,mul(p.D2,L))}
   return sk;
 }
 
@@ -497,12 +507,12 @@ function hull(pts){
   return lo.slice(0,-1).concat(up.slice(0,-1));
 }
 const f1=n=>n.toFixed(1);
-function scene(cam,sk,trail){
+function scene(cam,sk,trail,trail2){
   const pr=p=>[cam.x(p),GY-p[1]*S],dz=cam.depth;
   const body=dz(add(sk.P,mul(sk.u,25)));
   const items=[];
   const seg=(a,b,w,cls)=>{const A=pr(a),B=pr(b),xy=`x1="${f1(A[0])}" y1="${f1(A[1])}" x2="${f1(B[0])}" y2="${f1(B[1])}"`;
-    const halo=/dm-hid|dm-shaft/.test(cls)?'':`<line ${xy} stroke-width="${w+3.5}" class="dm-halo"/>`;
+    const halo=/dm-hid|dm-shaft|dm-club/.test(cls)?'':`<line ${xy} stroke-width="${w+3.5}" class="dm-halo"/>`;
     items.push({z:(dz(a)+dz(b))/2,s:halo+`<line ${xy} stroke-width="${w}" class="${cls}"/>`})};
   const shade=(a,b)=>((dz(a)+dz(b))/2<body-5?'dm-f':'dm-n');
   // torso as one rounded shape
@@ -521,18 +531,28 @@ function scene(cam,sk,trail){
     seg(sk.sh[s],sk['elb'+s],9,shade(sk.sh[s],sk['elb'+s]));
     seg(sk['elb'+s],sk['wr'+s],8,shade(sk['elb'+s],sk['wr'+s]));
   }
-  // mace, cut into pieces so each piece sorts in front of or behind the body on its own
-  const N=8;
-  for(let i=0;i<N;i++){const a=vl(sk.butt,sk.tip,i/N),b=vl(sk.butt,sk.tip,(i+1)/N);
-    seg(a,b,4,'dm-shaft'+((dz(a)+dz(b))/2<body-6?' dm-hid':''))}
-  seg(sk.butt,sk.gripTop,7,'dm-grip'+(dz(sk.butt)<body-6?' dm-hid':''));
-  const T=pr(sk.tip);items.push({z:dz(sk.tip),s:`<circle cx="${f1(T[0])}" cy="${f1(T[1])}" r="8" class="dm-ball${dz(sk.tip)<body-6?' dm-hid':' dm-ring'}"/>`});
+  // the implement, cut into pieces so each piece sorts in front of or behind the body on its own
+  const hid=(a,b)=>(dz(a)+dz(b))/2<body-6?' dm-hid':'';
+  if(sk.impl==='club'){
+    const club=(butt,tip)=>{
+      const K=pr(butt);items.push({z:dz(butt),s:`<circle cx="${f1(K[0])}" cy="${f1(K[1])}" r="3.2" class="dm-knob${dz(butt)<body-6?' dm-hid':''}"/>`});
+      const h=vl(butt,tip,0.26);seg(butt,h,4.5,'dm-grip'+hid(butt,h));
+      const N=7;for(let i=0;i<N;i++){const a=vl(h,tip,i/N),b=vl(h,tip,(i+1)/N);
+        seg(a,b,5+9*Math.pow((i+1)/N,1.4),'dm-club'+hid(a,b))}
+    };
+    club(sk.butt,sk.tip);if(sk.butt2)club(sk.butt2,sk.tip2);
+  }else{
+    const N=8;
+    for(let i=0;i<N;i++){const a=vl(sk.butt,sk.tip,i/N),b=vl(sk.butt,sk.tip,(i+1)/N);seg(a,b,4,'dm-shaft'+hid(a,b))}
+    seg(sk.butt,sk.gripTop,7,'dm-grip'+(dz(sk.butt)<body-6?' dm-hid':''));
+    const T=pr(sk.tip);items.push({z:dz(sk.tip),s:`<circle cx="${f1(T[0])}" cy="${f1(T[1])}" r="8" class="dm-ball${dz(sk.tip)<body-6?' dm-hid':' dm-ring'}"/>`});
+  }
   items.sort((a,b)=>a.z-b.z);
   // ground, shadow and the path the mace head just travelled
   const px=cam.x(sk.P);
   let out=`<line x1="10" y1="${GY+1}" x2="230" y2="${GY+1}" class="dm-ground"/><ellipse cx="${f1(px)}" cy="${GY+2}" rx="44" ry="4" class="dm-shadow"/>`;
-  for(let i=1;i<trail.length;i++){const A=pr(trail[i-1]),B=pr(trail[i]);
-    out+=`<line x1="${f1(A[0])}" y1="${f1(A[1])}" x2="${f1(B[0])}" y2="${f1(B[1])}" class="dm-trail" stroke-opacity="${(0.55*i/trail.length).toFixed(2)}"/>`}
+  for(const tr of [trail,trail2||[]])for(let i=1;i<tr.length;i++){const A=pr(tr[i-1]),B=pr(tr[i]);
+    out+=`<line x1="${f1(A[0])}" y1="${f1(A[1])}" x2="${f1(B[0])}" y2="${f1(B[1])}" class="dm-trail" stroke-opacity="${(0.55*i/tr.length).toFixed(2)}"/>`}
   return out+items.map(i=>i.s).join('');
 }
 
@@ -544,9 +564,12 @@ function Player(views,tl,onMark){
   const reduce=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
   function render(){
     const sk=skeleton(poseAt(tl.kf,t));
-    const trail=[];for(let i=12;i>=1;i--){const tt=t-i*0.035;if(tt<0)continue;const q=poseAt(tl.kf,tt);trail.push(add(sub(q.G,mul(q.D,q.choke)),mul(q.D,MACE)))}
-    trail.push(sk.tip);
-    for(const k in views)views[k].innerHTML=scene(CAM[k],sk,trail);
+    const trail=[],trail2=[];
+    for(let i=12;i>=1;i--){const tt=t-i*0.035;if(tt<0)continue;const q=poseAt(tl.kf,tt),L=implLen(q);
+      trail.push(add(sub(q.G,mul(q.D,q.choke)),mul(q.D,L)));
+      if(q.dual&&q.G2)trail2.push(add(sub(q.G2,mul(q.D2,q.choke2)),mul(q.D2,L)))}
+    trail.push(sk.tip);if(sk.tip2)trail2.push(sk.tip2);
+    for(const k in views)views[k].innerHTML=scene(CAM[k],sk,trail,trail2);
     let m=0;for(let i=0;i<tl.marks.length;i++)if(t>=tl.marks[i].t)m=i;
     if(m!==mark){mark=m;onMark&&onMark(m,tl.marks[m])}
     api.ontime&&api.ontime(t/tl.dur);
@@ -588,7 +611,7 @@ function ensureDialog(){
     <p class="dm-cue" id="dmCue"></p>
     <div class="dm-ctl"><button type="button" class="btn small" id="dmPlay">❚❚ Pause</button>
       <div class="seg dm-speed" role="group" aria-label="Speed"><button type="button" data-sp="0.5" aria-pressed="false">½×</button><button type="button" data-sp="1" aria-pressed="true">1×</button></div></div>
-    <p class="hint">Lighter limbs are on the far side of the body. A faded, dashed mace is behind the body. The thin trail shows the path the mace head just took.</p>`;
+    <p class="hint">Lighter limbs are on the far side of the body. Anything faded and dashed is behind the body. The thin trail shows the path the head of the mace or club just took.</p>`;
   document.body.appendChild(dlg);
   dlg.querySelector('.dm-x').onclick=()=>dlg.close();
   dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
@@ -626,6 +649,6 @@ window.Demos={
   openFlow(flow){const ks=flowKeys(flow);if(!ks)return false;
     show(flow.name,'Flow demo',join(ks.map(k=>MOVES[k[0]]),ks.map(k=>k[1])),ks.map(k=>k[1]));return true},
   // for previews and tests
-  _Player:Player,_join:join,_MOVES:MOVES,_key:key,_poseAt:poseAt,_skeleton:skeleton,_onBody:onBody,_STAND:STAND,_shaft:shaft,_norm:norm
+  _Player:Player,_join:join,_MOVES:MOVES,_key:key,_poseAt:poseAt,_skeleton:skeleton,_onBody:onBody,_STAND:STAND,_shaft:shaft,_norm:norm,_CSTAND:CSTAND,_mirror:mirror,_mirrorKF:mirrorKF,_chain:chain,_both:both
 };
 })();
