@@ -238,6 +238,38 @@ button.steplink{font:inherit;font-weight:700;background:none;border:0;padding:0;
 .cday.nx{border:2px solid var(--accent);font-weight:700}
 .cskill{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
 .cskill .eqb{grid-column:1/-1}
+/* achievements */
+.badge{width:48px;height:48px;flex:none;display:block}
+.badge .b-rim{fill:var(--tier)}.badge .b-core{fill:#1B2328}.badge .b-dash{fill:none;stroke:var(--tier);stroke-width:1.2;stroke-dasharray:2 2.5}
+.badge .b-ico{fill:none;stroke:#ECEFEE;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.badge.t1{--tier:#8C979E}.badge.t2{--tier:#5C8DB8}.badge.t3{--tier:#D46A2C}
+.badge.locked .b-rim{fill:var(--line)}.badge.locked .b-core{fill:var(--surface)}.badge.locked .b-dash{stroke:var(--line)}.badge.locked .b-ico{stroke:var(--muted);opacity:.6}
+.ach{display:grid;gap:8px}
+.ach-recent{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:6px 0 12px}
+.ach-mini{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--surface);min-width:0}
+.ach-mini .badge{width:38px;height:38px}
+.ach-mini span{min-width:0}.ach-mini b{display:block;font-size:.85rem;line-height:1.2}.ach-mini small{color:var(--muted);font-size:.75rem}
+.ach-g{border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.ach-g>summary{display:flex;justify-content:space-between;gap:10px;padding:12px 14px;cursor:pointer;font-weight:700}
+.ach-ct{font-family:var(--mono);font-size:.8rem;color:var(--muted);font-weight:400}
+.ach-list{list-style:none;margin:0;padding:0 14px 6px}
+.ach-list li{display:grid;grid-template-columns:48px 1fr;gap:12px;align-items:start;padding:10px 0;border-top:1px solid var(--line)}
+.ach-list li>div{min-width:0}
+.ach-list b{font-size:.95rem}.ach-list p{margin:2px 0 4px;font-size:.85rem;color:var(--muted)}
+.ach-list small{font-size:.78rem;color:var(--muted)}
+.ach-list .when{color:var(--good)}
+.ach-list .meter{display:block;margin:4px 0 2px}.ach-list .meter i{background:var(--accent)}
+.tier{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.reclist{list-style:none;margin:12px 0 8px;padding:0;display:grid;gap:6px}
+.reclist li{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:baseline;border-bottom:1px solid var(--line);padding:6px 0}
+.reclist small{color:var(--muted);font-family:var(--mono);font-size:.75rem}
+#records .hint{margin-top:8px}
+.toast{position:fixed;left:50%;bottom:16px;transform:translate(-50%,20px);opacity:0;transition:transform .25s,opacity .25s;z-index:60;
+  width:min(420px,calc(100% - 32px));display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;padding:12px 14px;border-radius:12px;
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 8px 28px rgba(0,0,0,.25);cursor:pointer}
+.toast.on{transform:translate(-50%,0);opacity:1}
+.toast b{display:block}.toast small{display:block;color:var(--muted);font-size:.8rem}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
 /* weekly goal */
 #goalBox:not(:empty){margin-bottom:12px}
 .goal{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:14px;display:grid;gap:10px}
@@ -615,6 +647,16 @@ html.guiding,html.guiding body{overflow:hidden}
       <h2 id="pr-h">Progress</h2>
       <div id="goalBox"></div>
       <div class="stats" id="stats"></div>
+    </section>
+    <section aria-labelledby="ach-h">
+      <h3 id="ach-h">Achievements</h3>
+      <p class="note" id="achSum"></p>
+      <div id="achRecent"></div>
+      <div id="ach" class="ach"></div>
+    </section>
+    <section aria-labelledby="rec-h">
+      <h3 id="rec-h">Personal records</h3>
+      <div id="records"></div>
     </section>
     <section aria-labelledby="wk-h">
       <h3 id="wk-h">Minutes trained, last 8 weeks</h3>
@@ -1497,7 +1539,9 @@ function gDraw(){
   $('gDone').textContent=s.secs?'Skip':'Done';
 }
 function gClose(){if(!G)return;$('gVoicePanel').hidden=true;$('gVoice').setAttribute('aria-expanded','false');clearInterval(G.iv);G=null;hush();$('guide').hidden=true;document.documentElement.classList.remove('guiding');if(window.Awake)Awake.off();awakeChip('off')}
-$('gDone').onclick=()=>{if(!G)return;if(G.done){const w=G.w,mins=Math.max(1,Math.round(G.elapsed/60)),notes=gNotes();gClose();prefillLog(w,{minutes:mins,notes});go('log');return}gGo(1)};
+function gCounts(){const out=[],add=(bi,n)=>{const b=G.w.blocks[bi];if(b&&n>0)out.push({kind:b.kind,title:b.title,min:b.min,n})};
+  Object.keys(G.counts).forEach(bi=>add(bi,G.counts[bi]));Object.keys(G.rung).forEach(bi=>add(bi,G.rung[bi]));Object.keys(G.deck).forEach(bi=>add(bi,52-G.deck[bi].length));return out}
+$('gDone').onclick=()=>{if(!G)return;if(G.done){const w=G.w,mins=Math.max(1,Math.round(G.elapsed/60)),notes=gNotes(),counts=gCounts();gClose();prefillLog(w,{minutes:mins,notes,counts,guided:true});go('log');return}gGo(1)};
 $('gBack').onclick=()=>gGo(-1);
 function voiceBtn(){const b=$('gVoice');if(!VOICE_OK){b.hidden=true;return}const on=S.voice!==false;b.textContent=on?'🔊 '+volPct():'🔇 Off'}
 function syncVoiceUI(){voiceBtn();const on=S.voice!==false,v=Math.round(vVol()*100);
@@ -1737,7 +1781,7 @@ function workoutMoves(w){
 }
 function prefillLog(w,extra){
   extra=extra||{};
-  pendingLog=w?{type:w.type,eqs:w.eqs.slice(),minutes:extra.minutes||w.minutes,moves:workoutMoves(w),program:w.program||null,wid:w.id||null,weekRef:w.weekRef||null,title:w.program?w.program.label:`${GOALS[w.type]} · ${w.minutes} min${w.day?' ('+w.day+' plan)':''}`}:null;
+  pendingLog=w?{type:w.type,eqs:w.eqs.slice(),minutes:extra.minutes||w.minutes,moves:workoutMoves(w),kinds:[...new Set(w.blocks.map(b=>b.kind).filter(k=>k&&k!=='Warm-up'&&k!=='Cool-down'))],counts:extra.counts||[],guided:!!extra.guided,program:w.program||null,wid:w.id||null,weekRef:w.weekRef||null,title:w.program?w.program.label:`${GOALS[w.type]} · ${w.minutes} min${w.day?' ('+w.day+' plan)':''}`}:null;
   if(extra.notes)$('lgNotes').value=extra.notes;
   $('lgMin').value='';
   renderLogForm();
@@ -1747,7 +1791,7 @@ function renderLogForm(){
   $('lgDate').value=$('lgDate').value||todayStr();
   $('lgType').innerHTML=Object.entries(GOALS).map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
   if(pendingLog){
-    $('logSource').textContent='Logging: '+pendingLog.title+'. Adjust anything that changed.';
+    $('logSource').textContent='Logging: '+pendingLog.title+'. Adjust anything that changed.'+(pendingLog.counts.length?' Saved with it: '+pendingLog.counts.map(c=>`${c.title} ${c.n} ${COUNT_WORD[c.kind]||'rounds'}`).join(', ')+'.':'');
     $('lgMin').value=pendingLog.minutes;$('lgType').value=pendingLog.type;
     $('lgWtField').hidden=!pendingLog.moves.length;$('lgEqField').hidden=true;
     $('lgWts').innerHTML=pendingLog.moves.map((m,i)=>`<div class="wtrow"><span>${esc(m.name)}${m.flow?' <small>flow</small>':''}${m.dbl?' <small>pair</small>':''}</span><input type="number" id="lgw-${i}" min="0" step="0.5" value="${isNaN(m.wt)?'':m.wt}" aria-label="Weight for ${esc(m.name)}"><small>${m.unit}</small></div>`).join('');
@@ -1771,10 +1815,13 @@ $('lgSave').onclick=async()=>{
   const moves=pendingLog?pendingLog.moves.map((m,i)=>{const v=parseFloat($('lgw-'+i).value);return{name:m.name,eq:m.eq,wt:isNaN(v)?null:v,unit:m.unit,flow:!!m.flow,dbl:!!m.dbl}}):[];
   const ts=date===todayStr()?Date.now():new Date(date+'T12:00').getTime();
   const rec={date,ts,type,minutes,rpe:+$('lgRpe').value,eqs:pendingLog?pendingLog.eqs:lgEqSel.slice(),moves,muscles:musclesFor(moves,type),notes:$('lgNotes').value.trim().slice(0,1000),program:pendingLog&&pendingLog.program?pendingLog.program.key:null,title:pendingLog?pendingLog.title:GOALS[type]+' · '+minutes+' min'};
+  if(pendingLog){if(pendingLog.kinds.length)rec.kinds=pendingLog.kinds;if(pendingLog.counts.length)rec.counts=pendingLog.counts;if(pendingLog.guided)rec.guided=true}
+  if(type==='flow'&&date===todayStr()&&restingGroups().length)rec.restFlow=true;
   $('lgSave').disabled=true;
   const prg=pendingLog&&pendingLog.program,wref=pendingLog&&pendingLog.weekRef,wid=pendingLog&&pendingLog.wid;
   const gBefore=goalStats(),gAfter=goalStats([rec]),gHit=gBefore&&mondayOf(date)===gAfter.mon&&!gBefore.met&&gAfter.met;
-  try{await Store.add('log',rec);if(prg)markProgDay(prg.id,prg.key,true);finishedWorkout(wid,wref);msg.innerHTML=(gHit?`<b>Weekly goal met.</b> ${gAfter.streak>1?gAfter.streak+'-week streak. ':''}`:'Saved. Nice work. ')+'<button class="link" type="button" onclick="go(\'progress\')">See your progress</button>';pendingLog=null;$('lgNotes').value='';$('lgMin').value='';renderLogForm()}
+  const recs=recordsIn(rec),recMsg=(recs.list.length?` <b>New best:</b> ${esc(recs.list.join(', '))}.${recs.list.some(x=>/ (kg|lb)$/.test(x))?' Keep every rep clean as the weight climbs.':''}`:'')+(recs.longest?` Your longest session yet.`:'');
+  try{await Store.add('log',rec);if(prg)markProgDay(prg.id,prg.key,true);finishedWorkout(wid,wref);msg.innerHTML=(gHit?`<b>Weekly goal met.</b> ${gAfter.streak>1?gAfter.streak+'-week streak. ':''}`:'Saved. Nice work. ')+(recMsg?recMsg+' ':'')+'<button class="link" type="button" onclick="go(\'progress\')">See your progress</button>';pendingLog=null;$('lgNotes').value='';$('lgMin').value='';renderLogForm()}
   catch(e){msg.textContent=e&&e.code==='quota_exceeded'?'Your log is full. Delete a few old entries, then save again.':'That did not save. Check your connection and try again.'}
   $('lgSave').disabled=false;msg.hidden=false;setTimeout(()=>msg.hidden=true,8000);
 };
@@ -1886,6 +1933,135 @@ function renderGoal(){
       clearGoal();goalEditing=false;goalDraft=null;renderTrack()}
   });
 }
+
+/* ---- achievements ----
+   Store.state.ach maps achievement id -> time earned. Once earned an achievement is kept even if the data that earned it
+   changes later (a new program replaces the old one, a log is deleted). The first run credits past history quietly.
+   Store.state.plansDone lists weekly plan ids that were finished in full. */
+const COUNT_WORD={AMRAP:'rounds',Ladder:'rungs','Deck of cards':'cards'};
+const STYLE_KINDS=['Intervals','EMOM','Tabata','AMRAP','Ladder','Deck of cards'];
+const ACH_GROUPS=[['finish','Finishing things'],['records','Personal records'],['steady','Consistency'],['variety','Variety'],['habits','Smart training habits']];
+const TIERS=['','Iron','Steel','Copper'];
+const lkey=m=>m.name+'|'+m.eq+'|'+m.unit;
+function achCtx(){
+  const logs=Store.logs.slice().sort((a,b)=>a.ts-b.ts),st=Store.state;
+  const c={logs,st,checks:Store.checks.slice().sort((a,b)=>a.ts-b.ts),wtPR:[],cntPR:[],eqs:new Set(),kinds:new Set(),flows:new Set(),guided:[],restFlow:null,longest:null,bigWeek:null,minutes:0,hourAt:{}};
+  const best={},cbest={},wk={};
+  logs.forEach(l=>{
+    (l.eqs||[]).forEach(e=>c.eqs.add(e));(l.kinds||[]).forEach(k=>c.kinds.add(k));
+    (l.moves||[]).forEach(m=>{if(m.flow)c.flows.add(m.name);if(m.wt==null||isNaN(m.wt))return;const k=lkey(m);if(k in best&&m.wt>best[k])c.wtPR.push({ts:l.ts,name:m.name,eq:m.eq,unit:m.unit,wt:m.wt,prev:best[k]});if(!(k in best)||m.wt>best[k])best[k]=m.wt});
+    (l.counts||[]).forEach(x=>{const k=x.kind+'|'+x.min;if(k in cbest&&x.n>cbest[k].n)c.cntPR.push({ts:l.ts,kind:x.kind,min:x.min,n:x.n,prev:cbest[k].n});if(!(k in cbest)||x.n>cbest[k].n)cbest[k]={n:x.n,ts:l.ts,kind:x.kind,min:x.min}});
+    if(l.guided)c.guided.push(l.ts);if(l.restFlow&&!c.restFlow)c.restFlow=l.ts;
+    if(!c.longest||l.minutes>c.longest.minutes)c.longest={minutes:l.minutes,ts:l.ts};
+    const m=mondayOf(logDay(l));wk[m]=(wk[m]||0)+(l.minutes||0);if(!c.bigWeek||wk[m]>c.bigWeek.minutes)c.bigWeek={minutes:wk[m],mon:m,ts:l.ts};
+    const before=c.minutes;c.minutes+=l.minutes||0;[10,50,100].forEach(h=>{if(before<h*60&&c.minutes>=h*60)c.hourAt[h]=l.ts});
+  });
+  c.best=best;c.cbest=cbest;
+  const gs=goalStats();c.goalBest=gs?gs.best:0;c.hasGoal=!!gs;
+  return c;
+}
+const hit=(cur,max,at)=>({got:cur>=max,cur:Math.min(cur,max),max,at});
+function nthTs(arr,n){return arr.length>=n?arr[n-1]:null}
+const ACH=[];
+PROGRAMS.forEach(p=>ACH.push({id:'prog-'+p.id,g:'finish',tier:3,icon:'flag',t:p.name,d:`Finish every day of the ${p.name} program.`,check(c){const s=c.st.program;
+  if(!s||s.id!==p.id)return{got:false,cur:0,max:p.weeks*p.days};const n=Object.keys(s.done||{}).length;return{got:!progNext(p,s),cur:Math.min(n,p.weeks*p.days),max:p.weeks*p.days,at:Math.max(0,...Object.values(s.done||{}))||null}}}));
+ACH.push(
+  {id:'plan-1',g:'finish',tier:1,icon:'flag',t:'Full week',d:'Finish every day of a weekly plan.',check:c=>hit((c.st.plansDone||[]).length,1)},
+  {id:'plan-4',g:'finish',tier:2,icon:'flag',t:'Plan keeper',d:'Finish four weekly plans.',check:c=>hit((c.st.plansDone||[]).length,4)},
+  {id:'path-step',g:'finish',tier:1,icon:'path',t:'First step',d:'Mark your first skill path step as learned.',check:c=>hit(Object.keys(c.st.skills||{}).length?1:0,1)});
+Object.entries(PATHS).forEach(([eq,P])=>ACH.push({id:'path-'+eq,g:'finish',tier:2,icon:'path',t:P.name+' path',d:`Learn every step of the ${P.name.toLowerCase()} skill path.`,check:()=>hit(P.steps.filter((s,i)=>mastered(eq,i)).length,P.steps.length)}));
+ACH.push(
+  {id:'guided-1',g:'finish',tier:1,icon:'play',t:'Start to finish',d:'Follow a guided workout all the way to the last step and log it.',check:c=>hit(c.guided.length,1,nthTs(c.guided,1))},
+  {id:'guided-10',g:'finish',tier:2,icon:'play',t:'Ten guided',d:'Finish and log ten guided workouts.',check:c=>hit(c.guided.length,10,nthTs(c.guided,10))},
+
+  {id:'pr-1',g:'records',tier:1,icon:'up',t:'New best',d:'Log a heavier weight on a move than you have used for it before.',check:c=>hit(c.wtPR.length,1,c.wtPR[0]&&c.wtPR[0].ts)},
+  {id:'pr-10',g:'records',tier:2,icon:'up',t:'Climbing',d:'Set ten weight records.',check:c=>hit(c.wtPR.length,10,c.wtPR[9]&&c.wtPR[9].ts)},
+  {id:'pr-25',g:'records',tier:3,icon:'up',t:'Iron rising',d:'Set twenty-five weight records.',check:c=>hit(c.wtPR.length,25,c.wtPR[24]&&c.wtPR[24].ts)},
+  {id:'rep-pr',g:'records',tier:2,icon:'up',t:'Beat your count',d:'Beat your best AMRAP rounds, ladder rungs or cards drawn for the same length of workout.',check:c=>hit(c.cntPR.length,1,c.cntPR[0]&&c.cntPR[0].ts)},
+  {id:'long-60',g:'records',tier:2,icon:'clock',t:'Long haul',d:'Log a single session of 60 minutes or more.',check:c=>{const l=c.logs.find(x=>x.minutes>=60);return hit(c.longest?c.longest.minutes:0,60,l&&l.ts)}},
+  {id:'week-180',g:'records',tier:2,icon:'clock',t:'Big week',d:'Train 180 minutes in one week (Monday to Sunday).',check:c=>hit(c.bigWeek?c.bigWeek.minutes:0,180)});
+[[1,'First session',1],[10,'Ten sessions',1],[25,'Twenty-five',2],[50,'Fifty strong',2],[100,'Century',3]].forEach(([n,t,tier])=>ACH.push({id:'w-'+n,g:'steady',tier,icon:'count',t,d:n===1?'Log your first workout.':`Log ${n} workouts.`,check:c=>hit(c.logs.length,n,c.logs[n-1]&&c.logs[n-1].ts)}));
+[[10,1],[50,2],[100,3]].forEach(([h,tier])=>ACH.push({id:'h-'+h,g:'steady',tier,icon:'clock',t:h+' hours',d:`Train ${h} hours in total.`,unit:'min',check:c=>hit(Math.floor(c.minutes),h*60,c.hourAt[h])}));
+[[4,1],[8,1],[12,2],[26,2],[52,3]].forEach(([n,tier])=>ACH.push({id:'st-'+n,g:'steady',tier,icon:'flame',t:n===52?'A full year':n+'-week streak',d:`Reach your weekly goal ${n} weeks in a row.`,hint:c=>c.hasGoal?'':'Set a weekly goal above to start a streak.',check:c=>hit(c.goalBest,n)}));
+ACH.push(
+  {id:'tools-3',g:'variety',tier:2,icon:'tools',t:'Three tools',d:'Log workouts with a kettlebell, a steel mace and a steel club.',check:c=>hit(['kb','mace','club'].filter(e=>c.eqs.has(e)).length,3)},
+  {id:'styles',g:'variety',tier:2,icon:'grid',t:'Every style',d:'Log one of each workout style: intervals, EMOM, Tabata, AMRAP, ladder and deck of cards.',check:c=>hit(STYLE_KINDS.filter(k=>c.kinds.has(k)).length,STYLE_KINDS.length)},
+  {id:'flows-5',g:'variety',tier:1,icon:'wave',t:'Flow learner',d:'Log five different flows.',check:c=>hit(FLOWS.filter(f=>c.flows.has(f.name)).length,5)},
+  {id:'flows-all',g:'variety',tier:3,icon:'wave',t:'Flow library',d:'Log every flow in the library.',check:c=>hit(FLOWS.filter(f=>c.flows.has(f.name)).length,FLOWS.length)},
+
+  {id:'ci-5',g:'habits',tier:1,icon:'leaf',t:'Checking in',d:'Save five recovery check-ins.',check:c=>hit(c.checks.length,5,c.checks[4]&&c.checks[4].ts)},
+  {id:'ci-25',g:'habits',tier:2,icon:'leaf',t:'Body aware',d:'Save twenty-five recovery check-ins.',check:c=>hit(c.checks.length,25,c.checks[24]&&c.checks[24].ts)},
+  {id:'rest-flow',g:'habits',tier:2,icon:'leaf',t:'Listened to your body',d:'On a day the Recovery tab says a muscle group needs rest, log a Flow & mobility session instead of pushing it.',check:c=>hit(c.restFlow?1:0,1,c.restFlow)});
+
+let achRetro=0,achQueue=[];
+function evalAch(){
+  const st=Store.state,first=!st.ach;if(first)st.ach={};
+  const c=achCtx(),fresh=[];
+  ACH.forEach(a=>{if(st.ach[a.id])return;let r;try{r=a.check(c)}catch(e){return}if(r&&r.got){st.ach[a.id]=r.at||Date.now();fresh.push(a)}});
+  if(first||fresh.length)Store.saveState();
+  if(first){achRetro=fresh.length;return []}
+  return fresh;
+}
+function notePlanDone(){const p=Store.state.week;if(!p||!p.days||!p.days.length)return;
+  if(p.days.every(w=>(p.done||{})[w.day])){const l=Store.state.plansDone||(Store.state.plansDone=[]);if(!l.includes(p.id))l.push(p.id)}}
+/* new records in one log, compared with everything logged before it */
+function recordsIn(rec){
+  const prior=Store.logs,best={},cbest={};let longest=0;
+  prior.forEach(l=>{(l.moves||[]).forEach(m=>{if(m.wt==null||isNaN(m.wt))return;const k=lkey(m);if(!(k in best)||m.wt>best[k])best[k]=m.wt});
+    (l.counts||[]).forEach(x=>{const k=x.kind+'|'+x.min;if(!(k in cbest)||x.n>cbest[k])cbest[k]=x.n});longest=Math.max(longest,l.minutes||0)});
+  const out=[];
+  (rec.moves||[]).forEach(m=>{if(m.wt==null||isNaN(m.wt))return;const k=lkey(m);if(k in best&&m.wt>best[k])out.push(`${m.name} ${m.wt} ${m.unit}`)});
+  (rec.counts||[]).forEach(x=>{const k=x.kind+'|'+x.min;if(k in cbest&&x.n>cbest[k])out.push(`${x.title}: ${x.n} ${COUNT_WORD[x.kind]||'rounds'}`)});
+  const lg=prior.length&&rec.minutes>longest?rec.minutes:0;
+  return{list:out,longest:lg};
+}
+const ACH_ICON={
+  flag:'<path d="M7 21V4M7 4h10l-2 4 2 4H7"/>',path:'<path d="M4 20h5v-5h5v-5h5V5"/>',play:'<path d="M9 6l9 6-9 6z"/>',
+  up:'<path d="M12 19V6M6 11l6-6 6 6"/>',clock:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+  count:'<path d="M6 6v12M10 6v12M14 6v12M18 6v12M4 15l16-6"/>',flame:'<path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-4 2-6 1 1 2 2 3 2z"/>',
+  tools:'<path d="M6 20l4-16M12 20V4M18 20l-4-16"/>',grid:'<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>',
+  wave:'<path d="M3 12c3-6 6 6 9 0s6 6 9 0"/>',leaf:'<path d="M5 19c0-9 6-14 14-14 0 8-5 14-14 14zM5 19l8-8"/>'};
+function badgeSVG(a,earned){
+  return `<svg class="badge t${a.tier}${earned?'':' locked'}" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="31" class="b-rim"/><circle cx="32" cy="32" r="26" class="b-core"/>
+    <circle cx="32" cy="32" r="23.5" class="b-dash"/><g transform="translate(20 20)" class="b-ico">${ACH_ICON[a.icon]||ACH_ICON.flag}</g></svg>`;
+}
+const fmtLong=ts=>new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+function achProgressText(a,r){if(a.unit==='min')return `${Math.floor(r.cur/60)} of ${r.max/60} hours`;return `${r.cur} of ${r.max}`}
+function renderAch(){
+  const box=$('ach');if(!box)return;
+  const fresh=evalAch();if(fresh.length){achQueue.push(...fresh);showToast()}
+  const st=Store.state,got=st.ach||{},c=achCtx(),n=ACH.filter(a=>got[a.id]).length;
+  $('achSum').innerHTML=`<b>${n} of ${ACH.length}</b> earned.`+(achRetro?` ${achRetro===1?'One was':achRetro+' were'} credited from training you had already logged.`:'')+' Each badge is iron, steel or copper, from easier to harder.';
+  const recent=ACH.filter(a=>got[a.id]).sort((a,b)=>got[b.id]-got[a.id]).slice(0,4);
+  $('achRecent').innerHTML=recent.length?`<div class="eyebrow">Latest</div><div class="ach-recent">${recent.map(a=>`<div class="ach-mini">${badgeSVG(a,true)}<span><b>${esc(a.t)}</b><small>${fmtDate(got[a.id])}</small></span></div>`).join('')}</div>`:'';
+  box.innerHTML=ACH_GROUPS.map(([g,label])=>{const list=ACH.filter(a=>a.g===g),have=list.filter(a=>got[a.id]).length;
+    const open=(S.achOpen||{})[g];
+    return `<details class="ach-g" data-g="${g}"${open?' open':''}><summary><span>${label}</span><span class="ach-ct">${have} of ${list.length}</span></summary><ul class="ach-list">${list.map(a=>{
+      const e=got[a.id];let r=null;if(!e){try{r=a.check(c)}catch(x){r={cur:0,max:1}}}
+      const hint=!e&&a.hint?a.hint(c):'';
+      return `<li class="${e?'got':''}">${badgeSVG(a,!!e)}<div><b>${esc(a.t)}</b> <span class="tier">${TIERS[a.tier]}</span><p>${esc(a.d)}</p>${e?`<small class="when">Earned ${fmtLong(e)}</small>`:`${r.max>1?`<div class="meter" aria-hidden="true"><i style="width:${Math.round(r.cur/r.max*100)}%"></i></div>`:''}<small>${r.max>1?achProgressText(a,r):'Not yet'}${hint?' · '+esc(hint):''}</small>`}</div></li>`}).join('')}</ul></details>`}).join('');
+  box.querySelectorAll('details.ach-g').forEach(d=>d.ontoggle=()=>{S.achOpen=Object.assign({},S.achOpen,{[d.dataset.g]:d.open});save()});
+  // personal records
+  const cnt=Object.values(c.cbest).sort((a,b)=>(a.kind+a.min).localeCompare(b.kind+b.min));
+  $('records').innerHTML=c.logs.length?`<div class="stats">${[
+      [c.longest?c.longest.minutes+' min':'–','longest session'+(c.longest?' · '+fmtDate(c.longest.ts):'')],
+      [c.bigWeek?c.bigWeek.minutes+' min':'–','biggest week'+(c.bigWeek?' · week of '+fmtDate(new Date(c.bigWeek.mon+'T12:00').getTime()):'')],
+      [c.wtPR.length,c.wtPR.length===1?'weight record set':'weight records set']].map(([v,l])=>`<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('')}</div>
+    ${cnt.length?`<ul class="reclist">${cnt.map(x=>`<li><span>${esc(x.kind)} · ${x.min} min</span><b>${x.n} ${COUNT_WORD[x.kind]||'rounds'}</b><small>${fmtDate(x.ts)}</small></li>`).join('')}</ul>`
+      :'<p class="hint">Finish an AMRAP, ladder or deck-of-cards workout in guided mode and your rounds, rungs or cards are saved here as records to beat.</p>'}
+    <p class="hint">Your heaviest weight for each move is in the Best column of the table below. Add weight only when every rep is clean.</p>`
+    :'<p class="empty">Records appear once you log workouts.</p>';
+}
+let toastT=null;
+function showToast(){
+  const el=$('toast');if(!el||toastT||!achQueue.length)return;
+  const a=achQueue.shift();
+  el.innerHTML=`${badgeSVG(a,true)}<div><div class="eyebrow">Achievement earned · ${TIERS[a.tier]}</div><b>${esc(a.t)}</b><small>${esc(a.d)}</small></div><button class="link" type="button" aria-label="Close">✕</button>`;
+  el.hidden=false;requestAnimationFrame(()=>el.classList.add('on'));
+  el.onclick=e=>{if(e.target.closest('button')){hideToast();return}hideToast();go('progress');setTimeout(()=>{const s=$('ach-h');if(s)s.scrollIntoView({block:'start'})},50)};
+  toastT=setTimeout(hideToast,6000);
+}
+function hideToast(){const el=$('toast');clearTimeout(toastT);el.classList.remove('on');setTimeout(()=>{el.hidden=true;toastT=null;showToast()},250)}
 function renderTrack(){
   const logs=Store.logs.slice().sort((a,b)=>b.ts-a.ts);
   // history
@@ -1899,7 +2075,7 @@ function renderTrack(){
   const now=Date.now(),ws=weekStart(now);
   const thisWeek=logs.filter(l=>l.ts>=ws);
   let streak=0;{let w=ws;if(!thisWeek.length)w-=7*DAY;while(logs.some(l=>l.ts>=w&&l.ts<w+7*DAY)){streak++;w-=7*DAY}}
-  renderGoal();
+  renderGoal();renderAch();
   $('stats').innerHTML=[[thisWeek.length,'sessions this week'],[thisWeek.reduce((a,l)=>a+(l.minutes||0),0),'minutes this week']].concat(Store.state.goal?[]:[[streak,'week streak']]).concat([[logs.length,'sessions logged']])
     .map(([v,l])=>`<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
   // weekly chart
@@ -1987,6 +2163,7 @@ function weekDone(w){const p=Store.state.week;return !!(p&&w&&w.weekRef&&p.id===
 function finishedWorkout(wid,wref){
   const st=Store.state;
   if(wref&&st.week&&st.week.id===wref.id){st.week.done=Object.assign({},st.week.done,{[wref.day]:Date.now()})}
+  notePlanDone();
   if(wid&&st.lastBuilt&&st.lastBuilt.id===wid)st.lastBuilt=null;
   const r=readResume();if(r&&wid&&r.w.id===wid)clearResume();
   Store.saveState();renderContinue();if(current&&current.week)render();
@@ -2109,5 +2286,6 @@ document.addEventListener('click',e=>{
 /* ---- offline + updates ---- */
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
 </script>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>
