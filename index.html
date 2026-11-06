@@ -238,6 +238,33 @@ button.steplink{font:inherit;font-weight:700;background:none;border:0;padding:0;
 .cday.nx{border:2px solid var(--accent);font-weight:700}
 .cskill{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
 .cskill .eqb{grid-column:1/-1}
+/* weekly goal */
+#goalBox:not(:empty){margin-bottom:12px}
+.goal{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:14px;display:grid;gap:10px}
+.goal.met{border-color:var(--good);box-shadow:inset 4px 0 0 var(--good)}
+.goal-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.goal-num{font-family:var(--display);font-size:2.4rem;line-height:1;font-variant-numeric:tabular-nums}
+.goal-num small{font-family:inherit;font-size:1rem;color:var(--muted);margin-left:4px;text-transform:uppercase}
+.goal-streak{text-align:right}
+.goal-streak b{display:block;font-family:var(--display);font-size:1.6rem;line-height:1;font-variant-numeric:tabular-nums}
+.goal-streak span{font-size:.78rem;color:var(--muted)}
+.goal .meter{display:block;height:8px;border-radius:4px}
+.goal .meter i{background:var(--accent)}
+.goal.met .meter i{background:var(--good)}
+.goal .cday{cursor:default;height:44px;grid-template-rows:auto auto;align-content:center;gap:0;line-height:1.1}
+.goal .cday b{font-size:.8rem}
+.goal .cday.fut{color:var(--muted);opacity:.55}
+.goal .cday.td{border:2px solid var(--accent);font-weight:700}
+.goal .cday.dn.td{border-color:var(--good)}
+.goal-msg{margin:0;font-size:.9rem}
+.goal-row{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.goal-row b{color:var(--ink);font-variant-numeric:tabular-nums}
+.goal-ed{display:grid;gap:12px;border-top:1px solid var(--line);padding-top:12px}
+.goal-ed label{display:grid;gap:6px;font-size:.85rem;font-weight:700}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface);justify-self:start}
+.stepper button{font:inherit;font-weight:700;font-size:1.2rem;width:46px;height:44px;border:0;background:transparent;color:var(--ink);cursor:pointer}
+.stepper button:disabled{opacity:.35;cursor:default}
+.stepper output{min-width:48px;text-align:center;font-family:var(--display);font-size:1.6rem;font-variant-numeric:tabular-nums}
 .tabdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ember);margin-left:5px;vertical-align:super}
 .day.dn{border-color:var(--good)}
 #gLater{width:100%}
@@ -586,6 +613,7 @@ html.guiding,html.guiding body{overflow:hidden}
   <div class="view" id="v-progress" hidden>
     <section aria-labelledby="pr-h">
       <h2 id="pr-h">Progress</h2>
+      <div id="goalBox"></div>
       <div class="stats" id="stats"></div>
     </section>
     <section aria-labelledby="wk-h">
@@ -1744,7 +1772,9 @@ $('lgSave').onclick=async()=>{
   const ts=date===todayStr()?Date.now():new Date(date+'T12:00').getTime();
   const rec={date,ts,type,minutes,rpe:+$('lgRpe').value,eqs:pendingLog?pendingLog.eqs:lgEqSel.slice(),moves,muscles:musclesFor(moves,type),notes:$('lgNotes').value.trim().slice(0,1000),program:pendingLog&&pendingLog.program?pendingLog.program.key:null,title:pendingLog?pendingLog.title:GOALS[type]+' · '+minutes+' min'};
   $('lgSave').disabled=true;
-  const prg=pendingLog&&pendingLog.program,wref=pendingLog&&pendingLog.weekRef,wid=pendingLog&&pendingLog.wid;try{await Store.add('log',rec);if(prg)markProgDay(prg.id,prg.key,true);finishedWorkout(wid,wref);msg.innerHTML='Saved. Nice work. <button class="link" type="button" onclick="go(\'progress\')">See your progress</button>';pendingLog=null;$('lgNotes').value='';$('lgMin').value='';renderLogForm()}
+  const prg=pendingLog&&pendingLog.program,wref=pendingLog&&pendingLog.weekRef,wid=pendingLog&&pendingLog.wid;
+  const gBefore=goalStats(),gAfter=goalStats([rec]),gHit=gBefore&&mondayOf(date)===gAfter.mon&&!gBefore.met&&gAfter.met;
+  try{await Store.add('log',rec);if(prg)markProgDay(prg.id,prg.key,true);finishedWorkout(wid,wref);msg.innerHTML=(gHit?`<b>Weekly goal met.</b> ${gAfter.streak>1?gAfter.streak+'-week streak. ':''}`:'Saved. Nice work. ')+'<button class="link" type="button" onclick="go(\'progress\')">See your progress</button>';pendingLog=null;$('lgNotes').value='';$('lgMin').value='';renderLogForm()}
   catch(e){msg.textContent=e&&e.code==='quota_exceeded'?'Your log is full. Delete a few old entries, then save again.':'That did not save. Check your connection and try again.'}
   $('lgSave').disabled=false;msg.hidden=false;setTimeout(()=>msg.hidden=true,8000);
 };
@@ -1765,6 +1795,97 @@ $('ciSave').onclick=async()=>{
 
 /* ---- renderers ---- */
 function weekStart(ts){const d=new Date(ts);d.setHours(0,0,0,0);const dow=(d.getDay()+6)%7;return d.getTime()-dow*DAY}
+
+/* ---- weekly goal and streaks ----
+   Store.state.goal = {n, unit:'days'|'workouts', hist:[{from:'YYYY-MM-DD' (a Monday), n, unit}]}
+   Each week is judged against the goal that was in force that week, so changing the goal never rewrites past weeks.
+   Weeks before the first goal use the first goal, so history you logged earlier still counts. */
+const GOAL_MAX={days:7,workouts:14};
+const ymd=d=>d.toLocaleDateString('en-CA');
+function addDays(ds,n){const d=new Date(ds+'T12:00');d.setDate(d.getDate()+n);return ymd(d)}
+function mondayOf(ds){const d=new Date(ds+'T12:00');d.setDate(d.getDate()-((d.getDay()+6)%7));return ymd(d)}
+const logDay=l=>l.date||ymd(new Date(l.ts));
+function goalFor(mon){const g=Store.state.goal;if(!g)return null;const h=g.hist&&g.hist.length?g.hist:[{from:'',n:g.n,unit:g.unit}];let cur=h[0];h.forEach(x=>{if(x.from<=mon)cur=x});return cur}
+function setGoal(n,unit){
+  const mon=mondayOf(todayStr()),g=Store.state.goal;
+  const hist=(g&&g.hist?g.hist:[]).filter(x=>x.from<mon);hist.push({from:mon,n,unit});
+  Store.state.goal={n,unit,hist};Store.saveState();
+}
+function clearGoal(){Store.state.goal=null;Store.saveState()}
+function goalStats(extra){
+  const g=Store.state.goal;if(!g)return null;
+  const logs=extra?Store.logs.concat(extra):Store.logs;
+  const wk={};logs.forEach(l=>{const d=logDay(l),m=mondayOf(d);const w=wk[m]||(wk[m]={n:0,days:{}});w.n++;w.days[d]=(w.days[d]||0)+1});
+  const score=(m,gg)=>{const w=wk[m];return !w?0:gg.unit==='days'?Object.keys(w.days).length:w.n};
+  const met=m=>{const gg=goalFor(m);return score(m,gg)>=gg.n};
+  const today=todayStr(),mon=mondayOf(today),keys=Object.keys(wk).sort(),first=keys.length&&keys[0]<mon?keys[0]:mon;
+  const count=score(mon,g),metNow=count>=g.n;
+  let streak=0;for(let w=addDays(mon,-7);w>=first&&met(w);w=addDays(w,-7))streak++;
+  if(metNow)streak++;
+  let best=0,run=0,metWeeks=0,weeks=0;
+  for(let w=first;w<=mon;w=addDays(w,7)){if(met(w)){run++;metWeeks++;best=Math.max(best,run)}else if(w!==mon)run=0;if(w!==mon||metNow)weeks++}
+  const dow=(new Date(today+'T12:00').getDay()+6)%7,daysLeft=7-dow;
+  const trainedToday=!!(wk[mon]&&wk[mon].days[today]);
+  return {g,count,met:metNow,streak,best,metWeeks,weeks,mon,today,daysLeft,trainedToday,week:wk[mon]||{n:0,days:{}}};
+}
+function goalLabel(n,unit){return unit==='days'?(n===1?'1 training day':n+' training days'):(n===1?'1 workout':n+' workouts')}
+function goalMessage(st){
+  const {g,count,met,streak,daysLeft,trainedToday}=st,need=g.n-count;
+  const keep=streak>0?` to keep your ${streak}-week streak going`:'';
+  if(met)return count>g.n&&g.unit==='workouts'?`Goal met, with ${count-g.n} extra. Rest and recovery count too.`:`Goal met for this week.${streak>1?` That's ${streak} weeks in a row.`:''} Anything else this week is a bonus.`;
+  // days the user can still train this week (today only counts for "days" if not trained yet)
+  const open=g.unit==='days'?daysLeft-(trainedToday?1:0):daysLeft;
+  if(g.unit==='days'&&need>open)return `This week's goal is out of reach now. That's fine: a fresh week starts Monday. Any training you do still counts toward your progress.`;
+  const word=g.unit==='days'?(need===1?'more day':'more days'):(need===1?'more workout':'more workouts');
+  const when=daysLeft===1?'today':`in the next ${daysLeft} days`;
+  return `${need} ${word} ${when}${keep}.`;
+}
+function goalCardHTML(st,compact){
+  const {g,count,met,streak,best,metWeeks,weeks,mon,today,week}=st;
+  const pct=Math.min(100,Math.round(count/g.n*100));
+  const dn=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const strip=dn.map((n,i)=>{const d=addDays(mon,i),c=week.days[d]||0,cls=['cday',c?'dn':'',d===today?'td':'',d>today?'fut':''].filter(Boolean).join(' ');
+    const lab=`${n}: ${c?(c===1?'trained':c+' workouts'):d>today?'still to come':'no workout'}`;
+    return `<span class="${cls}" role="listitem" aria-label="${lab}"><span>${n.slice(0,2)}</span><b aria-hidden="true">${c?(c>1&&g.unit==='workouts'?c:'✓'):'·'}</b></span>`}).join('');
+  return `<article class="goal${met?' met':''}" aria-label="Weekly goal">
+    <div class="goal-top"><div><div class="eyebrow">Weekly goal · ${esc(goalLabel(g.n,g.unit))}</div>
+      <div class="goal-num">${count} <small>of ${g.n} ${g.unit==='days'?'days':'workouts'}</small></div></div>
+      <div class="goal-streak"><b>${streak}</b><span>${streak===1?'week streak':'week streak'}</span></div></div>
+    <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="${g.n}" aria-valuenow="${Math.min(count,g.n)}" aria-label="Progress toward this week's goal"><i style="width:${Math.max(pct,count?4:0)}%"></i></div>
+    <div class="cdays" role="list" aria-label="This week">${strip}</div>
+    <p class="goal-msg">${esc(goalMessage(st))}</p>
+    ${compact?'':`<div class="goal-row"><span>Best streak <b>${best} ${best===1?'week':'weeks'}</b></span><span>Goal met <b>${metWeeks} of ${weeks}</b> ${weeks===1?'week':'weeks'}</span></div>`}
+    <div class="go">${compact?'<button class="link" type="button" data-goal="see">See progress</button>':'<button class="link" type="button" data-goal="edit">Change goal</button>'}</div>
+  </article>`;
+}
+let goalEditing=false,goalDraft=null;
+function renderGoal(){
+  const box=$('goalBox');if(!box)return;
+  const g=Store.state.goal;
+  if(goalEditing){
+    const d=goalDraft||(goalDraft=g?{n:g.n,unit:g.unit}:{n:3,unit:'days'});
+    const max=GOAL_MAX[d.unit];if(d.n>max)d.n=max;
+    box.innerHTML=`<article class="goal" aria-label="Set your weekly goal"><div><div class="eyebrow">Weekly goal</div>
+      <p class="note">Pick a target you can hit on a busy week. A streak grows each week (Monday to Sunday) that you reach it.</p></div>
+      <div class="goal-ed">
+        <label>Count<div class="seg" id="goalUnit">${[['days','Training days'],['workouts','Workouts']].map(([v,l])=>`<button type="button" data-unit="${v}" aria-pressed="${d.unit===v}">${l}</button>`).join('')}</div></label>
+        <p class="hint">${d.unit==='days'?'Days: two workouts on the same day count once. Good for building a habit.':'Workouts: every logged workout counts, even two in a day.'}</p>
+        <label>Per week<div class="stepper"><button type="button" data-step="-1" aria-label="Fewer" ${d.n<=1?'disabled':''}>−</button><output aria-live="polite">${d.n}</output><button type="button" data-step="1" aria-label="More" ${d.n>=max?'disabled':''}>+</button></div></label>
+        ${d.unit==='days'&&d.n>=6?'<p class="hint">Six or seven days leaves little room to recover. Make some of those days light flow or mobility.</p>':''}
+        <div class="go"><button class="btn" type="button" data-goal="save">Save goal</button><button class="btn ghost" type="button" data-goal="cancel">Cancel</button>${g?'<button class="link" type="button" data-goal="off">Turn off goal</button>':''}</div>
+      </div></article>`;
+    box.querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>{d.unit=b.dataset.unit;renderGoal()});
+    box.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>{d.n=Math.max(1,Math.min(GOAL_MAX[d.unit],d.n+ +b.dataset.step));renderGoal()});
+  }else if(g){box.innerHTML=goalCardHTML(goalStats(),false)}
+  else box.innerHTML=`<div class="empty"><p><b>Set a weekly goal.</b> Choose how many days or workouts you want each week, and Arc &amp; Iron keeps your streak of weeks that hit it.</p><div class="go"><button class="btn small" type="button" data-goal="edit">Set a weekly goal</button></div></div>`;
+  box.querySelectorAll('[data-goal]').forEach(b=>b.onclick=()=>{const k=b.dataset.goal;
+    if(k==='edit'){goalEditing=true;goalDraft=null;renderGoal()}
+    if(k==='cancel'){goalEditing=false;goalDraft=null;renderGoal()}
+    if(k==='save'){setGoal(goalDraft.n,goalDraft.unit);goalEditing=false;goalDraft=null;renderTrack()}
+    if(k==='off'){if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Tap again to turn off';setTimeout(()=>{b.classList.remove('armed');b.textContent='Turn off goal'},3000);return}
+      clearGoal();goalEditing=false;goalDraft=null;renderTrack()}
+  });
+}
 function renderTrack(){
   const logs=Store.logs.slice().sort((a,b)=>b.ts-a.ts);
   // history
@@ -1778,7 +1899,8 @@ function renderTrack(){
   const now=Date.now(),ws=weekStart(now);
   const thisWeek=logs.filter(l=>l.ts>=ws);
   let streak=0;{let w=ws;if(!thisWeek.length)w-=7*DAY;while(logs.some(l=>l.ts>=w&&l.ts<w+7*DAY)){streak++;w-=7*DAY}}
-  $('stats').innerHTML=[[thisWeek.length,'sessions this week'],[thisWeek.reduce((a,l)=>a+(l.minutes||0),0),'minutes this week'],[streak,streak===1?'week streak':'week streak'],[logs.length,'sessions logged']]
+  renderGoal();
+  $('stats').innerHTML=[[thisWeek.length,'sessions this week'],[thisWeek.reduce((a,l)=>a+(l.minutes||0),0),'minutes this week']].concat(Store.state.goal?[]:[[streak,'week streak']]).concat([[logs.length,'sessions logged']])
     .map(([v,l])=>`<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
   // weekly chart
   const weeks=[];for(let i=7;i>=0;i--){const s=ws-i*7*DAY;weeks.push({s,m:logs.filter(l=>l.ts>=s&&l.ts<s+7*DAY).reduce((a,l)=>a+(l.minutes||0),0)})}
@@ -1908,9 +2030,11 @@ function renderContinue(){
   if(items.includes('skills')){
     h+=`<article class="ccard"><div class="eyebrow">Skill paths</div>${Object.entries(PATHS).filter(([eq])=>pathStarted(eq)&&nextStep(eq)<PATHS[eq].steps.length).map(([eq,P])=>{const nx=nextStep(eq);
       return `<div class="cskill">${eqBanner(eq,'')}<p><b>Next: ${esc(P.steps[nx].t)}</b><br><span class="hint">${esc(P.steps[nx].goal)}</span></p><button class="btn ghost small" data-c="skill:${eq}">Practice</button></div>`}).join('')}</article>`}
+  const gst=goalStats();
   if(!items.length)h=`<div class="empty"><p><b>Nothing in progress yet.</b> Workouts you build, weekly plans, programs and skill paths you start will show up here so you can pick up where you left off.</p>
       <div class="go"><button class="btn" data-c="tobuild">Build a workout</button><button class="btn ghost" data-c="progs">Browse programs</button></div></div>`;
-  box.innerHTML=h;
+  box.innerHTML=(gst?goalCardHTML(gst,true):'')+h;
+  box.querySelectorAll('[data-goal="see"]').forEach(b=>b.onclick=()=>go('progress'));
   box.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{const[k,a]=b.dataset.c.split(':');const r=readResume();
     if(k==='resume'&&r)startGuided(r.w,0,r);
     if(k==='restart'&&r){clearResume();startGuided(r.w,0)}
