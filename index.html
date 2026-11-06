@@ -238,6 +238,29 @@ button.steplink{font:inherit;font-weight:700;background:none;border:0;padding:0;
 .cday.nx{border:2px solid var(--accent);font-weight:700}
 .cskill{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
 .cskill .eqb{grid-column:1/-1}
+/* coach */
+.feel{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.wtrow .feel{grid-column:1/-1;justify-self:start}
+.feel button{font:inherit;font-size:.78rem;padding:6px 10px;border:0;border-right:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+.feel button:last-child{border-right:0}
+.feel button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink);font-weight:700;box-shadow:inset 0 -3px 0 var(--accent)}
+.upt{display:inline-block;font-family:var(--mono);font-size:.72rem;font-weight:700;border-radius:6px;padding:2px 6px;margin:2px 0}
+.upt.up{background:var(--good-soft);color:var(--good)}.upt.dn{background:var(--accent-soft);color:var(--ink)}
+.coach{border:1px solid var(--good);border-radius:10px;background:var(--good-soft);padding:12px 14px;margin:10px 0;display:grid;gap:6px}
+.coach.light{border-color:var(--accent);background:var(--accent-soft)}
+.coach.off{display:block;border-color:var(--line);background:transparent;font-size:.88rem;color:var(--muted)}
+.coach p{margin:0;font-size:.88rem}.coach ul{margin:0;padding-left:18px;font-size:.88rem}
+.coach .go{gap:4px 14px}
+.cnotes{display:grid;gap:8px;margin-bottom:10px}.cnotes:empty{display:none}
+.cnote{border:1px solid var(--accent);border-radius:10px;background:var(--accent-soft);padding:12px 14px;display:grid;gap:8px}
+.cnote p{margin:0;font-size:.9rem}
+.recbox:empty{display:none}
+.rec{position:relative;overflow:hidden;border:1px solid var(--accent);border-radius:14px;background:var(--surface);padding:16px;display:grid;gap:10px;margin-bottom:18px;box-shadow:inset 4px 0 0 var(--accent)}
+.rec>*:not(.rec-art){position:relative}
+.rec-art{position:absolute;inset:0;opacity:.12;pointer-events:none}.rec-art svg{width:100%;height:100%}
+.rec h2{margin:0;font-size:1.5rem;text-transform:uppercase}
+.why{margin:0;padding-left:18px;font-size:.9rem;display:grid;gap:3px}
+.rec-alt{margin:0}
 /* achievements */
 .badge{width:48px;height:48px;flex:none;display:block}
 .badge .b-rim{fill:var(--tier)}.badge .b-core{fill:#1B2328}.badge .b-dash{fill:none;stroke:var(--tier);stroke-width:1.2;stroke-dasharray:2 2.5}
@@ -525,6 +548,8 @@ html.guiding,html.guiding body{overflow:hidden}
 
   <div class="view" id="v-build">
   <p class="tip" id="buildTip" hidden></p>
+  <div id="coachBox" class="cnotes"></div>
+  <section id="recBox" class="recbox" aria-label="Recommended workout"></section>
   <section class="setupbar" aria-labelledby="eq-h">
     <h2 id="eq-h">Equipment</h2>
     <div class="field"><span>Setup</span><div class="seg setupseg" id="setupSeg" role="group" aria-label="Equipment setup"></div></div>
@@ -549,6 +574,7 @@ html.guiding,html.guiding body{overflow:hidden}
         <div class="range vol"><span class="unit">Volume</span><input type="range" id="voiceVol" min="10" max="100" step="10" aria-label="Voice volume"><output id="voiceVolOut"></output><button class="btn ghost small" id="voiceTest" type="button">Test</button></div></div>
       <div class="prepset"><label class="pairrow check"><input type="checkbox" id="warmSet"> Include a warm-up</label><label class="pairrow check"><input type="checkbox" id="coolSet"> Include a cool-down</label><span class="hint">When one is off, its minutes go to the main workout. You can also skip either on any single workout.</span></div>
       <label class="pairrow check"><input type="checkbox" id="recov"> Work around muscles that need rest (from your Recovery tab)</label>
+      <label class="pairrow check"><input type="checkbox" id="progSet"> Progress automatically: raise weights, reps and level from what you log. Every change is shown, and you can undo it.</label>
       <div class="field" id="minField"><span>Time for this workout</span>
         <div class="range"><input type="range" id="minutes" min="10" max="60" step="5" aria-label="Minutes per workout"><output id="minOut"></output></div></div>
       <div class="field"><span>Build</span><div class="seg" id="mode"></div></div>
@@ -938,7 +964,7 @@ function seg(id,opts,key,after){
     b.onclick=()=>{S[key]=v;save();seg(id,opts,key,after);after&&after()};el.appendChild(b)});
 }
 function renderSettings(){
-  seg('level',LEVELS.map((l,i)=>[i+1,l]),'level');
+  seg('level',LEVELS.map((l,i)=>[i+1,l]),'level',()=>{S.levelAt=Date.now();save()});
   seg('goal',Object.entries(GOALS),'goal');
   const fmtHints={auto:'A different style each time.',intervals:'Timed work and rest through a circuit.',emom:'A set of reps at the top of every minute.',tabata:'20 s hard, 10 s easy, 8 rounds.',amrap:'As many rounds as you can in the time.',ladder:'Climb 2, 4, 6, 8 reps and start again.',deck:'Draw cards: suit picks the move, number sets the reps.'};
   if(!S.format)S.format='auto';
@@ -948,6 +974,7 @@ function renderSettings(){
   $('warmSet').checked=S.warm!==false;$('warmSet').onchange=e=>{S.warm=e.target.checked;save()};
   $('coolSet').checked=S.cool!==false;$('coolSet').onchange=e=>{S.cool=e.target.checked;save()};
   $('recov').checked=S.recov!==false;$('recov').onchange=e=>{S.recov=e.target.checked;save()};
+  $('progSet').checked=progOn();$('progSet').onchange=e=>{S.prog=e.target.checked;save();renderCoach();renderRec(true)};
   const modeUI=()=>{const wk=S.mode==='week';if($('todayNote'))renderSetupBar();$('daysField').hidden=!wk;$('minField').hidden=wk;$('gen').textContent=wk?'Build week':'Build workout'};
   seg('mode',[['single','Single workout'],['week','Weekly plan']],'mode',modeUI);
   renderDays();modeUI();
@@ -958,12 +985,94 @@ function renderSettings(){
 
 /* ---------- generator ---------- */
 function activeEq(){return Object.keys(EQ).filter(k=>{const e=effEq(k);return e.on&&e.w.length})}
-function weightFor(ex){
+/* ---------- coach: automatic progression ----------
+   On by default (S.prog). When a workout is built, each move starts from the weight you last logged for it.
+   Two good sessions in a row at that weight (rated Easy or Right, or overall effort 7 or less when unrated) step it up
+   to the next weight in your rack; a Hard rating holds it. A lighter week (Store.state.coach.deload = that Monday) drops
+   one step instead. Counted workouts get targets from your records. Every change is listed on the workout with an undo. */
+const progOn=()=>S.prog!==false;
+const noProgNow=()=>!progOn()||!!(BUILD_CTX&&BUILD_CTX.noProg);
+function deloadActive(){const c=Store.state.coach;return !!(progOn()&&c&&c.deload&&c.deload===mondayOf(todayStr()))}
+function rackList(eq){return (effEq(eq).w||[]).map(Number).filter(x=>!isNaN(x)).sort((a,b)=>a-b)}
+function moveHist(name,eq,dbl){
+  const out=[],u=unitOf(eq);
+  Store.logs.slice().sort((a,b)=>a.ts-b.ts).forEach(l=>(l.moves||[]).forEach(m=>{
+    if(m.name!==name||m.eq!==eq||m.wt==null||isNaN(m.wt)||!!m.dbl!==!!dbl||m.unit!==u)return;
+    const hard=m.feel==='h'||(!m.feel&&(l.rpe||6)>=9),ok=m.feel?m.feel!=='h':(l.rpe||6)<=7;out.push({wt:m.wt,ok,hard})}));
+  return out;
+}
+function progPick(name,eq,dbl){
+  if(noProgNow())return null;
+  const h=moveHist(name,eq,dbl),list=rackList(eq);if(!h.length||!list.length)return null;
+  const cur=h[h.length-1].wt,below=list.filter(x=>x<=cur),base=below.length?below[below.length-1]:list[0];
+  if(deloadActive()){const lo=list[Math.max(0,list.indexOf(base)-1)];return{wt:lo,from:cur,dir:lo<cur?'down':'hold'}}
+  let n=0;for(let i=h.length-1;i>=0&&h[i].wt===cur&&h[i].ok;i--)n++;
+  if(n>=2&&!h[h.length-1].hard){const up=list.find(x=>x>cur);if(up!=null)return{wt:up,from:cur,dir:'up'}}
+  return{wt:base,from:cur,dir:'hold'};
+}
+function wtInfo(ex){
   const st=effEq(ex.eq),w=st.w,n=w.length;let i=ex.load==='light'?0:ex.load==='heavy'?n-1:Math.floor((n-1)/2);
   if(S.level===1&&ex.load==='heavy'&&n>2)i=n-2;
   if(ex.u&&ex.eq==='mace'&&ex.load!=='heavy'&&n>1&&S.level===1)i=0;
-  const val=w[i]+' '+unitOf(ex.eq);return ex.d?'2 × '+val:val;
+  let v=w[i],up=null;const p=progPick(ex.name,ex.eq,ex.d);
+  if(p){v=p.wt;if(p.dir!=='hold')up={from:p.from,dir:p.dir}}
+  const val=v+' '+unitOf(ex.eq);return{val:ex.d?'2 × '+val:val,up};
 }
+function weightFor(ex){return wtInfo(ex).val}
+/* records and last settings for counted workouts of the same length */
+function countBest(kind,min){let b=0;Store.logs.forEach(l=>(l.counts||[]).forEach(x=>{if(x.kind===kind&&x.min===min&&x.n>b)b=x.n}));return b}
+function lastLog(pred){let best=null;Store.logs.forEach(l=>{if(pred(l)&&(!best||l.ts>best.ts))best=l});return best}
+const logOk=l=>(l.rpe||6)<=7&&!(l.moves||[]).some(m=>m.feel==='h');
+function coachBlock(b){
+  if(!b||noProgNow())return b;
+  const prev={fmt:b.fmt,doses:(b.moves||[]).map(m=>m.dose),rungs:b.rungs&&b.rungs.slice(),repBase:b.repBase};
+  let note=null;
+  if(deloadActive()){return b}
+  if(b.kind==='AMRAP'||b.kind==='Deck of cards'){
+    const best=countBest(b.kind,b.min);
+    if(best&&!(b.kind==='Deck of cards'&&best>=52)){b.target=best+1;const w=COUNT_WORD[b.kind];
+      b.fmt+=` Your best for ${b.min} minutes is ${best} ${w}. Aim for ${best+1}.`;note=`${b.title}: aim for ${best+1} ${w} (best ${best})`}
+  }else if(b.kind==='EMOM'){
+    const l=lastLog(x=>x.emom),base=b.repBase;
+    if(l){const next=Math.min(repBase()+4,Math.max(base,logOk(l)?l.emom+1:l.emom));
+      if(next!==base){b.repBase=next;b.moves.forEach(m=>{m.dose=sideDose(m,next)});note=`EMOM: ${next} reps a minute (was ${base})`}}
+  }else if(b.kind==='Ladder'){
+    const top0=b.rungs[b.rungs.length-1];
+    const l=lastLog(x=>(x.counts||[]).some(c=>c.kind==='Ladder'&&c.min===b.min&&c.top));
+    if(l){const c=l.counts.find(c=>c.kind==='Ladder'&&c.min===b.min&&c.top);
+      const top=Math.min(16,Math.max(top0,c.n>=c.top&&logOk(l)?c.top+2:c.top));
+      if(top!==top0){const rungs=[];for(let r=2;r<=top;r+=2)rungs.push(r);
+        b.fmt=b.fmt.replace(b.rungs.join(', '),rungs.join(', '));b.rungs=rungs;b.moves.forEach(m=>{m.dose=rungs.join('-')});note=`Ladder: climbs to ${top} (was ${top0})`}}
+  }
+  if(note){b.coachNote=note;b.coachPrev=prev}
+  return b;
+}
+function upTag(o,eq){if(!o||!o.up)return '';const u=unitOf(eq);
+  return o.up.dir==='up'?`<span class="upt up">▲ Up from ${o.up.from} ${u}</span>`:`<span class="upt dn">▼ Lighter week · usually ${o.up.from} ${u}</span>`}
+function coachHTML(w,wi){
+  const ups=[],downs=[];
+  w.blocks.forEach(b=>{if(b.up)(b.up.dir==='up'?ups:downs).push(b.title);(b.moves||[]).forEach(m=>{if(m.up)(m.up.dir==='up'?ups:downs).push(m.name)})});
+  const notes=w.blocks.filter(b=>b.coachNote).map(b=>b.coachNote);
+  if(w.opts&&w.opts.noProg)return progOn()?`<p class="coach off">Automatic progress is off for this workout: weights are your usual ones. <button class="link" type="button" data-prog="again:${wi}">Build it with progress</button></p>`:'';
+  if(!progOn())return '';
+  if(!ups.length&&!downs.length&&!notes.length&&!w.deload)return '';
+  const list=[...new Set(ups)].map(n=>`<li>▲ ${esc(n)}: one weight up</li>`).concat(notes.map(n=>`<li>${esc(n)}</li>`));
+  return `<div class="coach${w.deload?' light':''}"><b>${w.deload?'Lighter week':'Progress applied'}</b>
+    ${w.deload?`<p>Every few weeks a lighter week lets your body catch up so the next push sticks. Weights are one step down and there are no new targets. Keep effort around 6 out of 10.</p>`:`<p>Based on your last sessions, this workout asks a little more. Drop back any time form slips.</p>`}
+    ${list.length?`<ul>${list.join('')}</ul>`:''}
+    <div class="go"><button class="link" type="button" data-prog="undo:${wi}">Use my usual weights for this one</button><button class="link" type="button" data-prog="off:${wi}">Turn off automatic progress</button>${w.deload?`<button class="link" type="button" data-prog="skipdl:${wi}">Skip the lighter week</button>`:''}</div></div>`;
+}
+/* put a workout back to the last-logged weights and plain doses */
+function undoProg(w){
+  w.blocks.forEach(b=>{
+    if(b.up&&b.flow){b.wt=b.up.from+' '+unitOf(b.flow.eq);delete b.up}
+    (b.moves||[]).forEach(m=>{if(m.up){m.wt=(/^2 ×/.test(m.wt)?'2 × ':'')+m.up.from+' '+unitOf(m.eq);delete m.up}});
+    if(b.coachPrev){b.fmt=b.coachPrev.fmt;if(b.coachPrev.rungs)b.rungs=b.coachPrev.rungs;b.moves.forEach((m,i)=>{if(b.coachPrev.doses[i]!=null)m.dose=b.coachPrev.doses[i]});
+      if(b.coachPrev.repBase)b.repBase=b.coachPrev.repBase;delete b.target;delete b.coachNote;delete b.coachPrev}
+  });
+  w.deload=false;w.opts=Object.assign({},w.opts,{noProg:true});
+}
+
 let BUILD_CTX=null;
 function pool(eqs,maxLvl,noGate){
   const base=x=>eqs.includes(x.eq)&&(x.lvl<=maxLvl||masteredMove(x.name,x.eq))&&(!x.d||effEq(x.eq).pair);
@@ -986,7 +1095,7 @@ function pickBalanced(p,n,order){
   }
   return out;
 }
-function mv(ex,dose){return{name:ex.name,dose,wt:weightFor(ex),cue:ex.cue,eq:ex.eq,pat:ex.pat,u:ex.u}}
+function mv(ex,dose){const wi=wtInfo(ex),o={name:ex.name,dose,wt:wi.val,cue:ex.cue,eq:ex.eq,pat:ex.pat,u:ex.u};if(wi.up)o.up=wi.up;return o}
 
 const EQWORD={kb:'kettlebell',mace:'steel mace',club:'steel club'};
 function demoUrl(name,eq){
@@ -1040,9 +1149,10 @@ function flowBlock(eqs,min,used,pref){
     const top=opts.filter(x=>x.lvl===S.level);f=(top.length&&Math.random()<.6)?rnd(top):rnd(opts);
   }
   used.add(f.name);
-  const st=effEq(f.eq).w;const wt=st[Math.min(st.length-1,Math.floor((st.length-1)/2))]+' '+unitOf(f.eq);
+  const st=effEq(f.eq).w;let wt=st[Math.min(st.length-1,Math.floor((st.length-1)/2))]+' '+unitOf(f.eq),up;
+  const pp=progPick(f.name,f.eq,false);if(pp){wt=pp.wt+' '+unitOf(f.eq);if(pp.dir!=='hold')up={from:pp.from,dir:pp.dir}}
   const work=S.level===1?45:60,rest=30;const rounds=Math.max(2,Math.floor((min*60-120)/(work+rest)));
-  return{kind:'Flow',title:f.name,min,flow:f,wt,fmt:`Learn it first: 2 minutes of slow cycles, pausing at each position. Then flow ${work} s on, ${rest} s off for ${rounds} rounds. Switch your lead side every cycle.`,note:f.note,timer:{work,rest,rounds,lead:120}};
+  return{kind:'Flow',title:f.name,min,flow:f,wt,up,fmt:`Learn it first: 2 minutes of slow cycles, pausing at each position. Then flow ${work} s on, ${rest} s off for ${rounds} rounds. Switch your lead side every cycle.`,note:f.note,timer:{work,rest,rounds,lead:120}};
 }
 function forced(p,names){
   if(!names)return null;
@@ -1113,7 +1223,7 @@ function condBlock(p,min,fmt,o,exclude){
   let f=fmt&&fmt!=='auto'?fmt:null;
   if(!f){const opts=['intervals','emom','tabata','amrap','ladder','deck'].filter(x=>!(exclude||[]).includes(x));f=rnd(opts)}
   const fn={intervals:circuitBlock,emom:emomBlock,tabata:tabataBlock,amrap:amrapBlock,ladder:ladderBlock,deck:deckBlock}[f]||circuitBlock;
-  return fn(p,min,o)||circuitBlock(p,min,o);
+  return coachBlock(fn(p,min,o)||circuitBlock(p,min,o));
 }
 
 function split(total,fr){const raw=fr.map(f=>Math.max(4,Math.round(total*f)));let diff=total-raw.reduce((a,b)=>a+b,0);raw[0]+=diff;return raw}
@@ -1121,7 +1231,7 @@ function split(total,fr){const raw=fr.map(f=>Math.max(4,Math.round(total*f)));le
 function buildWorkout(type,eqs,minutes,opts){
   opts=opts||{};
   const rest=S.recov!==false?restingGroups():[];
-  BUILD_CTX={rest,avoided:false};
+  BUILD_CTX={rest,avoided:false,noProg:!!opts.noProg};
   const p=pool(eqs,S.level);
   const useWarm=S.warm!==false,useCool=S.cool!==false;
   const warm=useWarm?Math.max(3,Math.min(8,Math.round(minutes*.15))):0,cool=useCool?Math.max(2,Math.min(6,Math.round(minutes*.1))):0;
@@ -1145,7 +1255,7 @@ function buildWorkout(type,eqs,minutes,opts){
   }
   if(useCool)blocks.push(coolBlock(cool));
   const ctx=BUILD_CTX;BUILD_CTX=null;
-  return{id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),type,eqs,minutes,blocks,opts,avoided:ctx.avoided?rest:[],built:Date.now()};
+  return{id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),type,eqs,minutes,blocks,opts,avoided:ctx.avoided?rest:[],built:Date.now(),deload:!opts.noProg&&deloadActive()};
 }
 
 let current=null,selDay=0;
@@ -1208,11 +1318,11 @@ function blockHTML(b,bi,wi){
   let body='';
   if(b.flow){
     const lt=lastTxt(b.flow.name,b.flow.eq);
-    body=`${eqBanner(b.flow.eq,b.wt,{flow:true})}<ol class="flowsteps">${b.flow.steps.map(s=>`<li>${stepLink(s,b.flow.eq)}</li>`).join('')}</ol><p class="fmt">${esc(b.note)}${lt?` <span class="last">${esc(lt)}</span>`:''}</p><p class="hint">Tap any step to watch a demo of that move.</p>
+    body=`${eqBanner(b.flow.eq,b.wt,{flow:true})}${upTag(b,b.flow.eq)}<ol class="flowsteps">${b.flow.steps.map(s=>`<li>${stepLink(s,b.flow.eq)}</li>`).join('')}</ol><p class="fmt">${esc(b.note)}${lt?` <span class="last">${esc(lt)}</span>`:''}</p><p class="hint">Tap any step to watch a demo of that move.</p>
       <div class="go">${hasFlowAnim(b.flow)?flowDemoBtn(b.flow):b.flow.video?`<a class="demo vid" href="https://www.youtube.com/watch?v=${b.flow.video}" target="_blank" rel="noopener">▶ Watch a similar sequence</a>`:''}<button class="link" data-sf="${wi}:${bi}">⇄ Different flow</button></div>`;
   }else{
     body=`<ol class="moves">${b.moves.map((m,mi)=>{const lt=m.eq?lastTxt(m.name,m.eq):'';
-      return `<li class="${m.eq?'has-eq eq-'+m.eq:''}">${m.eq?eqBanner(m.eq,m.wt,{light:!m.wt}):''}<span class="mv-name">${m.tag?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}</span><span class="mv-dose">${esc(m.dose)}</span>${lt?`<span class="last">${esc(lt)}</span>`:''}<span class="mv-cue">${m.cue?esc(m.cue)+' ':''}${demo(m.name,m.eq)}${SWAPPABLE(b)&&m.eq?` <button class="link swap" data-sw="${wi}:${bi}:${mi}" aria-label="Swap ${esc(m.name)} for a similar move">⇄ Swap</button>`:''}</span></li>`}).join('')}</ol>`;
+      return `<li class="${m.eq?'has-eq eq-'+m.eq:''}">${m.eq?eqBanner(m.eq,m.wt,{light:!m.wt}):''}<span class="mv-name">${m.tag?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}</span><span class="mv-dose">${esc(m.dose)}</span>${m.eq?upTag(m,m.eq):''}${lt?`<span class="last">${esc(lt)}</span>`:''}<span class="mv-cue">${m.cue?esc(m.cue)+' ':''}${demo(m.name,m.eq)}${SWAPPABLE(b)&&m.eq?` <button class="link swap" data-sw="${wi}:${bi}:${mi}" aria-label="Swap ${esc(m.name)} for a similar move">⇄ Swap</button>`:''}</span></li>`}).join('')}</ol>`;
   }
   const prep=b.kind==='Warm-up'||b.kind==='Cool-down';
   const peek=b.flow?b.flow.steps.slice(0,3).join(' → ')+(b.flow.steps.length>3?' …':''):(b.moves||[]).map(m=>m.name).slice(0,3).join(', ')+((b.moves||[]).length>3?` +${b.moves.length-3} more`:'');
@@ -1239,7 +1349,7 @@ function workoutHTML(w,wi,heading){
   return `<div class="sheet"><div class="sheet-head"><div><div class="eyebrow">${esc(w.program?w.program.label:(heading||'Your workout'))}</div><h2>${GOALS[w.type]} · ${w.minutes} min</h2></div>
     <div class="tags"><span class="tag">${esc(activeSetup().name)}</span><span class="tag">${LEVELS[S.level-1]}</span>${w.eqs.map(k=>`<span class="tag tag-eq eq-${k}">${EQ_ICON[k]}${EQ[k].name}</span>`).join('')}</div></div>
     <button class="btn startbtn" data-start="${wi}">▶ Start workout</button>
-    ${avoidedNote(w)}${recoveryTip(w)}
+    ${coachHTML(w,wi)}${avoidedNote(w)}${recoveryTip(w)}
     <div class="foldbar"><button class="link" data-foldall="0" type="button">Collapse all</button><button class="link" data-foldall="1" type="button">Expand all</button></div>
     ${skippedHTML(w,wi,'warm')}${w.blocks.map((b,bi)=>blockHTML(b,bi,wi)).join('')}${skippedHTML(w,wi,'cool')}
     <div class="go"><button class="btn" id="logThis">Log this workout</button><button class="btn ghost" id="reroll">Build a different ${S.mode==='week'&&!current.single?'version of this day':'workout'}</button></div></div>`;
@@ -1294,6 +1404,13 @@ function render(){
   out.querySelectorAll('[data-foldall]').forEach(b=>b.onclick=()=>{const open=b.dataset.foldall==='1';out.querySelectorAll('details.block').forEach(d=>{d.open=open})});
   out.querySelectorAll('[data-t]').forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();const[wi,bi]=b.dataset.t.split(':').map(Number);startGuided(wkAt(wi),bi)});
   out.querySelectorAll('[data-start]').forEach(b=>b.onclick=()=>startGuided(wkAt(+b.dataset.start),0));
+  out.querySelectorAll('[data-prog]').forEach(b=>b.onclick=()=>{const[k,wi]=b.dataset.prog.split(':'),w=wkAt(+wi);
+    if(k==='undo')undoProg(w);
+    if(k==='off'){S.prog=false;save();undoProg(w);const c=$('progSet');if(c)c.checked=false;renderRec()}
+    if(k==='skipdl'){const c=Store.state.coach||{};c.skipDeload=c.deload;c.deload=null;Store.state.coach=c;Store.saveState();undoProg(w);w.opts=Object.assign({},w.opts,{noProg:false});
+      const nw=Object.assign(buildWorkout(w.type,w.eqs,w.minutes,w.opts),w.day?{day:w.day}:{},w.program?{program:w.program}:{},w.weekRef?{weekRef:w.weekRef}:{});if(current.single)current.single=nw;else current.week[+wi]=nw;renderCoach();renderRec()}
+    if(k==='again'){const o=Object.assign({},w.opts);delete o.noProg;const nw=Object.assign(buildWorkout(w.type,w.eqs,w.minutes,o),w.day?{day:w.day}:{},w.program?{program:w.program}:{},w.weekRef?{weekRef:w.weekRef}:{});if(current.single)current.single=nw;else current.week[+wi]=nw}
+    if(current.single)keepBuilt();render()});
 }
 function renderLib(){
   const g=$('libgrid');
@@ -1514,12 +1631,12 @@ function gDraw(){
   if(s.flow)ex=`<ol class="flowsteps">${s.flow.steps.map(t=>`<li>${stepLink(t,s.flow.eq)}</li>`).join('')}</ol>`;
   if(s.list){
     ex+=`<ol class="moves g-list">${s.list.map(m=>`<li>${eqBanner(m.eq,m.wt)}<span class="mv-name">${m.tag&&s.counter==='deck'?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}</span><span class="mv-dose">${esc(s.counter==='deck'?'':m.dose)}</span><span class="mv-cue">${demo(m.name,m.eq)}</span></li>`).join('')}</ol>`;
-    if(s.counter==='rounds'){const c=G.counts[s.bi]||0;ex+=`<div class="ctr"><button class="btn ghost" data-g="r-">−</button><div><b>${c}</b><span>rounds</span></div><button class="btn" data-g="r+">+1 round</button></div>`}
+    if(s.counter==='rounds'){const c=G.counts[s.bi]||0;ex+=`<div class="ctr"><button class="btn ghost" data-g="r-">−</button><div><b>${c}</b><span>rounds</span></div><button class="btn" data-g="r+">+1 round</button></div>${G.w.blocks[s.bi]&&G.w.blocks[s.bi].target?`<p class="hint">Target: ${G.w.blocks[s.bi].target} rounds</p>`:''}`}
     if(s.counter==='rungs'){const r=G.rung[s.bi]||0;const at=s.rungs[r%s.rungs.length];ex+=`<div class="ctr"><div><b>${at}</b><span>reps on this rung</span></div><button class="btn" data-g="rung">Rung done</button></div><p class="hint">${r} rung${r===1?'':'s'} climbed. ${s.rungs.map((x,j)=>j===r%s.rungs.length?`[${x}]`:x).join(' · ')}</p>`}
     if(s.counter==='deck'){const c=G.card[s.bi];const left=(G.deck[s.bi]||[]).length;
       let cardHTML='<p class="hint">Draw your first card.</p>';
       if(c){const m=s.list[c.s%s.list.length];const r=cardReps(c.v);cardHTML=`<div class="card ${c.s===1||c.s===2?'red':''}"><span>${cardLabel(c.v)}${SUITS[c.s]}</span></div><p class="card-do"><b>${esc(m.name)}</b> × ${m.u?Math.ceil(r/2)+' per side':r}</p>`}
-      ex+=`<div class="deckrow">${cardHTML}</div><div class="ctr"><button class="btn" data-g="draw">Draw a card</button><span class="hint">${G.deck[s.bi]?left+' left in the deck':'52 cards'}</span></div>`}
+      ex+=`<div class="deckrow">${cardHTML}</div><div class="ctr"><button class="btn" data-g="draw">Draw a card</button><span class="hint">${G.deck[s.bi]?left+' left in the deck':'52 cards'}</span></div>${G.w.blocks[s.bi]&&G.w.blocks[s.bi].target?`<p class="hint">Target: ${G.w.blocks[s.bi].target} cards</p>`:''}`}
   }
   $('gExtra').innerHTML=ex;
   $('gExtra').querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{
@@ -1539,7 +1656,7 @@ function gDraw(){
   $('gDone').textContent=s.secs?'Skip':'Done';
 }
 function gClose(){if(!G)return;$('gVoicePanel').hidden=true;$('gVoice').setAttribute('aria-expanded','false');clearInterval(G.iv);G=null;hush();$('guide').hidden=true;document.documentElement.classList.remove('guiding');if(window.Awake)Awake.off();awakeChip('off')}
-function gCounts(){const out=[],add=(bi,n)=>{const b=G.w.blocks[bi];if(b&&n>0)out.push({kind:b.kind,title:b.title,min:b.min,n})};
+function gCounts(){const out=[],add=(bi,n)=>{const b=G.w.blocks[bi];if(b&&n>0)out.push(Object.assign({kind:b.kind,title:b.title,min:b.min,n},b.rungs?{top:b.rungs[b.rungs.length-1]}:{}))};
   Object.keys(G.counts).forEach(bi=>add(bi,G.counts[bi]));Object.keys(G.rung).forEach(bi=>add(bi,G.rung[bi]));Object.keys(G.deck).forEach(bi=>add(bi,52-G.deck[bi].length));return out}
 $('gDone').onclick=()=>{if(!G)return;if(G.done){const w=G.w,mins=Math.max(1,Math.round(G.elapsed/60)),notes=gNotes(),counts=gCounts();gClose();prefillLog(w,{minutes:mins,notes,counts,guided:true});go('log');return}gGo(1)};
 $('gBack').onclick=()=>gGo(-1);
@@ -1781,12 +1898,13 @@ function workoutMoves(w){
 }
 function prefillLog(w,extra){
   extra=extra||{};
-  pendingLog=w?{type:w.type,eqs:w.eqs.slice(),minutes:extra.minutes||w.minutes,moves:workoutMoves(w),kinds:[...new Set(w.blocks.map(b=>b.kind).filter(k=>k&&k!=='Warm-up'&&k!=='Cool-down'))],counts:extra.counts||[],guided:!!extra.guided,program:w.program||null,wid:w.id||null,weekRef:w.weekRef||null,title:w.program?w.program.label:`${GOALS[w.type]} · ${w.minutes} min${w.day?' ('+w.day+' plan)':''}`}:null;
+  pendingLog=w?{type:w.type,eqs:w.eqs.slice(),minutes:extra.minutes||w.minutes,moves:workoutMoves(w),kinds:[...new Set(w.blocks.map(b=>b.kind).filter(k=>k&&k!=='Warm-up'&&k!=='Cool-down'))],emom:(w.blocks.find(b=>b.kind==='EMOM')||{}).repBase||null,counts:extra.counts||[],guided:!!extra.guided,program:w.program||null,wid:w.id||null,weekRef:w.weekRef||null,title:w.program?w.program.label:`${GOALS[w.type]} · ${w.minutes} min${w.day?' ('+w.day+' plan)':''}`}:null;
+  lgFeel={};
   if(extra.notes)$('lgNotes').value=extra.notes;
   $('lgMin').value='';
   renderLogForm();
 }
-let lgEqSel=[];
+let lgEqSel=[],lgFeel={};
 function renderLogForm(){
   $('lgDate').value=$('lgDate').value||todayStr();
   $('lgType').innerHTML=Object.entries(GOALS).map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
@@ -1794,7 +1912,10 @@ function renderLogForm(){
     $('logSource').textContent='Logging: '+pendingLog.title+'. Adjust anything that changed.'+(pendingLog.counts.length?' Saved with it: '+pendingLog.counts.map(c=>`${c.title} ${c.n} ${COUNT_WORD[c.kind]||'rounds'}`).join(', ')+'.':'');
     $('lgMin').value=pendingLog.minutes;$('lgType').value=pendingLog.type;
     $('lgWtField').hidden=!pendingLog.moves.length;$('lgEqField').hidden=true;
-    $('lgWts').innerHTML=pendingLog.moves.map((m,i)=>`<div class="wtrow"><span>${esc(m.name)}${m.flow?' <small>flow</small>':''}${m.dbl?' <small>pair</small>':''}</span><input type="number" id="lgw-${i}" min="0" step="0.5" value="${isNaN(m.wt)?'':m.wt}" aria-label="Weight for ${esc(m.name)}"><small>${m.unit}</small></div>`).join('');
+    $('lgWts').innerHTML=`<p class="hint">Optional: tap how each move felt. Easy and Right move the weight up after a couple of sessions; Hard holds it.</p>`+pendingLog.moves.map((m,i)=>`<div class="wtrow"><span>${esc(m.name)}${m.flow?' <small>flow</small>':''}${m.dbl?' <small>pair</small>':''}</span><input type="number" id="lgw-${i}" min="0" step="0.5" value="${isNaN(m.wt)?'':m.wt}" aria-label="Weight for ${esc(m.name)}"><small>${m.unit}</small>
+      <div class="feel" role="group" aria-label="How ${esc(m.name)} felt">${[['e','Easy'],['r','Right'],['h','Hard']].map(([v,l])=>`<button type="button" data-feel="${i}:${v}" aria-pressed="${lgFeel[i]===v}">${l}</button>`).join('')}</div></div>`).join('');
+    $('lgWts').querySelectorAll('[data-feel]').forEach(b=>b.onclick=()=>{const[i,v]=b.dataset.feel.split(':');lgFeel[i]=lgFeel[i]===v?undefined:v;
+      b.parentNode.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(lgFeel[i]===x.dataset.feel.split(':')[1])))});
   }else{
     $('logSource').textContent='Build a workout and tap "Log this workout" to log every move, or log a quick session here.';
     if(!$('lgMin').value)$('lgMin').value=S.minutes;
@@ -1807,21 +1928,21 @@ function renderLogForm(){
   $('rpeOut').textContent=$('lgRpe').value+'/10';
 }
 $('lgRpe').oninput=()=>{$('rpeOut').textContent=$('lgRpe').value+'/10'};
-$('lgClear').onclick=()=>{pendingLog=null;$('lgNotes').value='';$('lgMin').value='';$('lgDate').value='';$('lgRpe').value=6;renderLogForm()};
+$('lgClear').onclick=()=>{pendingLog=null;lgFeel={};$('lgNotes').value='';$('lgMin').value='';$('lgDate').value='';$('lgRpe').value=6;renderLogForm()};
 $('lgSave').onclick=async()=>{
   const msg=$('lgMsg');const date=$('lgDate').value||todayStr();const minutes=+$('lgMin').value;
   if(!minutes||minutes<1){msg.textContent='Enter how many minutes you trained.';msg.hidden=false;return}
   const type=$('lgType').value;
-  const moves=pendingLog?pendingLog.moves.map((m,i)=>{const v=parseFloat($('lgw-'+i).value);return{name:m.name,eq:m.eq,wt:isNaN(v)?null:v,unit:m.unit,flow:!!m.flow,dbl:!!m.dbl}}):[];
+  const moves=pendingLog?pendingLog.moves.map((m,i)=>{const v=parseFloat($('lgw-'+i).value);const o={name:m.name,eq:m.eq,wt:isNaN(v)?null:v,unit:m.unit,flow:!!m.flow,dbl:!!m.dbl};if(lgFeel[i])o.feel=lgFeel[i];return o}):[];
   const ts=date===todayStr()?Date.now():new Date(date+'T12:00').getTime();
   const rec={date,ts,type,minutes,rpe:+$('lgRpe').value,eqs:pendingLog?pendingLog.eqs:lgEqSel.slice(),moves,muscles:musclesFor(moves,type),notes:$('lgNotes').value.trim().slice(0,1000),program:pendingLog&&pendingLog.program?pendingLog.program.key:null,title:pendingLog?pendingLog.title:GOALS[type]+' · '+minutes+' min'};
-  if(pendingLog){if(pendingLog.kinds.length)rec.kinds=pendingLog.kinds;if(pendingLog.counts.length)rec.counts=pendingLog.counts;if(pendingLog.guided)rec.guided=true}
+  if(pendingLog){if(pendingLog.kinds.length)rec.kinds=pendingLog.kinds;if(pendingLog.counts.length)rec.counts=pendingLog.counts;if(pendingLog.guided)rec.guided=true;if(pendingLog.emom)rec.emom=pendingLog.emom}
   if(type==='flow'&&date===todayStr()&&restingGroups().length)rec.restFlow=true;
   $('lgSave').disabled=true;
   const prg=pendingLog&&pendingLog.program,wref=pendingLog&&pendingLog.weekRef,wid=pendingLog&&pendingLog.wid;
   const gBefore=goalStats(),gAfter=goalStats([rec]),gHit=gBefore&&mondayOf(date)===gAfter.mon&&!gBefore.met&&gAfter.met;
   const recs=recordsIn(rec),recMsg=(recs.list.length?` <b>New best:</b> ${esc(recs.list.join(', '))}.${recs.list.some(x=>/ (kg|lb)$/.test(x))?' Keep every rep clean as the weight climbs.':''}`:'')+(recs.longest?` Your longest session yet.`:'');
-  try{await Store.add('log',rec);if(prg)markProgDay(prg.id,prg.key,true);finishedWorkout(wid,wref);msg.innerHTML=(gHit?`<b>Weekly goal met.</b> ${gAfter.streak>1?gAfter.streak+'-week streak. ':''}`:'Saved. Nice work. ')+(recMsg?recMsg+' ':'')+'<button class="link" type="button" onclick="go(\'progress\')">See your progress</button>';pendingLog=null;$('lgNotes').value='';$('lgMin').value='';renderLogForm()}
+  try{await Store.add('log',rec);if(prg)markProgDay(prg.id,prg.key,true);finishedWorkout(wid,wref);lgFeel={};msg.innerHTML=(gHit?`<b>Weekly goal met.</b> ${gAfter.streak>1?gAfter.streak+'-week streak. ':''}`:'Saved. Nice work. ')+(recMsg?recMsg+' ':'')+'<button class="link" type="button" onclick="go(\'progress\')">See your progress</button>';pendingLog=null;$('lgNotes').value='';$('lgMin').value='';renderLogForm()}
   catch(e){msg.textContent=e&&e.code==='quota_exceeded'?'Your log is full. Delete a few old entries, then save again.':'That did not save. Check your connection and try again.'}
   $('lgSave').disabled=false;msg.hidden=false;setTimeout(()=>msg.hidden=true,8000);
 };
@@ -2062,7 +2183,130 @@ function showToast(){
   toastT=setTimeout(hideToast,6000);
 }
 function hideToast(){const el=$('toast');clearTimeout(toastT);el.classList.remove('on');setTimeout(()=>{el.hidden=true;toastT=null;showToast()},250)}
+
+/* ---- coach: level, skill steps and lighter weeks (run whenever logs change) ----
+   Store.state.coach = {notes:[...], deload:'YYYY-MM-DD' Monday, lastDeload, skipDeload, noAuto:{'eq:i':1}} */
+function coachState(){return Store.state.coach||(Store.state.coach={})}
+function coachNote(n){const c=coachState();c.notes=(c.notes||[]).filter(x=>x.kind!==n.kind||n.kind==='skill').concat([Object.assign({id:'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),ts:Date.now()},n)]).slice(-5)}
+const avg=a=>a.reduce((x,y)=>x+y,0)/Math.max(1,a.length);
+function coachChecks(){
+  if(!progOn()||!Store.logs.length)return;
+  const c=coachState(),now=Date.now(),mon=mondayOf(todayStr());let changed=false;
+  // lighter week after five straight weeks of two or more sessions since the last one
+  if(c.deload!==mon&&c.skipDeload!==mon){
+    const wk={};Store.logs.forEach(l=>{const m=mondayOf(logDay(l));wk[m]=(wk[m]||0)+1});
+    let run=0;for(let w=addDays(mon,-7);(wk[w]||0)>=2&&!(c.lastDeload&&w<=c.lastDeload);w=addDays(w,-7))run++;
+    if(run>=5){c.deload=mon;c.lastDeload=mon;coachNote({kind:'deload',weeks:run});changed=true}
+  }
+  // level: up after 4 steady weeks at moderate effort, down after a run of very hard sessions; never within 3 weeks of a change
+  if(!(S.levelAt&&now-S.levelAt<21*DAY)&&c.deload!==mon){
+    const recent=Store.logs.filter(l=>now-l.ts<28*DAY&&l.ts<=now),last5=Store.logs.slice().sort((a,b)=>b.ts-a.ts).slice(0,5);
+    let to=null;
+    if(S.level>1&&last5.length>=4&&avg(last5.map(l=>l.rpe||6))>=8.5)to=S.level-1;
+    else if(S.level<3&&recent.length>=8&&avg(recent.map(l=>l.rpe||6))<=6.5&&!recent.some(l=>(l.rpe||6)>=9||(l.moves||[]).some(m=>m.feel==='h'))){
+      const weeks=new Set(recent.map(l=>mondayOf(logDay(l))));if(weeks.size>=3)to=S.level+1}
+    if(to){coachNote({kind:'level',from:S.level,to});S.level=to;S.levelAt=now;save();try{renderSettings()}catch(e){}changed=true}
+  }
+  // skill paths you have started: three solid sessions with a step's moves marks it learned
+  Object.entries(PATHS).forEach(([eq,P])=>{if(!pathStarted(eq))return;const i=nextStep(eq);if(i>=P.steps.length||(c.noAuto||{})[eq+':'+i])return;
+    const step=P.steps[i],n=Store.logs.filter(l=>(l.moves||[]).some(m=>m.eq===eq&&step.m.includes(m.name)&&m.feel!=='h')).length;
+    if(n>=3){Store.state.skills=Object.assign({},Store.state.skills,{[eq+':'+i]:now});coachNote({kind:'skill',eq,i});changed=true}});
+  if(changed)Store.saveState();
+}
+function noteText(n){
+  if(n.kind==='level')return n.to>n.from?`<b>Moved you up to ${LEVELS[n.to-1]}.</b> Your last four weeks were steady at moderate effort, so new workouts have more reps, longer work periods and harder flows.`
+    :`<b>Eased you back to ${LEVELS[n.to-1]} for now.</b> Your last few sessions were rated 9 or 10 out of 10. It moves back up once training feels steady again.`;
+  if(n.kind==='skill'){const P=PATHS[n.eq],st=P.steps[n.i],nx=P.steps[n.i+1];
+    return `<b>Marked “${esc(st.t)}” learned</b> on your ${esc(P.name.toLowerCase())} path after three solid sessions with it.${nx?` Next up: ${esc(nx.t)}.`:' That finishes the path.'}`}
+  if(n.kind==='deload')return `<b>This is a lighter week.</b> You've trained steadily for ${n.weeks} weeks. Weights drop one step and there are no new targets, so your body can catch up and the next push sticks.`;
+  return '';
+}
+function renderCoach(){
+  const box=$('coachBox');if(!box)return;const c=Store.state.coach||{},mon=mondayOf(todayStr());
+  const notes=(c.notes||[]).filter(n=>!n.seen&&!(n.kind==='deload'&&c.deload!==mon));
+  box.innerHTML=notes.map(n=>`<div class="cnote"><p>${noteText(n)}</p><div class="go"><button class="btn ghost small" type="button" data-cn="ok:${n.id}">Got it</button><button class="link" type="button" data-cn="undo:${n.id}">${n.kind==='deload'?'Skip the lighter week':'Undo'}</button></div></div>`).join('');
+  box.querySelectorAll('[data-cn]').forEach(b=>b.onclick=()=>{const[k,id]=b.dataset.cn.split(':');const n=(c.notes||[]).find(x=>x.id===id);if(!n)return;
+    n.seen=true;
+    if(k==='undo'){
+      if(n.kind==='level'){S.level=n.from;S.levelAt=Date.now();save();renderSettings()}
+      if(n.kind==='skill'){const sk=Object.assign({},Store.state.skills);delete sk[n.eq+':'+n.i];Store.state.skills=sk;c.noAuto=Object.assign({},c.noAuto,{[n.eq+':'+n.i]:1});renderPrograms()}
+      if(n.kind==='deload'){c.skipDeload=c.deload;c.deload=null}
+      if(current&&current.single&&!current.single.program){current.single=buildWorkout(current.single.type,current.single.eqs,current.single.minutes,current.single.opts);keepBuilt();render()}
+      renderRec(true);
+    }
+    Store.state.coach=c;Store.saveState();renderCoach()});
+}
+
+/* ---- recommended workout (top of Build) ----
+   Picks a focus, a conditioning style and the equipment to feature from recovery, recent logs, this week's
+   equipment balance and the weekly goal. Cached per day in Store.state.rec so it stays put until something changes. */
+const STYLE_KEYS=[['intervals','Intervals'],['emom','EMOM'],['tabata','Tabata'],['amrap','AMRAP'],['ladder','Ladder'],['deck','Deck of cards']];
+const STYLE_NAME={intervals:'an interval',emom:'an EMOM',tabata:'a Tabata',amrap:'an AMRAP',ladder:'a ladder',deck:'a deck-of-cards'};
+const listJoin=a=>a.length<2?a.join(''):a.slice(0,-1).join(', ')+' and '+a[a.length-1];
+function recommend(alt){
+  const eqs=activeEq();if(!eqs.length)return null;
+  alt=alt||0;const now=Date.now(),today=todayStr(),logs=Store.logs.slice().sort((a,b)=>b.ts-a.ts);
+  const since=pred=>{const l=logs.find(pred);return l?Math.max(0,Math.floor((now-l.ts)/DAY)):null};
+  const rest=S.recov!==false?restingGroups():[],why=[];let type=null,minutes=S.minutes;
+  const doneToday=logs[0]&&logDay(logs[0])===today;
+  if(doneToday&&!alt){type='flow';minutes=Math.min(S.minutes,20);why.push('You already trained today, so this is a short, easy flow session if you want more.')}
+  else if(rest.length>=2&&!alt){type='flow';why.push(`Your ${listJoin(rest.map(g=>GROUPS[g].toLowerCase()))} still need rest, so today is a flow and mobility day.`)}
+  else{
+    const last=logs[0],recent=last&&now-last.ts<1.5*DAY?last:null;
+    const rank=['strength','conditioning','mixed','flow'].filter(t=>!(recent&&recent.type===t&&t!=='flow')).map(t=>{const d=since(l=>l.type===t);
+      return{t,d,score:(d==null?21:d)+(t===S.goal?4:0)+(t==='flow'&&rest.length?4:0)-(t==='flow'&&!rest.length?2:0)}}).sort((a,b)=>b.score-a.score);
+    const pick=rank[alt%rank.length];type=pick.t;const name=GOALS[type].toLowerCase();
+    if(pick.d==null)why.push(`You haven't logged a ${name} session yet.`);
+    else if(recent&&recent.type!==type&&pick.d<4)why.push(`Your last session was ${GOALS[recent.type].toLowerCase()}, so today switches it up.`);
+    else if(pick.d>=3)why.push(`Your last ${name} session was ${pick.d} days ago.`);
+    else why.push(`${GOALS[type]} fits your ${GOALS[S.goal].toLowerCase()} focus.`);
+    if(rest.length===1)why.push(`Your ${GROUPS[rest[0]].toLowerCase()} still need rest, so moves that load them are left out.`);
+  }
+  // equipment balance this week
+  const mon=mondayOf(today),wk=logs.filter(l=>logDay(l)>=mon);let focus=eqs;
+  if(eqs.length>1&&wk.length&&type!=='mixed'){
+    const use={};eqs.forEach(k=>use[k]=wk.filter(l=>(l.eqs||[]).includes(k)).length);
+    const low=eqs.slice().sort((a,b)=>use[a]-use[b])[0];
+    if(use[low]<Math.max(...eqs.map(k=>use[k]))&&!(type==='flow'&&low==='kb')){focus=[low];why.push(`${EQ[low].name} work is light this week (${use[low]} of ${wk.length} session${wk.length===1?'':'s'}).`)}
+  }
+  // conditioning style you have gone longest without
+  let format=null;
+  if(type==='conditioning'||type==='mixed'){
+    const st=STYLE_KEYS.map(([k,kind])=>({k,d:since(l=>(l.kinds||[]).includes(kind))})).sort((a,b)=>(b.d==null?999:b.d)-(a.d==null?999:a.d));
+    const s0=st[alt%2===1&&st[1]?1:0];format=s0.k;
+    why.push(s0.d==null?`You haven't done ${STYLE_NAME[format]} workout yet.`:`No ${FORMATS[format]} in ${s0.d} day${s0.d===1?'':'s'}.`);
+  }
+  if(!logs.length&&!alt){why.length=0;why.push('A balanced first session: a flow, some strength work and a short conditioning finish, so you get a feel for everything.')}
+  if(deloadActive())why.push('Lighter week: weights are one step down. Keep effort around 6 out of 10.');
+  const gs=goalStats();if(gs&&!gs.met&&(gs.g.unit==='workouts'||!gs.trainedToday))why.push(`It counts toward your weekly goal (${gs.count} of ${gs.g.n} so far).`);
+  const w=buildWorkout(type,focus,minutes,format?{format}:{});
+  return{w,type,format,eqs:focus,minutes,why:why.slice(0,4),day:today,alt};
+}
+function recSig(alt){return [todayStr(),Store.logs.length,S.level,activeEq().join(),S.minutes,progOn(),deloadActive(),S.recov!==false,alt||0].join('|')}
+function renderRec(force){
+  const box=$('recBox');if(!box)return;renderCoach();
+  const st=Store.state;let r=st.rec;const alt=r&&r.day===todayStr()?r.alt||0:0;
+  if(force||!r||!r.w||r.sig!==recSig(alt)){r=recommend(alt);if(!r){box.innerHTML='';return}r.sig=recSig(alt);st.rec=r;Store.saveState()}
+  const w=r.w,ups=w.blocks.reduce((a,b)=>a+(b.up&&b.up.dir==='up'?1:0)+(b.moves||[]).filter(m=>m.up&&m.up.dir==='up').length,0);
+  box.innerHTML=`<article class="rec" aria-labelledby="rec-title">${artHTML('rack','rec-art')}<div class="eyebrow">Recommended for today</div>
+    <h2 id="rec-title">${GOALS[r.type]} · ${r.minutes} min${r.format?' · '+FORMATS[r.format]:''}</h2>
+    <div class="tags">${r.eqs.map(k=>`<span class="tag tag-eq eq-${k}">${EQ_ICON[k]}${EQ[k].name}</span>`).join('')}${ups?`<span class="tag">▲ ${ups} heavier</span>`:''}</div>
+    <ul class="why">${r.why.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+    <div class="go"><button class="btn" type="button" data-r="start">▶ Start</button><button class="btn ghost" type="button" data-r="see">See the workout</button><button class="btn ghost" type="button" data-r="tweak">Tweak it</button></div>
+    <p class="hint rec-alt"><button class="link" type="button" data-r="new">Suggest something else</button> · <button class="link" type="button" data-r="own">Build my own</button></p></article>`;
+  box.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{const k=b.dataset.r;
+    const show=()=>{current={single:r.w};Store.state.lastBuilt=r.w;Store.saveState();render()};
+    if(k==='start'){show();startGuided(r.w,0)}
+    if(k==='see'){show();try{$('out').scrollIntoView({block:'start'})}catch(e){}}
+    if(k==='tweak'){S.goal=r.type;if(r.format)S.format=r.format;S.minutes=r.minutes;S.mode='single';save();renderSettings();show();
+      const m=$('msg');m.textContent=`The settings below now match the recommendation${r.eqs.length<activeEq().length?` (it featured ${eqLabel(r.eqs)}; use "Using today" above to match)`:''}. Change anything, then tap Build workout.`;m.hidden=false;
+      try{$('set-h').scrollIntoView({block:'start'})}catch(e){}}
+    if(k==='new'){const n=recommend((r.alt||0)+1);if(n){n.sig=recSig(n.alt);Store.state.rec=n;Store.saveState();renderRec()}}
+    if(k==='own'){try{$('set-h').scrollIntoView({block:'start'})}catch(e){}}
+  });
+}
 function renderTrack(){
+  coachChecks();
   const logs=Store.logs.slice().sort((a,b)=>b.ts-a.ts);
   // history
   $('storeNote').textContent=Store.mode==='cloud'?'Saved to your account and private to you. It follows you to any device where you open this app.':'Saved on this device. Use Back up your data on the Build tab to move it to another phone.';
@@ -2115,7 +2359,7 @@ function renderTrack(){
   const resting=Object.keys(rs).filter(g=>rs[g].lvl===2).map(g=>GROUPS[g].toLowerCase());
   $('buildTip').hidden=!resting.length;if(resting.length)$('buildTip').innerHTML=`<b>Recovery check:</b> ${esc(resting.join(', '))} ${resting.length>1?'need':'needs'} rest today. A Flow & mobility session is a good fit.`;
   if(current&&$('out').firstChild)render();
-  renderPrograms();renderContinue();
+  renderPrograms();renderContinue();renderRec();
 }
 
 /* ---- artwork ---- */
