@@ -261,6 +261,10 @@ button.steplink{font:inherit;font-weight:700;background:none;border:0;padding:0;
 .rec h2{margin:0;font-size:1.5rem;text-transform:uppercase}
 .why{margin:0;padding-left:18px;font-size:.9rem;display:grid;gap:3px}
 .rec-alt{margin:0}
+.gearneed{border:1px solid var(--ember);border-radius:10px;background:var(--ember-soft);padding:12px 14px;margin:10px 0;display:grid;gap:6px}
+.gearneed p{margin:0;font-size:.88rem}
+.prepgear{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
+.prepgear .eqb{grid-column:auto}
 /* achievements */
 .badge{width:48px;height:48px;flex:none;display:block}
 .badge .b-rim{fill:var(--tier)}.badge .b-core{fill:#1B2328}.badge .b-dash{fill:none;stroke:var(--tier);stroke-width:1.2;stroke-dasharray:2 2.5}
@@ -574,6 +578,7 @@ html.guiding,html.guiding body{overflow:hidden}
         <div class="range vol"><span class="unit">Volume</span><input type="range" id="voiceVol" min="10" max="100" step="10" aria-label="Voice volume"><output id="voiceVolOut"></output><button class="btn ghost small" id="voiceTest" type="button">Test</button></div></div>
       <div class="prepset"><label class="pairrow check"><input type="checkbox" id="warmSet"> Include a warm-up</label><label class="pairrow check"><input type="checkbox" id="coolSet"> Include a cool-down</label><span class="hint">When one is off, its minutes go to the main workout. You can also skip either on any single workout.</span></div>
       <label class="pairrow check"><input type="checkbox" id="recov"> Work around muscles that need rest (from your Recovery tab)</label>
+      <div class="field"><span>Pause between sections (guided)</span><div class="seg" id="prepSeg"></div><span class="hint">Time to read the next section and set up your equipment. Sections themselves are never split.</span></div>
       <label class="pairrow check"><input type="checkbox" id="progSet"> Progress automatically: raise weights, reps and level from what you log. Every change is shown, and you can undo it.</label>
       <div class="field" id="minField"><span>Time for this workout</span>
         <div class="range"><input type="range" id="minutes" min="10" max="60" step="5" aria-label="Minutes per workout"><output id="minOut"></output></div></div>
@@ -974,6 +979,8 @@ function renderSettings(){
   $('warmSet').checked=S.warm!==false;$('warmSet').onchange=e=>{S.warm=e.target.checked;save()};
   $('coolSet').checked=S.cool!==false;$('coolSet').onchange=e=>{S.cool=e.target.checked;save()};
   $('recov').checked=S.recov!==false;$('recov').onchange=e=>{S.recov=e.target.checked;save()};
+  if(S.prep==null)S.prep=30;
+  seg('prepSeg',[[0,'Off'],[15,'15 s'],[30,'30 s'],[45,'45 s'],[60,'60 s']],'prep');
   $('progSet').checked=progOn();$('progSet').onchange=e=>{S.prog=e.target.checked;save();renderCoach();renderRec(true)};
   const modeUI=()=>{const wk=S.mode==='week';if($('todayNote'))renderSetupBar();$('daysField').hidden=!wk;$('minField').hidden=wk;$('gen').textContent=wk?'Build week':'Build workout'};
   seg('mode',[['single','Single workout'],['week','Weekly plan']],'mode',modeUI);
@@ -1007,7 +1014,9 @@ function progPick(name,eq,dbl){
   const cur=h[h.length-1].wt,below=list.filter(x=>x<=cur),base=below.length?below[below.length-1]:list[0];
   if(deloadActive()){const lo=list[Math.max(0,list.indexOf(base)-1)];return{wt:lo,from:cur,dir:lo<cur?'down':'hold'}}
   let n=0;for(let i=h.length-1;i>=0&&h[i].wt===cur&&h[i].ok;i--)n++;
-  if(n>=2&&!h[h.length-1].hard){const up=list.find(x=>x>cur);if(up!=null)return{wt:up,from:cur,dir:'up'}}
+  if(n>=2&&!h[h.length-1].hard){const up=list.find(x=>x>cur);if(up!=null)return{wt:up,from:cur,dir:'up'};
+    // ready to move up but this is the heaviest one owned: suggest the next standard size
+    const u=unitOf(eq),std=(EQ[eq].lists[u]||[]).find(x=>x>cur);return{wt:base,from:cur,dir:'hold',need:{next:std||null,cur,unit:u,dbl:!!dbl}}}
   return{wt:base,from:cur,dir:'hold'};
 }
 function wtInfo(ex){
@@ -1016,7 +1025,7 @@ function wtInfo(ex){
   if(ex.u&&ex.eq==='mace'&&ex.load!=='heavy'&&n>1&&S.level===1)i=0;
   let v=w[i],up=null;const p=progPick(ex.name,ex.eq,ex.d);
   if(p){v=p.wt;if(p.dir!=='hold')up={from:p.from,dir:p.dir}}
-  const val=v+' '+unitOf(ex.eq);return{val:ex.d?'2 × '+val:val,up};
+  const val=v+' '+unitOf(ex.eq);return{val:ex.d?'2 × '+val:val,up,need:p&&p.need};
 }
 function weightFor(ex){return wtInfo(ex).val}
 /* records and last settings for counted workouts of the same length */
@@ -1049,6 +1058,18 @@ function coachBlock(b){
 }
 function upTag(o,eq){if(!o||!o.up)return '';const u=unitOf(eq);
   return o.up.dir==='up'?`<span class="upt up">▲ Up from ${o.up.from} ${u}</span>`:`<span class="upt dn">▼ Lighter week · usually ${o.up.from} ${u}</span>`}
+function gearNeeds(w){
+  const by={};w.blocks.forEach(b=>{const items=b.flow?[{name:b.flow.name,eq:b.flow.eq,need:b.need}]:(b.moves||[]);
+    items.forEach(m=>{if(!m.need||!m.eq)return;const k=m.eq+(m.need.dbl?'|2':'');const cur=by[k];
+      if(!cur||(m.need.next||1e9)<(cur.next||1e9))by[k]=Object.assign({eq:m.eq,moves:cur?cur.moves:[]},m.need);by[k].moves.push(m.name)})});
+  return Object.values(by).map(n=>Object.assign(n,{moves:[...new Set(n.moves)]}));
+}
+function gearHTML(w,wi){
+  const needs=gearNeeds(w);if(!needs.length)return '';
+  return `<div class="gearneed"><b>Ready for heavier</b>${needs.map(n=>{const nm=EQ[n.eq].name.toLowerCase(),what=n.dbl?`pair of ${n.next} ${n.unit} ${nm}s`:`${n.next} ${n.unit} ${nm}`;
+    return `<p>${esc(listJoin(n.moves))} ${n.moves.length>1?'are':'is'} ready to move up from ${n.cur} ${n.unit}, but that's the heaviest ${n.dbl?'pair of '+nm+'s':nm} in your setup. ${n.next?`The next size up is <b>${esc(what)}</b>. Until you have it, the app keeps you at ${n.cur} ${n.unit}; adding reps or slowing the tempo keeps you progressing.`:'Until you add a heavier one, add reps or slow the tempo to keep progressing.'}</p>
+    ${n.next?`<div class="go"><button class="btn ghost small" type="button" data-addwt="${wi}:${n.eq}:${n.next}">I have ${n.dbl?'a pair of '+esc(n.next+' '+n.unit):'a '+esc(n.next+' '+n.unit)} ${esc(nm)}${n.dbl?'s':''}: add to my setup</button></div>`:''}`}).join('')}</div>`;
+}
 function coachHTML(w,wi){
   const ups=[],downs=[];
   w.blocks.forEach(b=>{if(b.up)(b.up.dir==='up'?ups:downs).push(b.title);(b.moves||[]).forEach(m=>{if(m.up)(m.up.dir==='up'?ups:downs).push(m.name)})});
@@ -1070,6 +1091,7 @@ function undoProg(w){
     if(b.coachPrev){b.fmt=b.coachPrev.fmt;if(b.coachPrev.rungs)b.rungs=b.coachPrev.rungs;b.moves.forEach((m,i)=>{if(b.coachPrev.doses[i]!=null)m.dose=b.coachPrev.doses[i]});
       if(b.coachPrev.repBase)b.repBase=b.coachPrev.repBase;delete b.target;delete b.coachNote;delete b.coachPrev}
   });
+  w.blocks.forEach(b=>{delete b.need;(b.moves||[]).forEach(m=>delete m.need)});
   w.deload=false;w.opts=Object.assign({},w.opts,{noProg:true});
 }
 
@@ -1095,7 +1117,7 @@ function pickBalanced(p,n,order){
   }
   return out;
 }
-function mv(ex,dose){const wi=wtInfo(ex),o={name:ex.name,dose,wt:wi.val,cue:ex.cue,eq:ex.eq,pat:ex.pat,u:ex.u};if(wi.up)o.up=wi.up;return o}
+function mv(ex,dose){const wi=wtInfo(ex),o={name:ex.name,dose,wt:wi.val,cue:ex.cue,eq:ex.eq,pat:ex.pat,u:ex.u};if(wi.up)o.up=wi.up;if(wi.need)o.need=wi.need;return o}
 
 const EQWORD={kb:'kettlebell',mace:'steel mace',club:'steel club'};
 function demoUrl(name,eq){
@@ -1150,9 +1172,9 @@ function flowBlock(eqs,min,used,pref){
   }
   used.add(f.name);
   const st=effEq(f.eq).w;let wt=st[Math.min(st.length-1,Math.floor((st.length-1)/2))]+' '+unitOf(f.eq),up;
-  const pp=progPick(f.name,f.eq,false);if(pp){wt=pp.wt+' '+unitOf(f.eq);if(pp.dir!=='hold')up={from:pp.from,dir:pp.dir}}
+  const pp=progPick(f.name,f.eq,false);let need;if(pp){wt=pp.wt+' '+unitOf(f.eq);if(pp.dir!=='hold')up={from:pp.from,dir:pp.dir};need=pp.need}
   const work=S.level===1?45:60,rest=30;const rounds=Math.max(2,Math.floor((min*60-120)/(work+rest)));
-  return{kind:'Flow',title:f.name,min,flow:f,wt,up,fmt:`Learn it first: 2 minutes of slow cycles, pausing at each position. Then flow ${work} s on, ${rest} s off for ${rounds} rounds. Switch your lead side every cycle.`,note:f.note,timer:{work,rest,rounds,lead:120}};
+  return{kind:'Flow',title:f.name,min,flow:f,wt,up,need,fmt:`Learn it first: 2 minutes of slow cycles, pausing at each position. Then flow ${work} s on, ${rest} s off for ${rounds} rounds. Switch your lead side every cycle.`,note:f.note,timer:{work,rest,rounds,lead:120}};
 }
 function forced(p,names){
   if(!names)return null;
@@ -1349,7 +1371,7 @@ function workoutHTML(w,wi,heading){
   return `<div class="sheet"><div class="sheet-head"><div><div class="eyebrow">${esc(w.program?w.program.label:(heading||'Your workout'))}</div><h2>${GOALS[w.type]} · ${w.minutes} min</h2></div>
     <div class="tags"><span class="tag">${esc(activeSetup().name)}</span><span class="tag">${LEVELS[S.level-1]}</span>${w.eqs.map(k=>`<span class="tag tag-eq eq-${k}">${EQ_ICON[k]}${EQ[k].name}</span>`).join('')}</div></div>
     <button class="btn startbtn" data-start="${wi}">▶ Start workout</button>
-    ${coachHTML(w,wi)}${avoidedNote(w)}${recoveryTip(w)}
+    ${coachHTML(w,wi)}${progOn()&&!(w.opts&&w.opts.noProg)?gearHTML(w,wi):''}${avoidedNote(w)}${recoveryTip(w)}
     <div class="foldbar"><button class="link" data-foldall="0" type="button">Collapse all</button><button class="link" data-foldall="1" type="button">Expand all</button></div>
     ${skippedHTML(w,wi,'warm')}${w.blocks.map((b,bi)=>blockHTML(b,bi,wi)).join('')}${skippedHTML(w,wi,'cool')}
     <div class="go"><button class="btn" id="logThis">Log this workout</button><button class="btn ghost" id="reroll">Build a different ${S.mode==='week'&&!current.single?'version of this day':'workout'}</button></div></div>`;
@@ -1404,6 +1426,11 @@ function render(){
   out.querySelectorAll('[data-foldall]').forEach(b=>b.onclick=()=>{const open=b.dataset.foldall==='1';out.querySelectorAll('details.block').forEach(d=>{d.open=open})});
   out.querySelectorAll('[data-t]').forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();const[wi,bi]=b.dataset.t.split(':').map(Number);startGuided(wkAt(wi),bi)});
   out.querySelectorAll('[data-start]').forEach(b=>b.onclick=()=>startGuided(wkAt(+b.dataset.start),0));
+  out.querySelectorAll('[data-addwt]').forEach(b=>b.onclick=()=>{const[wi,eq,v]=b.dataset.addwt.split(':'),val=+v,w=wkAt(+wi),st=S.eq[eq];
+    if(st&&!st.w.includes(val)){st.w.push(val);st.w.sort((a,b)=>a-b);save();renderRack();renderSetupBar()}
+    w.blocks.forEach(bl=>{const set=(o,eqk)=>{if(o.need&&eqk===eq&&o.need.next===val){o.wt=(o.need.dbl?'2 × ':'')+val+' '+o.need.unit;o.up={from:o.need.cur,dir:'up'};delete o.need}};
+      if(bl.flow)set(bl,bl.flow.eq);(bl.moves||[]).forEach(m=>set(m,m.eq))});
+    if(current.single)keepBuilt();render()});
   out.querySelectorAll('[data-prog]').forEach(b=>b.onclick=()=>{const[k,wi]=b.dataset.prog.split(':'),w=wkAt(+wi);
     if(k==='undo')undoProg(w);
     if(k==='off'){S.prog=false;save();undoProg(w);const c=$('progSet');if(c)c.checked=false;renderRec()}
@@ -1449,10 +1476,19 @@ function phasesFor(b){
   }
   return ph;
 }
+/* a "get ready" pause before each section after the first (S.prep seconds, 0 = off): shows the next
+   section's moves and the equipment to grab. Sections themselves are never split. */
+const prepSecs=()=>S.prep==null?30:S.prep;
+function prepGear(b){
+  const out=[],seen=new Set(),add=(eq,wt)=>{if(!eq)return;const k=eq+'|'+(wt||'');if(seen.has(k))return;seen.add(k);out.push({eq,wt})};
+  if(b.flow)add(b.flow.eq,b.wt);(b.moves||[]).forEach(m=>add(m.eq,m.wt));return out;
+}
 function guidedSteps(w){
-  const steps=[];
+  const steps=[],gap=prepSecs();
   w.blocks.forEach((b,bi)=>{
     const base={bi,block:b.title,kind:b.kind};
+    if(bi>0&&gap>0){const cool=b.kind==='Cool-down';
+      steps.push(Object.assign({},base,{name:'Get ready: '+b.title,detail:cool?'Set the equipment down. Stretches next.':`${b.kind}${b.min?' · '+b.min+' min':''}. Look over the moves and set up your equipment.`,rest:true,prep:true,secs:cool?Math.min(gap,10):gap}))}
     if(b.kind==='Warm-up'||b.kind==='Cool-down'){
       const s=b.kind==='Warm-up'?40:50;
       b.moves.forEach((m,i)=>steps.push(Object.assign({},base,{name:m.name,detail:`${b.kind} · ${i+1} of ${b.moves.length}`,eq:m.eq,secs:s})));return;
@@ -1539,7 +1575,8 @@ function announceStep(){
   if(!G||!voiceOn())return;
   if(G.done){say('Workout complete. Nice work. Log it so your progress stays up to date.',{interrupt:true});return}
   const s=G.steps[G.i];let t='';
-  if(s.rest){const nx=nextWorkStep(G.i);t=`Rest${s.secs?' '+s.secs+' seconds':''}.${nx?' Next up, '+nx.name+'.':''}`}
+  if(s.prep){const b=G.w.blocks[s.bi],gear=prepGear(b).map(g=>EQ[g.eq].name.toLowerCase()+(g.wt?' '+g.wt:''));t=`Next section, ${b.title}. ${gear.length?'Grab your '+listJoin(gear)+'. ':''}Starting in ${s.secs} seconds.`}
+  else if(s.rest){const nx=nextWorkStep(G.i);t=`Rest${s.secs?' '+s.secs+' seconds':''}.${nx?' Next up, '+nx.name+'.':''}`}
   else if(s.list){t=`${s.name}. ${Math.round((s.secs||0)/60)} minutes. ${s.counter==='deck'?'Draw a card to start.':s.counter==='rounds'?'Tap plus one after each round.':s.counter==='rungs'?'Start at '+s.rungs[0]+' reps.':''} Go.`}
   else{
     const parts=[s.name];
@@ -1598,7 +1635,7 @@ function gGo(d){
   if(ni>=G.steps.length){G.done=true;clearResume();beep(990,.5);gDraw();announceStep();return}
   G.i=ni;G.left=G.steps[ni].secs||0;G.armed=false;beep(G.steps[ni].rest?440:880,.2);gDraw();announceStep();snapGuided();
 }
-function gClock(){const s=G.steps[G.i];$('gClock').textContent=s.secs?mmss(Math.max(0,G.left)):mmss(G.elapsed);$('gClockLbl').textContent=s.secs?(s.rest?'Rest left':'Time left'):'Workout time'}
+function gClock(){const s=G.steps[G.i];$('gClock').textContent=s.secs?mmss(Math.max(0,G.left)):mmss(G.elapsed);$('gClockLbl').textContent=s.secs?(s.prep?'Starts in':s.rest?'Rest left':'Time left'):'Workout time'}
 function gNotes(){
   const n=[];G.steps.forEach(s=>{});
   Object.keys(G.counts).forEach(bi=>{const b=G.w.blocks[bi];n.push(`${b.title}: ${G.counts[bi]} round${G.counts[bi]===1?'':'s'}`)});
@@ -1620,7 +1657,7 @@ function gDraw(){
   const s=G.steps[G.i];
   $('gBack').hidden=false;$('gPause').hidden=!s.secs;$('gPause').textContent=G.run?'Pause':'Resume';$('gEnd').textContent=G.armed?'Tap to end':'End';
   $('gBlock').textContent=s.block;$('gCount').textContent=`Step ${G.i+1} of ${n}`;
-  $('gPhase').textContent=s.rest?'Rest':(s.tag?s.tag+' · ':'')+s.kind;
+  $('gPhase').textContent=s.prep?'Next section':s.rest?'Rest':(s.tag?s.tag+' · ':'')+s.kind;
   $('gName').textContent=s.name;$('gDetail').textContent=s.detail||'';
   $('gWt').innerHTML=(!s.rest&&s.eq&&!s.list)?eqBanner(s.eq,s.wt,{big:true,flow:!!s.flow,light:!s.wt}):'';
   $('gLast').textContent=s.lastKey?lastTxt(s.lastKey[0],s.lastKey[1]):'';
@@ -1629,6 +1666,11 @@ function gDraw(){
   gClock();
   let ex='';
   if(s.flow)ex=`<ol class="flowsteps">${s.flow.steps.map(t=>`<li>${stepLink(t,s.flow.eq)}</li>`).join('')}</ol>`;
+  if(s.prep){const b=G.w.blocks[s.bi],gear=prepGear(b);
+    ex=`${gear.length?`<div class="eyebrow">Grab</div><div class="prepgear">${gear.map(g=>eqBanner(g.eq,g.wt,{light:!g.wt})).join('')}</div>`:''}`+
+      (b.flow?`<div class="eyebrow">${esc(b.flow.name)}</div><ol class="flowsteps">${b.flow.steps.map(t=>`<li>${esc(t)}</li>`).join('')}</ol>`
+        :`<div class="eyebrow">Moves</div><ol class="moves g-list">${(b.moves||[]).map(m=>`<li><span class="mv-name">${m.tag?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}</span><span class="mv-dose">${esc(b.counter==='deck'?'':m.dose||'')}</span></li>`).join('')}</ol>`)+
+      `<p class="hint">${esc(b.fmt||'')}</p>`}
   if(s.list){
     ex+=`<ol class="moves g-list">${s.list.map(m=>`<li>${eqBanner(m.eq,m.wt)}<span class="mv-name">${m.tag&&s.counter==='deck'?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}</span><span class="mv-dose">${esc(s.counter==='deck'?'':m.dose)}</span><span class="mv-cue">${demo(m.name,m.eq)}</span></li>`).join('')}</ol>`;
     if(s.counter==='rounds'){const c=G.counts[s.bi]||0;ex+=`<div class="ctr"><button class="btn ghost" data-g="r-">−</button><div><b>${c}</b><span>rounds</span></div><button class="btn" data-g="r+">+1 round</button></div>${G.w.blocks[s.bi]&&G.w.blocks[s.bi].target?`<p class="hint">Target: ${G.w.blocks[s.bi].target} rounds</p>`:''}`}
@@ -1653,7 +1695,7 @@ function gDraw(){
   let nx='';for(let j=G.i+1;j<n;j++){if(!G.steps[j].rest){nx=G.steps[j].name;break}}
   $('gNext').textContent=nx?'Up next: '+nx:'Last step';
   $('gLater').hidden=!G.armed;
-  $('gDone').textContent=s.secs?'Skip':'Done';
+  $('gDone').textContent=s.prep?'I’m ready':s.secs?'Skip':'Done';
 }
 function gClose(){if(!G)return;$('gVoicePanel').hidden=true;$('gVoice').setAttribute('aria-expanded','false');clearInterval(G.iv);G=null;hush();$('guide').hidden=true;document.documentElement.classList.remove('guiding');if(window.Awake)Awake.off();awakeChip('off')}
 function gCounts(){const out=[],add=(bi,n)=>{const b=G.w.blocks[bi];if(b&&n>0)out.push(Object.assign({kind:b.kind,title:b.title,min:b.min,n},b.rungs?{top:b.rungs[b.rungs.length-1]}:{}))};
@@ -2291,7 +2333,7 @@ function renderRec(force){
   box.innerHTML=`<article class="rec" aria-labelledby="rec-title">${artHTML('rack','rec-art')}<div class="eyebrow">Recommended for today</div>
     <h2 id="rec-title">${GOALS[r.type]} · ${r.minutes} min${r.format?' · '+FORMATS[r.format]:''}</h2>
     <div class="tags">${r.eqs.map(k=>`<span class="tag tag-eq eq-${k}">${EQ_ICON[k]}${EQ[k].name}</span>`).join('')}${ups?`<span class="tag">▲ ${ups} heavier</span>`:''}</div>
-    <ul class="why">${r.why.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+    <ul class="why">${r.why.map(x=>`<li>${esc(x)}</li>`).concat(gearNeeds(w).filter(n=>n.next).map(n=>`<li>You're ready for a heavier ${esc(EQ[n.eq].name.toLowerCase())}: the next size up is ${n.dbl?'a pair of ':''}${n.next} ${n.unit}. Details are on the workout.</li>`)).join('')}</ul>
     <div class="go"><button class="btn" type="button" data-r="start">▶ Start</button><button class="btn ghost" type="button" data-r="see">See the workout</button><button class="btn ghost" type="button" data-r="tweak">Tweak it</button></div>
     <p class="hint rec-alt"><button class="link" type="button" data-r="new">Suggest something else</button> · <button class="link" type="button" data-r="own">Build my own</button></p></article>`;
   box.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{const k=b.dataset.r;
