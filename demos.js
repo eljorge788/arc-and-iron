@@ -900,10 +900,10 @@ const MOVES={
     cue:'Swing clean to the rack, pause and check, then press to lockout and fold it back to the rack. Elbow pinned on the way down and up; glutes on for the press.'},
   'kb:start-stop':{kf:kbStartStop(),
     cue:'Same start, same stop, every set. Bell a foot or so ahead. Reach in thumb down to the corner of the handle nearest you, hike it back, stand up into the clean and catch soft in the rack. Push it back and set it down right where it started.'},
-  'kb:goblet squat':{kf:kbGobletSquat(),
-    cue:'Hands under the bell, handle on top, looking through the window. Elbows together. Squat all the way down, lean back away from the bell, and drive straight up. Tuck the tailbone and squeeze at the top.'},
-  'kb:bottoms-up goblet squat':{kf:kbBottomsUpSquat(),
-    cue:'Bell upside down by the horns, arms at 90 degrees, elbows on your ribs, bell off your chest, shoulder blades down. Squat with your elbows inside your knees: push out with the elbows, squeeze in with the knees, chest up. Stand all the way up.'},
+  'kb:goblet squat':{kf:kbBottomsUpSquat(),label:'By the horns',alt:'kb:hands-under goblet squat',
+    cue:'Bell upside down by the horns, arms at 90 degrees, elbows on your ribs, bell off your chest, shoulder blades down. Squat with your elbows inside your knees: push out with the elbows, squeeze in with the knees, chest up. Stand all the way up. If the horns are too much, hold the bell from underneath instead.'},
+  'kb:hands-under goblet squat':{kf:kbGobletSquat(),label:'Hands under the bell',
+    cue:'The alternative hold: hands under the bell, handle on top, looking through the window. Elbows together. Squat all the way down, lean back away from the bell, and drive straight up. Tuck the tailbone and squeeze at the top.'},
   'kb:front squat':{kf:kbFrontSquat(),
     cue:'Bell in the rack, free arm straight out to the side, feet straight ahead. Squat with the racked elbow inside the knee, lean back against the bell, head up. Roll the shoulder back and drive all the way up. Both sides.'},
   'kb:halo':{kf:kbHalo(),
@@ -997,7 +997,8 @@ MOVES['mace:reverse lunge']={kf:join([MOVES['mace:reverse lunge:left'],MOVES['ma
   cue:'Alternate legs. Front shin stays near vertical; the mace stays in the upright hold.'};
 
 /* ---------- names ---------- */
-const ALIAS={kb:{'goblet':'goblet squat','bottoms-up goblet':'bottoms-up goblet squat','goblet squat by the horns':'bottoms-up goblet squat',
+const ALIAS={kb:{'goblet':'goblet squat','bottoms-up goblet squat':'goblet squat','bottoms-up goblet':'goblet squat','goblet squat by the horns':'goblet squat',
+    'goblet squat, hands under the bell':'hands-under goblet squat','hands under goblet squat':'hands-under goblet squat',
     'single kettlebell front squat':'front squat','kettlebell front squat':'front squat','single front squat':'front squat','figure 8':'figure-8','figure 8 front to back':'figure-8','figure-8 front to back':'figure-8','figure 8s':'figure-8',
     'figure 8 back to front':'figure-8 back to front','alternating-direction halo':'alternating halo','alternating halos':'alternating halo',
     'two hands to rack':'rack pickup','rack pick-up':'rack pickup','single-arm swing':'one-arm swing','baby single-arm swing':'one-arm swing',
@@ -1221,12 +1222,13 @@ function ensureDialog(){
       <figure class="dm-pane"><svg class="dm-svg" id="dmFront" role="img" aria-label="Front view"></svg><figcaption>Front</figcaption></figure>
       <figure class="dm-pane"><svg class="dm-svg" id="dmSide" role="img" aria-label="Side view"></svg><figcaption>Side</figcaption></figure>
     </div>
+    <div class="seg dm-alt" id="dmAlt" role="group" aria-label="Version" hidden></div>
     <input type="range" class="dm-scrub" id="dmScrub" min="0" max="1000" value="0" aria-label="Move through the demo">
     <ol class="dm-steps" id="dmSteps" hidden></ol>
     <p class="dm-cue" id="dmCue"></p>
     <div class="dm-ctl"><button type="button" class="btn small" id="dmPlay">❚❚ Pause</button>
       <div class="seg dm-speed" role="group" aria-label="Speed"><button type="button" data-sp="0.5" aria-pressed="false">½×</button><button type="button" data-sp="1" aria-pressed="true">1×</button></div></div>
-    <p class="hint">Lighter limbs are on the far side of the body. A faded, dashed mace is behind the body. The thin trail shows the path the mace head just took.</p>`;
+    <p class="hint">Lighter limbs are on the far side of the body. Anything faded and dashed is behind the body. The thin trail shows the path the end of the mace, club or bell just took.</p>`;
   document.body.appendChild(dlg);
   dlg.querySelector('.dm-x').onclick=()=>dlg.close();
   dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
@@ -1238,29 +1240,42 @@ function ensureDialog(){
   dlg.querySelector('#dmSteps').addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(b&&player)player.goto(+b.dataset.i)});
   return dlg;
 }
-function show(title,eye,tl,stepNames){
+function show(title,eye,tl,stepNames,variants){
   const d=ensureDialog();if(player)player.destroy();
+  // versions of one move (e.g. goblet squat by the horns / hands under the bell): a switch above the slider
+  const alt=d.querySelector('#dmAlt');
+  if(variants&&variants.length>1){alt.hidden=false;
+    alt.innerHTML=variants.map((v,i)=>`<button type="button" data-v="${i}" aria-pressed="${i===0}">${esc(v.label)}</button>`).join('');
+    alt.onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;
+      alt.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));start(variants[+b.dataset.v].tl)}}
+  else{alt.hidden=true;alt.innerHTML='';alt.onclick=null}
   d.querySelector('#dmTitle').textContent=title;d.querySelector('#dmEye').textContent=eye;
   const steps=d.querySelector('#dmSteps');
   if(stepNames){steps.hidden=false;steps.innerHTML=stepNames.map((s,i)=>`<li><button type="button" data-i="${i}">${esc(s)}</button></li>`).join('')}
   else{steps.hidden=true;steps.innerHTML=''}
   const playBtn=d.querySelector('#dmPlay'),scrub=d.querySelector('#dmScrub');
   d.querySelectorAll('[data-sp]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.sp==='1'));
-  player=Player({front:d.querySelector('#dmFront'),side:d.querySelector('#dmSide')},tl,(i,m)=>{
-    d.querySelector('#dmCue').textContent=m.cue||'';
-    steps.querySelectorAll('button').forEach((b,j)=>b.setAttribute('aria-current',j===i?'step':'false'));
-  });
-  player.onstate=on=>{playBtn.textContent=on?'❚❚ Pause':'▶ Play'};
-  player.ontime=x=>{scrub.value=Math.round(x*1000)};
+  function start(tl){
+    if(player)player.destroy();
+    player=Player({front:d.querySelector('#dmFront'),side:d.querySelector('#dmSide')},tl,(i,m)=>{
+      d.querySelector('#dmCue').textContent=m.cue||'';
+      steps.querySelectorAll('button').forEach((b,j)=>b.setAttribute('aria-current',j===i?'step':'false'));
+    });
+    const sp=d.querySelector('[data-sp][aria-pressed="true"]');if(sp)player.speed(+sp.dataset.sp);
+    player.onstate=on=>{playBtn.textContent=on?'❚❚ Pause':'▶ Play'};
+    player.ontime=x=>{scrub.value=Math.round(x*1000)};
+    player.autoplay?player.play():player.onstate(false);
+  }
   if(!d.open)d.showModal();
-  player.autoplay?player.play():player.onstate(false);
+  start(tl);
 }
 
 window.Demos={
   has:(name,eq)=>!!key(name,eq),
   hasFlow:flow=>!!flowKeys(flow),
-  open(name,eq){const k=key(name,eq);if(!k)return false;
-    show(String(name).replace(/\s*[×x]\s*\d.*$/,''),'Move demo',join([MOVES[k]]),null);return true},
+  open(name,eq){const k=key(name,eq);if(!k)return false;const mv=MOVES[k];
+    const vars=mv.alt?[{label:mv.label,tl:join([mv])},{label:MOVES[mv.alt].label,tl:join([MOVES[mv.alt]])}]:null;
+    show(String(name).replace(/\s*[×x]\s*\d.*$/,''),'Move demo',join([mv]),null,vars);return true},
   openFlow(flow){const ks=flowKeys(flow);if(!ks)return false;
     show(flow.name,'Flow demo',join(ks.map(k=>MOVES[k[0]]),ks.map(k=>k[1])),ks.map(k=>k[1]));return true},
   // for previews and tests

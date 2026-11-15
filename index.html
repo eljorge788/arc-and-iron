@@ -368,6 +368,8 @@ button.steplink{font:inherit;font-weight:700;background:none;border:0;padding:0;
 .dm-svg .dm-grip{stroke:color-mix(in srgb,var(--ember) 55%,var(--ink))}
 .dm-svg .dm-ball{fill:var(--ember)}
 .dm-svg .dm-bell{fill:var(--eq-kb)}
+.dm-alt{margin:0 0 8px}
+.dm-alt button{padding:6px 12px;font-size:.85rem}
 .dm-svg .dm-kbh{stroke:var(--eq-kb);fill:none}
 .dm-svg .dm-hid{opacity:.4;stroke-dasharray:5 4}
 .dm-svg .dm-trail{stroke:var(--ember);stroke-width:2.5;fill:none}
@@ -764,8 +766,7 @@ const X=[
 ['Double swing','kb',2,'med','hinge','db','Feet a little wider; both bells pass between the knees.'],
 ['Suitcase deadlift','kb',1,'heavy','hinge','u','Bell beside the foot; stand tall without leaning.'],
 ['Single-leg deadlift','kb',2,'med','hinge','u','Reach the free heel back; keep the hips level.'],
-['Goblet squat','kb',1,'med','squat','','Hands under the bell, handle on top, elbows together. Squat all the way down, lean back away from the bell, drive straight up.'],
-['Bottoms-up goblet squat','kb',1,'med','squat','','Bell upside down by the horns, elbows on your ribs. At the bottom, elbows inside the knees: push out with the elbows, squeeze in with the knees, chest up.'],
+['Goblet squat','kb',1,'med','squat','','Bell upside down by the horns, elbows on your ribs. At the bottom, elbows inside the knees: push out with the elbows, squeeze in with the knees, chest up. If the horns are too much, hold the bell from underneath.'],
 ['Front squat','kb',2,'med','squat','u','Bell in the rack, free arm out to the side. Racked elbow inside the knee, lean back against the bell, head up, drive all the way up.'],
 ['Double front squat','kb',2,'med','squat','d','Bells in the rack, wrists straight, sit between the hips.'],
 ['Rack reverse lunge','kb',1,'med','lunge','u','Step back softly; front shin stays near vertical.'],
@@ -1761,7 +1762,7 @@ const PATHS={
   kb:{name:'Kettlebell',steps:[
     {t:'Deadlift',m:['Two-hand deadlift','Suitcase deadlift','Farmer carry'],goal:'2–3 sets of 10 two-hand deadlifts: stand all the way up, tailbone tucked, touch down. 8 suitcase deadlifts per side without leaning.'},
     {t:'Two-hand swing',m:['Two-hand swing'],goal:'15 crisp swings: hips snap, bell floats, no squatting.'},
-    {t:'Around the world & halo',m:['Around-the-world','Halo','Goblet squat','Bottoms-up goblet squat'],goal:'20 around the world each way with straight arms, 5 halos each way with the head still, and 10 deep goblet squats each way: hands under the bell, then bottoms-up by the horns.'},
+    {t:'Around the world & halo',m:['Around-the-world','Halo','Goblet squat'],goal:'20 around the world each way with straight arms, 5 halos each way with the head still, and 10 deep goblet squats by the horns (hands under the bell if you need it).'},
     {t:'Figure 8s & alternating halo',m:['Figure-8','Figure 8 back to front','Alternating halo'],goal:'10 passes under each leg front to back and back to front, standing tall each lap; 5 alternating halos each way.'},
     {t:'One-arm swing',m:['One-arm swing','Hand-to-hand swing'],goal:'10 per side with the forearm meeting the inner thigh, then 3 hand-to-hand switches each side at the top.'},
     {t:'Rack position',m:['Rack pickup','Push-back drill','Front squat','Rack reverse lunge'],goal:'5 rack pickups per side: fingers to the sky, wrist flat, elbow by the hip. Then 3–5 slow push-backs and 5 front squats per side.'},
