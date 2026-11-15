@@ -760,6 +760,7 @@ const X=[
 ['Two-hand deadlift','kb',1,'heavy','hinge','','Bell between your insteps. Hips back, knees behind your toes, arms straight; stand all the way up and squeeze, then touch it down.'],
 ['Two-hand swing','kb',1,'heavy','hinge','b','Hike the bell back, snap the hips, let it float to chest height.'],
 ['One-arm swing','kb',2,'med','hinge','ub','Square shoulders and resist the twist.'],
+['Hand-to-hand swing','kb',2,'med','hinge','b','Switch at the top, never the bottom: thumb up, grab thumb to thumb, thumb down.'],
 ['Double swing','kb',2,'med','hinge','db','Feet a little wider; both bells pass between the knees.'],
 ['Suitcase deadlift','kb',1,'heavy','hinge','u','Bell beside the foot; stand tall without leaning.'],
 ['Single-leg deadlift','kb',2,'med','hinge','u','Reach the free heel back; keep the hips level.'],
@@ -778,6 +779,8 @@ const X=[
 ['Halo','kb',1,'light','rotate','','Circle close around the head; ribs stay down.'],
 ['Around-the-world','kb',1,'med','rotate','','Pass hand to hand around the waist; hips stay still.'],
 ['Figure-8','kb',2,'med','rotate','b','From a hinge, pass the bell between the legs.'],
+['Figure 8 back to front','kb',2,'med','rotate','b','Pass it from behind forward under one leg, arm straight; the front hand finds it. Stand tall for each lap.'],
+['Alternating halo','kb',2,'light','rotate','','Change direction every rep: right hand past the left ear, then left past the right. Elbows on your body, head still.'],
 ['Windmill','kb',3,'light','core','u','Eyes on the bell; hinge sideways toward the floor.'],
 ['Turkish get-up','kb',2,'light','core','u','Slow, one position at a time, arm locked.'],
 ['Farmer carry','kb',1,'heavy','core','','Walk tall with short steps for 30–40 m.'],
@@ -848,6 +851,7 @@ const FLOWS=[
 {name:'Half Mill to Torch Press',eq:'club',lvl:2,steps:['Half mill (top circle)','Rotational torch press','Shield cast to switch sides'],note:'Uses the shield cast for momentum into the other side.'},
 {name:'Lunge Cast & Flag',eq:'club',lvl:2,steps:['Reverse lunge arm cast','Stand to order position','Forward lunge flag press','Return'],note:'Legs and shoulders together.'},
 {name:'Swing–Clean–Press–Squat',eq:'kb',lvl:2,steps:['One-arm swing','Clean','Press','Front squat','Switch hands'],note:'The bell never touches down; switch hands on the swing.'},
+{name:'Halo & Figure 8 Flow',eq:'kb',lvl:2,steps:['Around-the-world ×5 each way','Halo ×3 each way','Figure-8 ×5 each leg','Alternating halo ×4','Figure 8 back to front ×5 each leg'],note:'The coach\'s warm-up order: feet together for around the world, wider for the figure 8s. Stand all the way up between passes.'},
 {name:'Halo Flow',eq:'kb',lvl:1,steps:['Halo ×2 each way','Goblet squat','Around-the-world ×2 each way','Two-hand swing ×5'],note:'A good first flow and a solid warm-up.'},
 {name:'Snatch–Windmill Chain',eq:'kb',lvl:3,steps:['Snatch','Overhead hold','Windmill','Stand','Lower to rack, switch'],note:'Use a bell you can windmill with confidence, not your snatch bell.'}
 ];
@@ -1750,17 +1754,37 @@ const PATHS={
     {t:'Mill & reverse mill',m:['Mill','Reverse mill','Reverse lunge arm cast'],goal:'8 of each per side, elbow tracing a clean circle.'},
     {t:'Gamma cast & side clean',m:['Gamma cast','Side clean'],goal:'10 alternating gamma casts with no pause.'},
     {t:'Advanced swings',m:['Bullwhip','Clock squat','Double mill','Double swipe'],goal:'Your own call: clean, relaxed reps at speed.'}]},
+  // Kettlebell steps follow the learning order in Chris's lesson notes (Mark Wildman, lessons 1-16).
+  // Saved progress is keyed by step number: migrateKbPath() moved older saves onto these steps.
   kb:{name:'Kettlebell',steps:[
-    {t:'Suitcase deadlift',m:['Suitcase deadlift','Farmer carry'],goal:'8 per side with a flat back and no leaning.'},
+    {t:'Deadlift',m:['Two-hand deadlift','Suitcase deadlift','Farmer carry'],goal:'2–3 sets of 10 two-hand deadlifts: stand all the way up, tailbone tucked, touch down. 8 suitcase deadlifts per side without leaning.'},
     {t:'Two-hand swing',m:['Two-hand swing'],goal:'15 crisp swings: hips snap, bell floats, no squatting.'},
-    {t:'Goblet squat & halo',m:['Goblet squat','Halo','Around-the-world','Rack reverse lunge'],goal:'10 deep, upright goblet squats.'},
-    {t:'One-arm swing',m:['One-arm swing','Figure-8'],goal:'10 per side with square shoulders.'},
-    {t:'Clean',m:['Clean','High pull','Single-leg deadlift'],goal:'5 per side, landing the bell softly in the rack.'},
-    {t:'Press',m:['Overhead press','Clean & press','Push press','Bent-over row'],goal:'5 strict presses per side.'},
+    {t:'Around the world & halo',m:['Around-the-world','Halo','Goblet squat'],goal:'20 around the world each way with straight arms, 5 halos each way with the head still, and 10 deep, upright goblet squats.'},
+    {t:'Figure 8s & alternating halo',m:['Figure-8','Figure 8 back to front','Alternating halo'],goal:'10 passes under each leg front to back and back to front, standing tall each lap; 5 alternating halos each way.'},
+    {t:'One-arm swing',m:['One-arm swing','Hand-to-hand swing'],goal:'10 per side with the forearm meeting the inner thigh, then 3 hand-to-hand switches each side at the top.'},
+    {t:'Rack position',m:['Rack pickup','Push-back drill','Rack reverse lunge'],goal:'5 rack pickups per side: fingers to the sky, wrist flat, elbow by the hip. Then 3–5 slow push-backs per side.'},
+    {t:'Clean',m:['Clean','Clean with transitions','High pull','Single-leg deadlift'],goal:'3 swing cleans per side, pausing to check the rack each time; then one set with hand-to-hand transitions.'},
+    {t:'Press',m:['Overhead press','Clean & press','Start-stop','Push press','Bent-over row'],goal:'Build to 4 sets of 3 strict presses per side, adding a set each session. Start and stop every set the same way.'},
     {t:'Turkish get-up',m:['Turkish get-up'],goal:'1 slow get-up per side with the arm locked the whole way.'},
     {t:'Snatch & windmill',m:['Snatch','Windmill','Bottoms-up press'],goal:'10 per side with no bell flip onto the forearm.'}]}
 };
-const KS=()=>(Store.state.skills||{});
+// The kettlebell path gained two steps (figure 8s, rack position) and moved others, and progress is saved by
+// step number, so older saves are moved over once. A step counts as learned if the step after it already was.
+const KB_PATH_MAP={0:0,1:1,2:2,3:4,4:6,5:7,6:8,7:9};
+function migrateKbPath(st){
+  if(!st||st.kbPath===2)return;
+  const sk=st.skills||{},out={};let had=false;
+  for(const k in sk){const [eq,i]=k.split(':');if(eq==='kb'){had=true;if(KB_PATH_MAP[i]!=null)out['kb:'+KB_PATH_MAP[i]]=sk[k]}else out[k]=sk[k]}
+  if(out['kb:4']&&!out['kb:3'])out['kb:3']=out['kb:4'];
+  if(out['kb:6']&&!out['kb:5'])out['kb:5']=out['kb:6'];
+  st.skills=out;
+  const c=st.coach;
+  if(c&&c.noAuto){const na={};for(const k in c.noAuto){const [eq,i]=k.split(':');na[eq==='kb'&&KB_PATH_MAP[i]!=null?'kb:'+KB_PATH_MAP[i]:k]=c.noAuto[k];had=true}c.noAuto=na}
+  if(c&&c.notes)c.notes.forEach(n=>{if(n.kind==='skill'&&n.eq==='kb'&&KB_PATH_MAP[n.i]!=null){n.i=KB_PATH_MAP[n.i];had=true}});
+  st.kbPath=2;
+  if(had)try{Store.saveState()}catch(e){}
+}
+const KS=()=>{migrateKbPath(Store.state);return Store.state.skills||{}};
 function mastered(eq,i){return !!KS()[eq+':'+i]}
 function nextStep(eq){const n=PATHS[eq].steps.length;for(let i=0;i<n;i++)if(!mastered(eq,i))return i;return n}
 function pathStarted(eq){return !!PATHS[eq]&&PATHS[eq].steps.some((s,i)=>mastered(eq,i))}
@@ -1821,7 +1845,7 @@ function renderPrograms(){
     const nx=nextStep(eq),cnt=P.steps.filter((s,i)=>mastered(eq,i)).length;
     return `<details class="pathcard" ${openPath===eq?'open':''} data-path="${eq}"><summary>${artHTML(PATH_ART[eq])}<span><b>${P.name} path</b><small>${cnt} of ${P.steps.length} mastered${nx<P.steps.length?' · Next: '+esc(P.steps[nx].t):' · Complete'}</small></span><span class="meter"><i class="s-ready" style="width:${Math.round(cnt/P.steps.length*100)}%"></i></span></summary>
       <ol class="steps">${P.steps.map((s,i)=>{const st=mastered(eq,i)?'done':i===nx?'now':'locked';
-        return `<li class="st-${st}"><span class="num">${st==='done'?'✓':i+1}</span><div><b>${esc(s.t)}</b><p>${esc(s.goal)}</p><p class="hint">Moves: ${s.m.map(esc).join(', ')}</p>
+        return `<li class="st-${st}"><span class="num">${st==='done'?'✓':i+1}</span><div><b>${esc(s.t)}</b><p>${esc(s.goal)}</p><p class="hint">Moves: ${s.m.map(n=>stepLink(n,eq)).join(', ')}</p>
           <div class="go">${demo(s.m[0],eq)}${st==='done'?`<button class="link" data-sk="${eq}:${i}:0">Undo</button>`:st==='now'?`<button class="btn small" data-sk="${eq}:${i}:1">Mark mastered</button>`:'<span class="hint">Unlocks after the step above</span>'}</div></div></li>`}).join('')}</ol></details>`}).join('');
   sp.querySelectorAll('details').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)openPath=d.dataset.path;else if(openPath===d.dataset.path)openPath=null}));
   sp.querySelectorAll('[data-sk]').forEach(b=>b.onclick=()=>{const[eq,i,v]=b.dataset.sk.split(':');const k=Object.assign({},KS());if(v==='1')k[eq+':'+i]=Date.now();else{for(let j=+i;j<PATHS[eq].steps.length;j++)delete k[eq+':'+j]}
