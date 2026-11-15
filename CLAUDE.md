@@ -6,7 +6,7 @@ https://eljorge788.github.io/arc-and-iron/
 ## Layout
 - `index.html`: the whole app (markup, CSS and JS in one file, no build step).
 - `sw.js`: service worker. Network-first for the page so updates reach phones on next open. Bump `CACHE` when changing icons or the manifest.
-- `demos.js`: animated move demos (front and side views) for the mace and the steel club. A pose's `len` picks the implement (MACE or CLUB); club moves follow the beginner reference in the Arc & Iron project (steel-club-exercises.md).
+- `demos.js`: animated move demos (front and side views) for the mace, the steel club and the kettlebell. A pose's `len` picks the implement (MACE or CLUB); `kb:1` draws a kettlebell instead (G = handle middle, D = handle to bell, W = along the handle, hands at `hR`/`hL` along W and `hD` along D). Club moves follow the beginner reference in the Arc & Iron project (steel-club-exercises.md); kettlebell moves follow Chris's lesson notes from Mark Wildman's kettlebell lessons 1-4 (also in the project).
 - `art.js`: theme-aware SVG artwork (tab backgrounds, program and skill-path heroes). Brief in `art.brief.md`. `S.art` picks poster, engraved or off.
 - `keepawake.js`: keeps the screen on during guided workouts (Wake Lock API, with the NoSleep.js video fallback, MIT).
 - `manifest.webmanifest` and `icons/`: home-screen install. `icons/badge.svg` is the master logo.

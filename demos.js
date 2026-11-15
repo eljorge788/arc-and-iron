@@ -26,7 +26,10 @@ const mx=v=>[-v[0],v[1],v[2]];          // mirror left <-> right
 /* ---------- poses ---------- */
 const STAND={P:[0,94,0],pitch:0,yaw:0,roll:0,hipYaw:0,feet:{L:[12,8,0],R:[-12,8,0]},turn:8,fyL:0,fyR:0,tL:0,tR:0,
   G:[0,104,22],D:[0,1,0],gR:0,gL:10,choke:6,len:MACE,offL:0,offR:0,freeL:[20,92,4],freeR:[-20,92,4],
-  eL:[1,-0.8,-0.3],eR:[-1,-0.8,-0.3],kneeOut:0.3};
+  eL:[1,-0.8,-0.3],eR:[-1,-0.8,-0.3],kneeOut:0.3,kb:0,W:[1,0,0],hR:-4.5,hL:4.5,hD:0};
+// Kettlebell (kb:1): G is the middle of the handle and D points from the handle to the centre of the bell.
+// W runs along the handle toward the figure's left. Each hand sits at G + D*hD + W*hR (or hL): side by
+// side on the handle with hD 0, or on the horns with hD about 5.
 // Pose fields: P pelvis, pitch (forward lean, deg), yaw (torso turn, + toward the figure's left),
 // hipYaw, feet (ankle points), turn (toe-out), fyL/fyR (extra foot pivot), tL/tR (0..1 up on the toes),
 // G (reference point on the shaft) and D (shaft direction, toward the head), gR/gL (where each hand
@@ -54,6 +57,7 @@ function mirror(p,grip=true){
   if('yaw' in p)o.yaw=-p.yaw;if('hipYaw' in p)o.hipYaw=-p.hipYaw;if('roll' in p)o.roll=-p.roll;
   if(p.feet)o.feet={L:mx(p.feet.R),R:mx(p.feet.L)};
   sw('eL','eR',mx);sw('freeL','freeR',mx);if(grip){sw('gL','gR',id);sw('offL','offR',id)}sw('tL','tR',id);sw('fyL','fyR',neg);
+  if(p.W)o.W=mx(p.W);sw('hL','hR',id);
   return o;
 }
 const mirrorKF=(kf,grip=true)=>kf.map(([t,p])=>[t,mirror(p,grip)]);
@@ -536,7 +540,86 @@ function orderSquat(){
     [2.8,Object.assign({},UPRIGHT,C_ORDER2)],[3.0,{}]];
 }
 
+/* ---------- kettlebell ----------
+   From Chris's lesson notes (Mark Wildman, Wildman Athletica, kettlebell lessons 1 to 4): two-hand deadlift,
+   two-hand swing, around the world and the single-direction halo. */
+const KFEET={L:[16,8,0],R:[-16,8,0]};
+const KB=Object.assign({},STAND,{kb:1,feet:KFEET,turn:0,kneeOut:0.35,W:[1,0,0],hR:-4.5,hL:4.5,hD:0,offL:0,offR:0,
+  eL:[1,0,-0.6],eR:[-1,0,-0.6]});
+// middle of the shoulders for a pose, and the handle point reached with straight arms in a direction
+function shoulderMid(p){const F=torsoFrame(p.P,p.pitch||0,p.yaw||0,p.roll||0);return add(add(p.P,mul(F.u,TORSO)),mul(F.u,-4))}
+const armsTo=(p,dir,reach=53)=>add(shoulderMid(p),mul(norm(dir),reach));
+const kbArms=(pose,dir,reach)=>Object.assign({},pose,{G:armsTo(pose,dir,reach),D:norm(dir)});
+
+function kbDeadlift(){
+  // Feet shoulder-width, toes straight, bell between the insteps. Hips back to about knee height, torso
+  // about 45 degrees, knees behind the toes, arms hanging straight. Stand all the way up, then touch down.
+  const bottom=Object.assign({},KB,{P:[0,54,-34],pitch:54,G:[0,25.5,3],D:[0,-1,0]});
+  const top=kbArms(Object.assign({},KB,{P:[0,94,0],pitch:0}),[0,-1,0.22]);
+  const mid=Object.assign(kbArms(Object.assign({},KB,{P:[0,72,-17],pitch:27}),[0,-1,0.06]),{pass:true});
+  return [[0,bottom],[0.35,{}],[0.8,mid],[1.25,top],[1.75,{}],[2.2,mid],[2.65,bottom],[3.0,{}],[3.45,mid],[3.9,top],[4.4,{}],[4.85,mid],[5.3,bottom],[5.6,{}]];
+}
+function kbSwing(){
+  // Bell about 40 cm in front. Hinge, reach out with straight arms and tip it toward you. Hike it back high
+  // between the thighs, snap the hips and stand tall so it floats to about chest height on straight arms.
+  // On the last back-swing, track it out in front and park it, then stand up.
+  const floorG=[0,23.6,32.8],floorD=norm([0,-0.876,0.482]);
+  const standFree=Object.assign({},KB,{G:floorG,D:floorD,offL:1,offR:1,freeL:[20,86,2],freeR:[-20,86,2],eL:[1,-0.4,-0.6],eR:[-1,-0.4,-0.6]});
+  const setup=Object.assign({},KB,{P:[0,62,-32],pitch:74,G:floorG,D:floorD,eL:[1,0.3,-0.3],eR:[-1,0.3,-0.3]});
+  const hike=kbArms(Object.assign({},KB,{P:[0,74,-20],pitch:48}),[0,-0.766,-0.643]);
+  const pass=Object.assign(kbArms(Object.assign({},KB,{P:[0,88,-8],pitch:18}),[0,-1,0.35]),{pass:true});
+  const top=kbArms(Object.assign({},KB,{P:[0,94,0],pitch:0}),[0,-0.08,1]);
+  const rep=t=>[[t,pass],[t+0.28,top],[t+0.56,pass],[t+0.84,hike]];
+  const reach=Object.assign({},setup,{offL:1,offR:1,freeL:[16,46,16],freeR:[-16,46,16]});   // hands near the knees, about to grip
+  let kf=[[0,standFree],[0.35,{}],[1.15,reach],[1.4,setup],[1.6,{}],[2.05,hike]];
+  for(let i=0;i<3;i++)kf=kf.concat(rep(2.05+0.84*i+0.0001).slice(0));
+  const end=kf[kf.length-1][0];
+  return kf.concat([[end+0.45,setup],[end+0.65,{}],[end+0.85,reach],[end+1.65,standFree],[end+1.95,{}]]);
+}
+function kbAroundTheWorld(){
+  // Feet together, legs straight, bell hanging in front of the hips in both hands. The right hand takes it
+  // round the right hip; swap thumb to thumb behind the back; the left hand brings it round the left hip and
+  // they swap in front. Two laps one way, then two the other.
+  const base=Object.assign({},KB,{feet:{L:[5,8,0],R:[-5,8,0]},P:[0,94,0],kneeOut:0.1,pitch:0,roll:0});
+  const at=th=>{const r=th*Math.PI/180,c=Math.cos(r),sn=Math.sin(r);
+    return {G:[-25*sn,89,c>=0?15*c:18*c],D:[0,-1,0],
+      pitch:-1.5*c,roll:3*sn,P:[1.5*sn,94,1.5*c]}};   // lean a little away from the bell
+  const both={hR:-3,hL:3,offL:0,offR:0},rightOnly={hR:0,offL:1,offR:0},leftOnly={hL:0,offR:1,offL:0};
+  const lap=t0=>[
+    [t0,Object.assign(at(0),both)],[t0+0.18,Object.assign(at(12),rightOnly,{pass:true})],
+    [t0+0.42,Object.assign(at(60),{pass:true})],[t0+0.66,Object.assign(at(110),{pass:true})],
+    [t0+0.9,Object.assign(at(160),{offL:0.5,pass:true})],[t0+1.05,Object.assign(at(180),both)],
+    [t0+1.2,Object.assign(at(200),leftOnly,{pass:true})],[t0+1.44,Object.assign(at(250),{pass:true})],
+    [t0+1.68,Object.assign(at(300),{pass:true})],[t0+1.92,Object.assign(at(345),{offR:0.5,pass:true})],[t0+2.1,Object.assign(at(360),both)]];
+  const one=[[0,Object.assign({},base,at(0),both)],[0.3,{}]].concat(lap(0.3).slice(1),lap(2.4).slice(1),[[4.7,{}]]);
+  return chain(one,mirrorKF(one));
+}
+function kbHalo(){
+  // Bell upside down by the horns in front of the chest: elbows on the body, forearms flat. The right hand
+  // goes past the left ear, the bell circles behind the head close to the nape and comes back to the front.
+  // Pause, and after two the left hand leads past the right ear.
+  const base=Object.assign({},KB,{P:[0,94,0],pitch:0,hR:-8,hL:8,hD:5});
+  const at=deg=>{const r=deg*Math.PI/180,c=Math.cos(r),sn=Math.sin(r),k=(1-c)/2;
+    const rad=c>=0?lerp(19,29,c):lerp(19,14,-c);
+    const H=[sn*rad,106+54*Math.sqrt(k),c*rad];
+    const D=norm(add(mul([0,1,0],c),mul([sn,0,c],Math.abs(sn)*0.9+0.25)));
+    return {G:sub(H,mul(D,5)),D,W:[Math.cos(r),0,-Math.sin(r)],
+      eL:norm(vl([0.3,-1,0],[0.4,0.7,0.7],k)),eR:norm(vl([-0.3,-1,0],[-0.4,0.7,0.7],k))}};
+  const rep=(t0,dir)=>{const out=[];for(let i=1;i<=8;i++)out.push([t0+0.26*i,Object.assign(at(dir*45*i),{pass:i<8})]);return out};
+  const kf=[[0,Object.assign({},base,at(0))],[0.3,{}]].concat(rep(0.3,1),[[2.68,{}]],rep(2.68,1),[[5.06,{}]],
+    rep(5.06,-1),[[7.44,{}]],rep(7.44,-1),[[9.82,{}]]);
+  return kf;
+}
+
 const MOVES={
+  'kb:two-hand deadlift':{kf:kbDeadlift(),
+    cue:'Feet shoulder-width, toes straight ahead, bell between your insteps. Push your hips back with your weight in your heels and knees behind your toes. Arms straight down the insides of your legs, both hands on the handle, head and tailbone in one line. Drive through your heels and stand all the way up: kneecaps up, tailbone under, ribs down. Sit back and touch the bell down.'},
+  'kb:two-hand swing':{kf:kbSwing(),
+    cue:'Bell a foot or so in front of you. Hinge, reach out with straight arms and tip it toward you, lats on. Hike it back high between your thighs, then snap your hips and stand all the way up so it floats to about chest height. Your arms are ropes; the hips do the work. On the last rep, track it out in front and set it down.'},
+  'kb:around-the-world':{kf:kbAroundTheWorld(),
+    cue:'Feet together, toes straight ahead, legs straight. Bell in front of your hips in both hands. Pass it around one hip, swap hands thumb to thumb behind your back, bring it around the other hip and swap in front. Arms long, shoulders down, eyes out ahead. Both directions.'},
+  'kb:halo':{kf:kbHalo(),
+    cue:'Hold the bell by the horns, upside down in front of your chest: elbows on your body, forearms flat, bell pushed off your chest. Right hand goes past your left ear, around the back of your head (breathe in) and back to the front (breathe out). Pause. Move the bell, not your head. Then lead with the left hand.'},
   'mace:10-to-2':{kf:tenToTwo(),
     cue:'From the upright hold, swing first to the side your top hand points to, the opposite side (left hand on top goes over the right shoulder). Then behind your back, over the other shoulder, back again, and return to the upright hold. Keep your head centered.'},
   'mace:barbarian squat':{kf:barbarianSquat(),
@@ -626,7 +709,10 @@ MOVES['mace:reverse lunge']={kf:join([MOVES['mace:reverse lunge:left'],MOVES['ma
   cue:'Alternate legs. Front shin stays near vertical; the mace stays in the upright hold.'};
 
 /* ---------- names ---------- */
-const ALIAS={mace:{'hand switch':'hand switches','rotational uppercut':'uppercut','overhead press':'offset press',
+const ALIAS={kb:{'two hand swing':'two-hand swing','2-hand swing':'two-hand swing','swing':'two-hand swing',
+    'two hand deadlift':'two-hand deadlift','2-hand deadlift':'two-hand deadlift','deadlift':'two-hand deadlift',
+    'around the world':'around-the-world','halos':'halo','light halos':'halo','single-direction halo':'halo'},
+  mace:{'hand switch':'hand switches','rotational uppercut':'uppercut','overhead press':'offset press',
   'squat':'front squat','bent-over row':'offset bent-over row','offset row':'offset bent-over row','pendulum swings':'pendulum swing'},
   club:{'two-hand side swing':'side rocker','two-hand side swings':'side rocker','side rock-it':'side rocker','side rocket':'side rocker',
     'swing':'lateral swing','swings':'lateral swing','one-arm arm cast':'arm cast','two-hand swipe':'swipe','swipes':'swipe',
@@ -642,7 +728,7 @@ function key(name,eq){
   const sh=n.match(/\s*\bover the (left|right) shoulder\b/);
   if(sh){side=sh[1]==='right'?'left':'right';n=n.replace(sh[0],'')} // over the right shoulder first = left hand on top
   else{const m=n.match(/,?\s*\b(left|right)\b.*$/);if(m){side=m[1];n=n.slice(0,m.index)}}
-  n=n.replace(/,.*$/,'').replace(/^(mace|steel mace|club|steel club)\s+/,'').replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
+  n=n.replace(/,.*$/,'').replace(/^(mace|steel mace|club|steel club|kettlebell|kb)\s+/,'').replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
   n=(ALIAS[eq]&&ALIAS[eq][n])||n;
   if(side&&MOVES[eq+':'+n+':'+side])return eq+':'+n+':'+side;
   return MOVES[eq+':'+n]?eq+':'+n:null;
@@ -678,13 +764,20 @@ function poseAt(kf,t){
     const u=ease((t-ta)/(tb-ta),!a.pass,!b.pass);
     const o={feet:{L:vl(a.feet.L,b.feet.L,u),R:vl(a.feet.R,b.feet.R,u)},D:norm(vl(a.D,b.D,u))};
     for(const k of ['P','G','eL','eR','freeL','freeR'])o[k]=vl(a[k],b[k],u);
-    for(const k of ['pitch','yaw','roll','hipYaw','turn','fyL','fyR','tL','tR','gR','gL','choke','offL','offR','kneeOut','len'])o[k]=lerp(a[k],b[k],u);
+    for(const k of ['pitch','yaw','roll','hipYaw','turn','fyL','fyR','tL','tR','gR','gL','choke','offL','offR','kneeOut','len','kb','hR','hL','hD'])o[k]=lerp(a[k],b[k],u);
+    o.W=norm(vl(a.W,b.W,u));
     return o;
   }
   return kf[kf.length-1][1];
 }
 
 /* ---------- skeleton ---------- */
+const BELL_R=10.5,BELL_C=15;            // bell radius; handle middle to bell centre
+function bellOf(p){
+  const C=add(p.G,mul(p.D,BELL_C));
+  return {C,a:sub(p.G,mul(p.W,7.5)),b:add(p.G,mul(p.W,7.5)),
+    ha:add(sub(C,mul(p.W,7)),mul(p.D,-5)),hb:add(add(C,mul(p.W,7)),mul(p.D,-5))};
+}
 function ik(A,T,a,b,pole){
   let d=sub(T,A),dl=len(d);const max=a+b-0.01;
   if(dl>max){T=add(A,mul(d,max/dl));d=sub(T,A);dl=max}
@@ -709,10 +802,13 @@ function skeleton(p){
     const fd=norm(add(mul(h,1-0.3*toe),[0,-0.3-0.6*toe,0]));
     sk['knee'+s]=knee;sk['ank'+s]=ank;sk['toe'+s]=add(ank,mul(fd,FOOT));
   }
-  sk.hand={R:vl(add(p.G,mul(p.D,p.gR)),p.freeR,p.offR),L:vl(add(p.G,mul(p.D,p.gL)),p.freeL,p.offL)};
+  if(p.kb>0.5){const g=add(p.G,mul(p.D,p.hD));
+    sk.hand={R:vl(add(g,mul(p.W,p.hR)),p.freeR,p.offR),L:vl(add(g,mul(p.W,p.hL)),p.freeL,p.offL)};}
+  else sk.hand={R:vl(add(p.G,mul(p.D,p.gR)),p.freeR,p.offR),L:vl(add(p.G,mul(p.D,p.gL)),p.freeL,p.offL)};
   for(const s of ['L','R']){const [elb,wr]=ik(sk.sh[s],sk.hand[s],UARM,FARM,norm(s==='L'?p.eL:p.eR));sk['elb'+s]=elb;sk['wr'+s]=wr}
   sk.len=p.len;sk.butt=sub(p.G,mul(p.D,p.choke));sk.tip=add(sk.butt,mul(p.D,p.len));
   sk.gripTop=add(sk.butt,mul(p.D,p.len<80?16:22));
+  if(p.kb>0.5){sk.kb=true;sk.bell=bellOf(p);sk.tip=sk.bell.C}
   return sk;
 }
 
@@ -752,7 +848,12 @@ function scene(cam,sk,trail){
   }
   // mace, cut into pieces so each piece sorts in front of or behind the body on its own
   const hid=(a,b)=>((dz(a)+dz(b))/2<body-6?' dm-hid':'');
-  if(sk.len<80){
+  if(sk.kb){
+    // kettlebell: a handle with two horns over a round bell
+    const B=sk.bell;
+    seg(B.a,B.b,4,'dm-kbh'+hid(B.a,B.b));seg(B.a,B.ha,4,'dm-kbh'+hid(B.a,B.ha));seg(B.b,B.hb,4,'dm-kbh'+hid(B.b,B.hb));
+    const C=pr(B.C);items.push({z:dz(B.C),s:`<circle cx="${f1(C[0])}" cy="${f1(C[1])}" r="${f1(BELL_R*S)}" class="dm-bell${hid(B.C,B.C)||' dm-ring'}"/>`});
+  }else if(sk.len<80){
     // club: knob, handle, then a body that swells toward a rounded end
     const N=7,neck=sk.gripTop;
     seg(sk.butt,neck,4.5,'dm-grip'+hid(sk.butt,neck));
@@ -784,7 +885,8 @@ function Player(views,tl,onMark){
   const reduce=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
   function render(){
     const sk=skeleton(poseAt(tl.kf,t));
-    const trail=[];for(let i=12;i>=1;i--){const tt=t-i*0.035;if(tt<0)continue;const q=poseAt(tl.kf,tt);trail.push(add(sub(q.G,mul(q.D,q.choke)),mul(q.D,q.len)))}
+    const trail=[];for(let i=12;i>=1;i--){const tt=t-i*0.035;if(tt<0)continue;const q=poseAt(tl.kf,tt);
+      trail.push(q.kb>0.5?add(q.G,mul(q.D,BELL_C)):add(sub(q.G,mul(q.D,q.choke)),mul(q.D,q.len)))}
     trail.push(sk.tip);
     for(const k in views)views[k].innerHTML=scene(CAM[k],sk,trail);
     let m=0;for(let i=0;i<tl.marks.length;i++)if(t>=tl.marks[i].t)m=i;
@@ -866,6 +968,6 @@ window.Demos={
   openFlow(flow){const ks=flowKeys(flow);if(!ks)return false;
     show(flow.name,'Flow demo',join(ks.map(k=>MOVES[k[0]]),ks.map(k=>k[1])),ks.map(k=>k[1]));return true},
   // for previews and tests
-  _Player:Player,_join:join,_MOVES:MOVES,_key:key,_poseAt:poseAt,_skeleton:skeleton,_onBody:onBody,_STAND:STAND,_shaft:shaft,_norm:norm,_scene:scene,_CAM:CAM
+  _Player:Player,_join:join,_MOVES:MOVES,_key:key,_poseAt:poseAt,_skeleton:skeleton,_onBody:onBody,_STAND:STAND,_shaft:shaft,_norm:norm,_scene:scene,_CAM:CAM,_mirror:mirror,_mirrorKF:mirrorKF,_chain:chain,_torsoFrame:torsoFrame
 };
 })();
