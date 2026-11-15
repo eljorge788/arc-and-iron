@@ -757,6 +757,7 @@ const unitOf=k=>(S.eq[k]&&S.eq[k].unit)||EQ[k].unit;
 const LB_PER_KG=2.20462;
 // [name, eq, level, load, pattern, flags(u=each side,d=needs pair,b=ballistic), cue]
 const X=[
+['Two-hand deadlift','kb',1,'heavy','hinge','','Bell between your insteps. Hips back, knees behind your toes, arms straight; stand all the way up and squeeze, then touch it down.'],
 ['Two-hand swing','kb',1,'heavy','hinge','b','Hike the bell back, snap the hips, let it float to chest height.'],
 ['One-arm swing','kb',2,'med','hinge','ub','Square shoulders and resist the twist.'],
 ['Double swing','kb',2,'med','hinge','db','Feet a little wider; both bells pass between the knees.'],
@@ -853,10 +854,11 @@ const FLOWS=[
 
 const WARM={
   gen:['Neck and shoulder circles','Cat–cow','Hip circles','World\'s greatest stretch'],
-  kb:['Light halos','Goblet hold squat pry'],
+  kb:['Two-hand deadlift practice','Light halos','Goblet hold squat pry'],
   mace:['Pendulum swings (choked up)','Slow 10-to-2 practice'],
   club:['Inside and outside circles, light','Two-hand side swings']
 };
+const WDOSE={'Two-hand deadlift practice':'10 slow reps'};   // warm-up items that aren't timed by seconds
 const COOL=['Child\'s pose with side reach','Thread the needle','Hip flexor stretch','Thoracic open book','Forearm and wrist stretch','Slow nasal breathing'];
 
 const LEVELS=['Beginner','Intermediate','Advanced'];
@@ -1157,8 +1159,11 @@ const demo=(name,eq)=>{if(hasAnim(name,eq))return `<button type="button" class="
 const stepLink=(s,eq)=>PLAIN_STEP.test(s)?esc(s):hasAnim(s,eq)?`<button type="button" class="steplink" data-demo="${esc(s)}" data-eq="${eq}">${esc(s)}</button>`:`<a class="steplink" href="${videoFor(s,eq)||demoUrl(s,eq)}" target="_blank" rel="noopener">${esc(s)}</a>`;
 
 function warmBlock(eqs,min){
-  const items=[...WARM.gen.slice(0,3).map(n=>[n,'']),...eqs.flatMap(k=>WARM[k].map(n=>[n,k])).slice(0,3)];
-  return{kind:'Warm-up',title:'Warm-up',min,fmt:'Easy pace. 30–45 s each, move straight to the next.',moves:items.map(([n,k])=>({name:n,dose:'30–45 s',eq:k}))};
+  // up to three equipment drills, taken from each piece of equipment in turn
+  const pools=eqs.map(k=>(WARM[k]||[]).map(n=>[n,k])),own=[];
+  for(let i=0;own.length<3&&pools.some(p=>p.length>i);i++)pools.forEach(p=>{if(p[i]&&own.length<3)own.push(p[i])});
+  const items=[...WARM.gen.slice(0,3).map(n=>[n,'']),...own];
+  return{kind:'Warm-up',title:'Warm-up',min,fmt:'Easy pace. 30–45 s each, move straight to the next.',moves:items.map(([n,k])=>({name:n,dose:WDOSE[n]||'30–45 s',eq:k}))};
 }
 function coolBlock(min){return{kind:'Cool-down',title:'Cool-down',min,fmt:'Hold each stretch, breathing slowly through the nose.',moves:shuffle(COOL).slice(0,Math.max(3,Math.min(5,Math.round(min/1.2)))).map(n=>({name:n,dose:'45–60 s'}))}}
 
