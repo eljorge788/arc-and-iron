@@ -374,8 +374,8 @@ const UPRIGHT={P:STAND.P,pitch:0,yaw:0,hipYaw:0,feet:STAND.feet,turn:STAND.turn,
 function sideRocker(){
   // Two hands, wide hinge, club hanging in front of the shins. Rock it side to side like a pendulum and
   // shift onto the leg it swings toward.
-  const hang=Object.assign({},HINGE,{G:[0,86,27],D:[0,-1,0.06],eL:[1,-0.5,-0.4],eR:[-1,-0.5,-0.4]});
-  const to=x=>({P:[x*6,88,-3],yaw:x*6,hipYaw:x*3,G:[x*7,87,27],D:norm([x*0.62,-0.78,0.06])});
+  const hang=Object.assign({},HINGE,{G:[0,90,25],D:[0,-1,0.06],eL:[1,-0.5,-0.4],eR:[-1,-0.5,-0.4]});
+  const to=x=>({P:[x*6,88,-3],yaw:x*6,hipYaw:x*3,G:[x*7,91,25],D:norm([x*0.62,-0.78,0.06])});
   return [[0,C_TWO],[0.25,{}],[0.75,hang],[1.25,to(1)],[1.8,to(-1)],[2.35,to(1)],[2.9,to(-1)],[3.4,{P:HINGE.P,yaw:0,hipYaw:0,G:hang.G,D:hang.D}],
     [3.95,Object.assign({},UPRIGHT,C_ORDER2)],[4.2,{}]];
 }
@@ -464,7 +464,7 @@ function oneArmShield(){
 }
 function cleanKF(){
   // Hinge and let the club drop between the legs, then drive the hips so it floats up; tighten to stop in order.
-  const drop={G:[0,100,32],D:norm([0,-0.55,0.84]),eL:[1,-0.6,-0.3],eR:[-1,-0.6,-0.3],pass:true};
+  const drop={G:[0,102,28],D:norm([0,-0.55,0.84]),eL:[1,-0.6,-0.3],eR:[-1,-0.6,-0.3],pass:true};
   const back={P:[0,84,-8],pitch:38,feet:WIDE,turn:15,kneeOut:0.6,G:[0,76,10],D:norm([0,-0.6,-0.8])};
   const fwd={P:STAND.P,pitch:0,feet:WIDE,G:[0,108,34],D:norm([0,0.45,0.9]),pass:true};
   return [[0.5,drop],[0.95,back],[1.1,{}],[1.5,fwd],[1.85,atOrder(TALL)],[2.05,{}]];
@@ -497,7 +497,7 @@ function twoMill(){
   const bottom={P:[0,90,-3],pitch:12,yaw:0,hipYaw:0,tL:0,tR:0,fyL:0,fyR:0,G:[0,92,28],D:norm([0,-1,0.08]),eL:[1,-0.5,-0.3],eR:[-1,-0.5,-0.3],pass:true};
   const upL={P:STAND.P,pitch:0,yaw:26,hipYaw:16,tR:0.4,fyR:28,G:[14,128,18],D:norm([0.75,0.66,0]),eL:[1,-0.6,-0.2],eR:[-1,-0.6,-0.2],pass:true};
   const behind={yaw:8,hipYaw:4,tR:0.1,fyR:8,G:[4,166,-10],D:norm([0.15,-0.92,-0.36]),eL:[1,0.9,0.15],eR:[-1,0.9,0.15]};
-  const castR={yaw:-24,hipYaw:-14,tR:0,fyR:0,tL:0.4,fyL:-26,G:[-36,142,18],D:norm([-0.85,0.5,0.12]),eL:[0.4,-1,0.3],eR:[0,-1,0.3],pass:true};
+  const castR={yaw:-24,hipYaw:-14,tR:0,fyR:0,tL:0.4,fyL:-26,G:[-32,141,16],D:norm([-0.85,0.5,0.12]),eL:[0.4,-1,0.3],eR:[0,-1,0.3],pass:true};
   return [[0,C_TWO],[0.25,{}],[0.6,R],[0.75,{}],[1.15,Object.assign({},bottom)],[1.55,upL],[1.9,behind],[2.05,{}],[2.4,castR],
     [2.8,Object.assign({},bottom)],[3.2,Object.assign({},L,{pass:false})],[3.4,{}]];
 }
@@ -516,13 +516,13 @@ function castFlag(){
   const side={G:[-12,124,20],D:[0,1,0],eL:[1,-1,-0.2],eR:[-1,-1,-0.2]};
   const tip={G:[-12,148,12],D:norm([-0.1,0.3,-0.95]),eL:[1,0,0.3],eR:[-0.6,0.2,0.7],pass:true};
   const behind={G:[-10,164,-8],D:norm([-0.05,-0.93,-0.36]),eL:[1,0.9,0.15],eR:[-0.6,1,0.1]};
-  const flag={G:[-10,176,34],D:norm([-0.3,0.72,0.62]),eL:[1,-0.4,0],eR:[-1,-0.4,0]};
+  const flag={G:[-8,170,26],D:norm([-0.3,0.72,0.62]),eL:[1,-0.4,0],eR:[-1,-0.4,0]};
   return [[0,C_TWO],[0.35,side],[0.5,{}],[0.85,tip],[1.2,behind],[1.4,{}],[1.85,flag],[2.15,{}],[2.6,Object.assign({},side)],[2.75,{}],
     [3.1,Object.assign({},C_ORDER2)],[3.3,{}]];
 }
 function cleanPress(){
   // Clean to order, then drive the club forward and up to straight arms, still upright; lower to order.
-  const top={G:[0,191,12],D:[0,1,0],eL:[1,-0.2,0],eR:[-1,-0.2,0]};
+  const top={G:[0,185,12],D:[0,1,0],eL:[1,-0.2,0],eR:[-1,-0.2,0]};
   return [[0,C_TWO],[0.25,{}]].concat(cleanKF()).concat([[2.65,top],[2.9,{}],[3.55,atOrder(TALL)],[3.75,{}],
     [4.1,Object.assign({},UPRIGHT,C_ORDER2)],[4.3,{}]]);
 }
@@ -710,7 +710,7 @@ MOVES['mace:reverse lunge']={kf:join([MOVES['mace:reverse lunge:left'],MOVES['ma
 
 /* ---------- names ---------- */
 const ALIAS={kb:{'two hand swing':'two-hand swing','2-hand swing':'two-hand swing','swing':'two-hand swing',
-    'two hand deadlift':'two-hand deadlift','2-hand deadlift':'two-hand deadlift','deadlift':'two-hand deadlift',
+    'two hand deadlift':'two-hand deadlift','two-hand deadlift practice':'two-hand deadlift','2-hand deadlift':'two-hand deadlift','deadlift':'two-hand deadlift',
     'around the world':'around-the-world','halos':'halo','light halos':'halo','single-direction halo':'halo'},
   mace:{'hand switch':'hand switches','rotational uppercut':'uppercut','overhead press':'offset press',
   'squat':'front squat','bent-over row':'offset bent-over row','offset row':'offset bent-over row','pendulum swings':'pendulum swing'},
