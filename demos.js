@@ -818,6 +818,57 @@ function kbStartStop(){
   return both(kf);
 }
 
+/* goblet squats and the single kettlebell front squat (Chris's notes on Mark Wildman's "3 Types of Goblet Squats") */
+// carry a hold written for standing tall (UP_KB) onto a pose whose torso has moved (squat depth, lean)
+function carry(pose,src){
+  const F=torsoFrame(pose.P,pose.pitch||0,pose.yaw||0,pose.roll||0);
+  const pt=v=>add(add(add(pose.P,mul(F.l,v[0])),mul(F.u,v[1]-94)),mul(F.f,v[2]));
+  const dir=v=>norm(add(add(mul(F.l,v[0]),mul(F.u,v[1])),mul(F.f,v[2])));
+  const o=Object.assign({},src);
+  for(const k of ['P','pitch','yaw','roll','hipYaw','feet','turn','kneeOut','tL','tR','fyL','fyR'])if(k in pose)o[k]=pose[k];   // body from pose, hands from src
+  o.G=pt(src.G);o.D=dir(src.D);o.W=dir(src.W);o.eL=dir(src.eL);o.eR=dir(src.eR);
+  if(src.freeL)o.freeL=pt(src.freeL);if(src.freeR)o.freeR=pt(src.freeR);
+  return o;
+}
+// goblet: hands under the ball, handle on top at eye level ("looking through the window"), elbows together
+const GOBLET=Object.assign({},UP_KB,{G:[0,158,26],D:[0,-1,0],W:[1,0,0],hR:-5,hL:5,hD:24,offL:0,offR:0,eL:[-0.25,-1,-0.25],eR:[0.25,-1,-0.25]});
+// bottoms-up: the halo start position, bell upside down by the horns, elbows on the ribs, forearms level
+const BOTTOMS_UP=Object.assign({},UP_KB,{hR:-8,hL:8,hD:5,offL:0,offR:0},haloAt(0));
+function kbSquatReps(top,bottom,reps){
+  const kf=[[0,top],[0.4,{}]];let t=0.4;
+  for(let i=0;i<reps;i++){kf.push([t+0.95,bottom],[t+1.2,{}],[t+2.0,top],[t+2.35,{}]);t+=2.35}
+  return kf;
+}
+function kbGobletSquat(){
+  // Squat all the way down, hips below the knees, leaning back away from the bell; drive straight up,
+  // tuck the tailbone and squeeze at the top. Feet about shoulder width.
+  const feet={L:[18,8,0],R:[-18,8,0]};
+  const top=carry(Object.assign({},UP_KB,{feet,turn:6,kneeOut:0.45}),GOBLET);
+  const bottom=carry(Object.assign({},UP_KB,{P:[0,47,-12],pitch:6,feet,turn:6,kneeOut:0.6}),GOBLET);
+  return kbSquatReps(top,bottom,2);
+}
+function kbBottomsUpSquat(){
+  // Wide stance. Squat with the points of the elbows inside the knees: push out with the elbows, squeeze in
+  // with the knees, chest high. The bell stays upside down at chest height, off the body. Stand all the way up.
+  const feet={L:[22,8,0],R:[-22,8,0]};
+  const top=carry(Object.assign({},UP_KB,{feet,turn:10,kneeOut:0.5}),BOTTOMS_UP);
+  const bottom=carry(Object.assign({},UP_KB,{P:[0,46,-12],pitch:12,feet,turn:10,kneeOut:0.75}),BOTTOMS_UP);
+  return kbSquatReps(top,bottom,2);
+}
+function kbFrontSquat(){
+  // Two-hand pickup to the rack, free arm straight out to the side, feet straight ahead. Squat with the
+  // racked elbow inside the knee, leaning back against the bell, head up; roll the shoulder back and drive
+  // all the way up. Set it down and do the other side.
+  const arm=Object.assign({},RACK_R,{freeL:add(shoulderOf(UP_KB,'L'),[54,-1,4]),eL:[0,-1,0]});
+  const top=Object.assign({},arm,{feet:KFEET,turn:4,kneeOut:0.45,roll:3});
+  const bottom=carry(Object.assign({},UP_KB,{P:[1,48,-12],pitch:8,roll:5,feet:KFEET,turn:4,kneeOut:0.6}),arm);
+  let kf=pickupToRack();
+  kf.push([endOf(kf)+0.45,top],[endOf(kf)+0.75,{}]);
+  for(let i=0;i<2;i++){const t=endOf(kf);kf.push([t+0.95,bottom],[t+1.2,{}],[t+2.0,top],[t+2.3,{}])}
+  kf=kf.concat(shift(setDownFromRack(),endOf(kf)+0.2));
+  return both(kf);
+}
+
 const MOVES={
   'kb:two-hand deadlift':{kf:kbDeadlift(),
     cue:'Feet shoulder-width, toes straight ahead, bell between your insteps. Push your hips back with your weight in your heels and knees behind your toes. Arms straight down the insides of your legs, both hands on the handle, head and tailbone in one line. Drive through your heels and stand all the way up: kneecaps up, tailbone under, ribs down. Sit back and touch the bell down.'},
@@ -849,6 +900,12 @@ const MOVES={
     cue:'Swing clean to the rack, pause and check, then press to lockout and fold it back to the rack. Elbow pinned on the way down and up; glutes on for the press.'},
   'kb:start-stop':{kf:kbStartStop(),
     cue:'Same start, same stop, every set. Bell a foot or so ahead. Reach in thumb down to the corner of the handle nearest you, hike it back, stand up into the clean and catch soft in the rack. Push it back and set it down right where it started.'},
+  'kb:goblet squat':{kf:kbGobletSquat(),
+    cue:'Hands under the bell, handle on top, looking through the window. Elbows together. Squat all the way down, lean back away from the bell, and drive straight up. Tuck the tailbone and squeeze at the top.'},
+  'kb:bottoms-up goblet squat':{kf:kbBottomsUpSquat(),
+    cue:'Bell upside down by the horns, arms at 90 degrees, elbows on your ribs, bell off your chest, shoulder blades down. Squat with your elbows inside your knees: push out with the elbows, squeeze in with the knees, chest up. Stand all the way up.'},
+  'kb:front squat':{kf:kbFrontSquat(),
+    cue:'Bell in the rack, free arm straight out to the side, feet straight ahead. Squat with the racked elbow inside the knee, lean back against the bell, head up. Roll the shoulder back and drive all the way up. Both sides.'},
   'kb:halo':{kf:kbHalo(),
     cue:'Hold the bell by the horns, upside down in front of your chest: elbows on your body, forearms flat, bell pushed off your chest. Right hand goes past your left ear, around the back of your head (breathe in) and back to the front (breathe out). Pause. Move the bell, not your head. Then lead with the left hand.'},
   'mace:10-to-2':{kf:tenToTwo(),
@@ -940,7 +997,8 @@ MOVES['mace:reverse lunge']={kf:join([MOVES['mace:reverse lunge:left'],MOVES['ma
   cue:'Alternate legs. Front shin stays near vertical; the mace stays in the upright hold.'};
 
 /* ---------- names ---------- */
-const ALIAS={kb:{'figure 8':'figure-8','figure 8 front to back':'figure-8','figure-8 front to back':'figure-8','figure 8s':'figure-8',
+const ALIAS={kb:{'goblet':'goblet squat','bottoms-up goblet':'bottoms-up goblet squat','goblet squat by the horns':'bottoms-up goblet squat',
+    'single kettlebell front squat':'front squat','kettlebell front squat':'front squat','single front squat':'front squat','figure 8':'figure-8','figure 8 front to back':'figure-8','figure-8 front to back':'figure-8','figure 8s':'figure-8',
     'figure 8 back to front':'figure-8 back to front','alternating-direction halo':'alternating halo','alternating halos':'alternating halo',
     'two hands to rack':'rack pickup','rack pick-up':'rack pickup','single-arm swing':'one-arm swing','baby single-arm swing':'one-arm swing',
     'one arm swing':'one-arm swing','hand-to-hand transition':'hand-to-hand swing','hand to hand swing':'hand-to-hand swing',
