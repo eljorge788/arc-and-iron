@@ -1772,14 +1772,15 @@ const PATHS={
     {t:'Snatch & windmill',m:['Snatch','Windmill','Bottoms-up press'],goal:'10 per side with no bell flip onto the forearm.'}]}
 };
 // The kettlebell path gained two steps (figure 8s, rack position) and moved others, and progress is saved by
-// step number, so older saves are moved over once. A step counts as learned if the step after it already was.
+// step number, so older saves are moved over once. A new step counts as learned if you had already learned the
+// step just before it or the one after it, so nobody partway through the path loses the moves they were on.
 const KB_PATH_MAP={0:0,1:1,2:2,3:4,4:6,5:7,6:8,7:9};
 function migrateKbPath(st){
   if(!st||st.kbPath===2)return;
   const sk=st.skills||{},out={};let had=false;
   for(const k in sk){const [eq,i]=k.split(':');if(eq==='kb'){had=true;if(KB_PATH_MAP[i]!=null)out['kb:'+KB_PATH_MAP[i]]=sk[k]}else out[k]=sk[k]}
-  if(out['kb:4']&&!out['kb:3'])out['kb:3']=out['kb:4'];
-  if(out['kb:6']&&!out['kb:5'])out['kb:5']=out['kb:6'];
+  if(!out['kb:3']&&(out['kb:2']||out['kb:4']))out['kb:3']=out['kb:2']||out['kb:4'];
+  if(!out['kb:5']&&(out['kb:4']||out['kb:6']))out['kb:5']=out['kb:4']||out['kb:6'];
   st.skills=out;
   const c=st.coach;
   if(c&&c.noAuto){const na={};for(const k in c.noAuto){const [eq,i]=k.split(':');na[eq==='kb'&&KB_PATH_MAP[i]!=null?'kb:'+KB_PATH_MAP[i]:k]=c.noAuto[k];had=true}c.noAuto=na}
