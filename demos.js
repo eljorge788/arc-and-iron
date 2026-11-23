@@ -492,6 +492,19 @@ function cleanKF(){
   const fwd={P:STAND.P,pitch:0,feet:WIDE,G:[0,108,34],D:norm([0,0.45,0.9]),pass:true};
   return [[0.5,drop],[0.95,back],[1.1,{}],[1.5,fwd],[1.85,atOrder(TALL)],[2.05,{}]];
 }
+function rotSwing(){
+  // Two hands, from order. Hinge and let the club drop between the legs, drive the hips and cast it
+  // diagonally up and across the body to the left at arm's length, pivoting the right foot; then pull it
+  // back in to order facing front. both() gives the cast to the right.
+  const start=Object.assign({},C_TWO,atOrder(TALL));
+  const drop={G:[0,102,28],D:norm([0,-0.55,0.84]),eL:[1,-0.6,-0.3],eR:[-1,-0.6,-0.3],pass:true};
+  const back={P:[0,84,-8],pitch:38,feet:WIDE,turn:15,kneeOut:0.6,G:[0,76,10],D:norm([0,-0.6,-0.8])};
+  const fwd={P:STAND.P,pitch:0,yaw:14,hipYaw:8,G:[6,110,34],D:norm([0.3,0.45,0.84]),pass:true};
+  const turn={P:STAND.P,pitch:0,yaw:36,hipYaw:22,tR:0.45,fyR:36,feet:WIDE,turn:15,kneeOut:0.3};
+  const cast=Object.assign({},turn,{G:onBody(turn,4,48,40),D:norm([0.72,0.55,0.42]),eL:[1,-0.3,-0.2],eR:[-1,-0.3,-0.2]});
+  return [[0,start],[0.25,{}],[0.6,drop],[1.0,back],[1.15,{}],[1.45,fwd],[1.8,cast],[1.95,{}],
+    [2.45,Object.assign({},start)],[2.65,{}]];
+}
 function twoClean(){return [[0,C_TWO],[0.25,{}]].concat(cleanKF()).concat([[2.45,Object.assign({},UPRIGHT,C_ORDER2)],[2.6,{}]])}
 function two180(){
   // From upright on the right with the body turned that way, the club swings down in a U past the front
@@ -1007,6 +1020,8 @@ Object.assign(MOVES,{
     cue:'Arms locked out, club upright, squat. As you stand, arm cast; pull it back through with your lats and elbows, lock out and go straight into the next squat.'},
   'club:order squat':{kf:orderSquat(),
     cue:'Club upright in order, hands at the sternum, elbows by the ribs. Sit tall into the squat and stand.'},
+  'club:rotational swing':{kf:both(rotSwing()),
+    cue:'Club upright in order. Hinge and let it drop between your legs, then drive the hips and cast it diagonally up across your body, pivoting the back foot. Pull it back to order and alternate sides. Loose through the swing, tight to stop it.'},
   'club:swipe':{kf:both(swipe()),
     cue:'Club upright in order on one side. Hinge and swing it down the outside of your body, past the outside of the same knee, then swing it back up the same path to order. Keep it outside the legs. Both sides.'},
   'club:side clean':{kf:both(sideClean()),
@@ -1036,7 +1051,7 @@ const ALIAS={kb:{'goblet':'goblet squat','bottoms-up goblet squat':'goblet squat
     'around the world':'around-the-world','halos':'halo','light halos':'halo','single-direction halo':'halo'},
   mace:{'hand switch':'hand switches','rotational uppercut':'uppercut','overhead press':'offset press',
   'squat':'front squat','bent-over row':'offset bent-over row','offset row':'offset bent-over row','pendulum swings':'pendulum swing'},
-  club:{'side cleans':'side clean','two-hand side clean':'side clean','two-hand side swing':'side rocker','two-handed side rocker':'side rocker','two-hand side rocker':'side rocker','cross-body swing':'lateral swing','cross-body swings':'lateral swing','two-hand side swings':'side rocker','side rock-it':'side rocker','side rocket':'side rocker',
+  club:{'two-hand rotational swing':'rotational swing','two-handed rotational swing':'rotational swing','rotational clubbell swing':'rotational swing','rotational club swing':'rotational swing','side cleans':'side clean','two-hand side clean':'side clean','two-hand side swing':'side rocker','two-handed side rocker':'side rocker','two-hand side rocker':'side rocker','cross-body swing':'lateral swing','cross-body swings':'lateral swing','two-hand side swings':'side rocker','side rock-it':'side rocker','side rocket':'side rocker',
     'swing':'lateral swing','swings':'lateral swing','one-arm arm cast':'arm cast','two-hand swipe':'swipe','swipes':'swipe',
     'two-hand shield cast':'shield cast','shield cast, one arm':'one-arm shield cast',
     'clean':'two-hand clean','two-handed clean':'two-hand clean','180':'two-hand 180','two-handed 180':'two-hand 180',
