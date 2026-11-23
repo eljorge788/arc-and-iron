@@ -401,17 +401,17 @@ function armCast(two){
   return [[0,base],[0.25,{}],[0.6,tip],[0.95,behind],[1.15,{}],[1.45,out],[1.8,cast],[2.25,Object.assign({},order)],[2.45,{}]];
 }
 function swipe(){
-  // Two hands. Club resting back on the right shoulder; hinge and sweep it down and across the front in a
-  // big low arc, the hips and knees driving it, out past the left knee; then back the same way and up to
-  // the shoulder as you stand.
+  // Two hands. Club resting back on the right shoulder. Hinge and let it swing off the shoulder, down and
+  // back between the legs; drive the hips to stand, the club floats up the front and the hands pull it up
+  // and back over the right shoulder into the cast, where it rests again. Ends in order.
   const rest={G:[-8,122,20],D:norm([-0.3,0.62,-0.72]),eL:[0.8,-1,0.3],eR:[-1,-1,0]};
-  const low={P:[0,84,-4],pitch:30,feet:{L:[25,8,0],R:[-25,8,0]},turn:14,kneeOut:0.6};
-  const lowR=Object.assign({},low,{yaw:-16,hipYaw:-8,G:[-8,86,30],D:norm([-0.62,-0.68,0.38]),eL:[1,-0.4,-0.3],eR:[-1,-0.4,-0.3],pass:true});
-  const mid={P:[0,82,-4],yaw:0,hipYaw:0,G:[0,80,36],D:norm([0,-0.5,0.87]),pass:true};
-  const lowL={P:[4,84,-4],yaw:18,hipYaw:9,G:[8,85,31],D:norm([0.8,-0.5,0.32])};
-  return [[0,C_TWO],[0.25,{}],[0.7,rest],[0.85,{}],[1.25,lowR],[1.55,mid],[1.9,lowL],[2.05,{}],
-    [2.4,Object.assign({},mid)],[2.7,Object.assign({},lowR,{pass:true})],[3.15,Object.assign({},UPRIGHT,rest)],[3.3,{}],
-    [3.7,Object.assign({},C_ORDER2)],[3.9,{}]];
+  const off={P:[0,88,-4],pitch:20,feet:WIDE,turn:15,kneeOut:0.6,G:[-3,100,30],D:norm([-0.1,-0.5,0.86]),eL:[1,-0.6,-0.3],eR:[-1,-0.6,-0.3],pass:true};
+  const back={P:[0,84,-8],pitch:38,G:[0,76,10],D:norm([0,-0.6,-0.8])};
+  const fwd={P:STAND.P,pitch:0,G:[0,108,34],D:norm([0,0.45,0.9]),pass:true};
+  const up={G:[-6,132,30],D:norm([-0.15,0.95,0.25]),eL:[1,-0.8,0],eR:[-1,-0.8,0],pass:true};
+  const over={G:[-8,128,22],D:norm([-0.25,0.7,-0.66]),pass:true};
+  return [[0,C_TWO],[0.25,{}],[0.6,rest],[0.8,{}],[1.15,off],[1.45,back],[1.6,{}],[2.0,fwd],[2.25,up],[2.45,over],
+    [2.65,Object.assign({},TALL,rest)],[2.85,{}],[3.25,Object.assign({},C_ORDER2)],[3.45,{}]];
 }
 function shieldCast(){
   // Two hands, club upright in front of the chest and close to the body like a shield. Hands rise beside
@@ -985,9 +985,9 @@ Object.assign(MOVES,{
   'club:order squat':{kf:orderSquat(),
     cue:'Club upright in order, hands at the sternum, elbows by the ribs. Sit tall into the squat and stand.'},
   'club:swipe':{kf:both(swipe()),
-    cue:'Club resting back on the shoulder. Hinge and sweep it down and across the front in a big low arc, like swiping a table clear, driving with the hips and knees. Stand and bring it back to the shoulder. Both sides.'},
+    cue:'Club resting back on the shoulder. Hinge and let it swing off the shoulder and down between your legs. Drive the hips to stand, and pull the club up the front and back over the shoulder. Upper and lower body work together. Both sides.'},
   'club:shield cast':{kf:both(shieldCast()),
-    cue:'Both hands, club upright and close in front of the chest. Drop it behind one shoulder, circle it round behind and bring it back out over the same shoulder. Alternate sides.'},
+    cue:'Both hands, club upright and close in front of the chest. Drop it behind one shoulder and circle it round the head and shoulder, then back out over the same shoulder. Keep it close. Alternate sides.'},
   'club:torch press':{kf:both(torchPress()),
     cue:'Club upright like a torch at the shoulder. Press it straight up, keeping it vertical, and lower under control. Both arms.'}
 });
@@ -1011,7 +1011,7 @@ const ALIAS={kb:{'goblet':'goblet squat','bottoms-up goblet squat':'goblet squat
     'around the world':'around-the-world','halos':'halo','light halos':'halo','single-direction halo':'halo'},
   mace:{'hand switch':'hand switches','rotational uppercut':'uppercut','overhead press':'offset press',
   'squat':'front squat','bent-over row':'offset bent-over row','offset row':'offset bent-over row','pendulum swings':'pendulum swing'},
-  club:{'two-hand side swing':'side rocker','two-hand side swings':'side rocker','side rock-it':'side rocker','side rocket':'side rocker',
+  club:{'two-hand side swing':'side rocker','two-handed side rocker':'side rocker','two-hand side rocker':'side rocker','cross-body swing':'lateral swing','cross-body swings':'lateral swing','two-hand side swings':'side rocker','side rock-it':'side rocker','side rocket':'side rocker',
     'swing':'lateral swing','swings':'lateral swing','one-arm arm cast':'arm cast','two-hand swipe':'swipe','swipes':'swipe',
     'two-hand shield cast':'shield cast','shield cast, one arm':'one-arm shield cast',
     'clean':'two-hand clean','two-handed clean':'two-hand clean','180':'two-hand 180','two-handed 180':'two-hand 180',
