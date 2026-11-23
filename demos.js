@@ -401,17 +401,18 @@ function armCast(two){
   return [[0,base],[0.25,{}],[0.6,tip],[0.95,behind],[1.15,{}],[1.45,out],[1.8,cast],[2.25,Object.assign({},order)],[2.45,{}]];
 }
 function swipe(){
-  // Two hands. Club resting back on the right shoulder. Hinge and let it swing off the shoulder, down and
-  // back between the legs; drive the hips to stand, the club floats up the front and the hands pull it up
-  // and back over the right shoulder into the cast, where it rests again. Ends in order.
-  const rest={G:[-8,122,20],D:norm([-0.3,0.62,-0.72]),eL:[0.8,-1,0.3],eR:[-1,-1,0]};
-  const off={P:[0,88,-4],pitch:20,feet:WIDE,turn:15,kneeOut:0.6,G:[-3,100,30],D:norm([-0.1,-0.5,0.86]),eL:[1,-0.6,-0.3],eR:[-1,-0.6,-0.3],pass:true};
-  const back={P:[0,84,-8],pitch:38,G:[0,76,10],D:norm([0,-0.6,-0.8])};
-  const fwd={P:STAND.P,pitch:0,G:[0,108,34],D:norm([0,0.45,0.9]),pass:true};
-  const up={G:[-6,132,30],D:norm([-0.15,0.95,0.25]),eL:[1,-0.8,0],eR:[-1,-0.8,0],pass:true};
-  const over={G:[-8,128,22],D:norm([-0.25,0.7,-0.66]),pass:true};
-  return [[0,C_TWO],[0.25,{}],[0.6,rest],[0.8,{}],[1.15,off],[1.45,back],[1.6,{}],[2.0,fwd],[2.25,up],[2.45,over],
-    [2.65,Object.assign({},TALL,rest)],[2.85,{}],[3.25,Object.assign({},C_ORDER2)],[3.45,{}]];
+  // Two hands, club upright in order on the left side of the chest. Hinge and swing it down the outside of
+  // the body, past the outside of the left knee, then swing it back up the same path to order. It never
+  // crosses in front of the body or between the legs. both() gives the right side.
+  const order=Object.assign({},TALL,{G:[13,124,20],D:norm([0.08,1,0]),eL:[1,-1,-0.25],eR:[-0.6,-1,-0.25]});
+  const start=Object.assign({},C_TWO,order);
+  const down={P:[0,90,-3],pitch:14,yaw:6,hipYaw:3,feet:WIDE,turn:15,kneeOut:0.5,G:[20,106,26],D:norm([0.25,-0.55,0.8]),eL:[1,-0.6,-0.2],eR:[-0.5,-0.6,-0.3],pass:true};
+  const low={P:[0,84,-6],pitch:30,yaw:10,hipYaw:5,feet:WIDE,turn:15,kneeOut:0.6,G:[24,86,16],D:norm([0.3,-0.75,-0.58]),eL:[1,-0.5,-0.3],eR:[-0.3,-0.5,-0.3]};
+  const back=Object.assign({},low,{G:[24,82,8],D:norm([0.28,-0.45,-0.85])});
+  const there=[[0.6,down],[0.95,low],[1.15,back],[1.3,{}]];
+  const ret=[[1.65,Object.assign({},low,{pass:true})],[1.95,Object.assign({},down)],[2.35,Object.assign({},order)],[2.5,{}]];
+  return [[0,start],[0.25,{}]].concat(there,ret,
+    [[2.85,Object.assign({},down)],[3.2,low],[3.4,back],[3.55,{}],[3.9,Object.assign({},low,{pass:true})],[4.2,Object.assign({},down)],[4.6,Object.assign({},order)],[4.8,{}]]);
 }
 function shieldCast(){
   // Two hands, club upright in front of the chest and close to the body like a shield. Hands rise beside
@@ -985,7 +986,7 @@ Object.assign(MOVES,{
   'club:order squat':{kf:orderSquat(),
     cue:'Club upright in order, hands at the sternum, elbows by the ribs. Sit tall into the squat and stand.'},
   'club:swipe':{kf:both(swipe()),
-    cue:'Club resting back on the shoulder. Hinge and let it swing off the shoulder and down between your legs. Drive the hips to stand, and pull the club up the front and back over the shoulder. Upper and lower body work together. Both sides.'},
+    cue:'Club upright in order on one side. Hinge and swing it down the outside of your body, past the outside of the same knee, then swing it back up the same path to order. Keep it outside the legs. Both sides.'},
   'club:shield cast':{kf:both(shieldCast()),
     cue:'Both hands, club upright and close in front of the chest. Drop it behind one shoulder and circle it round the head and shoulder, then back out over the same shoulder. Keep it close. Alternate sides.'},
   'club:torch press':{kf:both(torchPress()),
