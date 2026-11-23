@@ -924,20 +924,30 @@ const X=[
 ['Clock squat','club',3,'med','squat','','Squat while the club circles the clock face.'],
 ['Front lever hold','club',2,'light','core','u','Arm straight, club level; hold 15–20 s.']
 ].map(a=>({name:a[0],eq:a[1],lvl:a[2],load:a[3],pat:a[4],u:a[5].includes('u'),d:a[5].includes('d'),b:a[5].includes('b'),cue:a[6]}));
+// Every club and mace move has a lead side (the working arm, the top hand or the side the implement
+// starts on), as does every one-sided move. Workouts call out a lead side switch for all of them:
+// halfway through the move, or each round in Tabata and flows. Works on saved moves too (they keep eq).
+const sided=m=>!!(m&&(m.u||m.eq==='club'||m.eq==='mace'));
+const SIDE_NOTE='Club, mace and one-sided moves: ';
+const sideNote=(ms,how)=>ms.some(sided)?' '+SIDE_NOTE+how:'';
+// one-handed moves (u) do the full reps on each side; two-hand club and mace moves split the same
+// total across their two lead sides ("8" -> "4/side", "6–8" -> "3–4/side")
+const halfR=r=>String(r).replace(/\d+/g,n=>Math.max(1,Math.ceil(+n/2))).replace(/^(\d+)–\1$/,'$1');
+const perSide=(m,reps)=>m.u?reps:halfR(reps);
 
 const FLOWS=[
-{name:'Foundation Flow',eq:'mace',lvl:1,steps:['10-to-2','Barbarian squat','Reverse lunge, left','10-to-2','Barbarian squat','Reverse lunge, right'],note:'Every piece is a week-one skill. One cycle covers both sides.'},
-{name:'Gravedigger Flow',eq:'mace',lvl:1,steps:['Gravedigger left','Gravedigger right','Mace front squat','Overhead press'],note:'Loads the trunk in rotation, then stacks it for the squat and press.'},
-{name:'Squat · Lunge · 360',eq:'mace',lvl:2,steps:['Barbarian squat','Reverse lunge','360, left hand on top','Barbarian squat','Reverse lunge','360, right hand on top'],note:'The classic teaching structure: one squat, one lunge, one 360, then mirror.'},
-{name:'360 Uppercut Flow',eq:'mace',lvl:2,steps:['360 over the right shoulder','Squat','Hand switch','Rotational uppercut','Mirror to the left'],note:'Continuous: repeat the whole sequence to the other side and keep alternating.',video:'LKoISjc5sAQ'},
-{name:'Curl & Step Flow',eq:'mace',lvl:2,steps:['Ballistic curl','Front lunge','Switch curl','Lateral lunge','Mirror'],note:'Built on curls and two stepping patterns, the core of many beginner flow courses.'},
-{name:'Warrior Flow',eq:'mace',lvl:3,steps:['360','Lunge to 360','Uppercut','Offset march, 4 steps','Hand switches ×2','Mirror'],note:'Long cycle; keep breathing on every swing.'},
-{name:'Three-Club Mini Flow',eq:'club',lvl:2,steps:['Arm cast','Mill','Inside shield cast'],note:'Three of the most fundamental club moves in one sequence. Do both sides.'},
-{name:'Club First Workout',eq:'club',lvl:1,steps:['Two-hand swing squat','Two-hand arm cast to flag press','Two-hand clean to torch press','Club barbarian squat'],note:'Dangerously Fit\u2019s first club workout: 5 reps of each, rest 60 s after all four, 5 rounds.'},
-{name:'Club Foundations',eq:'club',lvl:1,steps:['Two-hand side swing','Two-hand arm cast','Two-hand shield cast','Torch press'],note:'Two-handed only. Learn the arcs before going single-arm.'},
-{name:'Pullover to Press',eq:'club',lvl:1,steps:['Pullover','Order position','Torch press','Lower behind the head'],note:'Slow and controlled; teaches you to decelerate the club.'},
-{name:'Half Mill to Torch Press',eq:'club',lvl:2,steps:['Half mill (top circle)','Rotational torch press','Shield cast to switch sides'],note:'Uses the shield cast for momentum into the other side.'},
-{name:'Lunge Cast & Flag',eq:'club',lvl:2,steps:['Reverse lunge arm cast','Stand to order position','Forward lunge flag press','Return'],note:'Legs and shoulders together.'},
+{name:'Foundation Flow',eq:'mace',lvl:1,sw:'mid',steps:['10-to-2','Barbarian squat','Reverse lunge, left','Hand switch','10-to-2','Barbarian squat','Reverse lunge, right','Hand switch'],note:'Every piece is a week-one skill. One cycle covers both lead sides: switch your top hand after each lunge.'},
+{name:'Gravedigger Flow',eq:'mace',lvl:1,sw:'end',steps:['Gravedigger left','Gravedigger right','Mace front squat','Overhead press','Hand switch'],note:'Loads the trunk in rotation, then stacks it for the squat and press.'},
+{name:'Squat · Lunge · 360',eq:'mace',lvl:2,sw:'mid',steps:['Barbarian squat','Reverse lunge','360, left hand on top','Hand switch','Barbarian squat','Reverse lunge','360, right hand on top','Hand switch'],note:'The classic teaching structure: one squat, one lunge, one 360, then mirror.'},
+{name:'360 Uppercut Flow',eq:'mace',lvl:2,sw:'mid',steps:['360 over the right shoulder','Squat','Hand switch','Rotational uppercut','Mirror to the left'],note:'Continuous: repeat the whole sequence to the other side and keep alternating.',video:'LKoISjc5sAQ'},
+{name:'Curl & Step Flow',eq:'mace',lvl:2,sw:'mid',steps:['Ballistic curl','Front lunge','Switch curl','Lateral lunge','Mirror'],note:'Built on curls and two stepping patterns, the core of many beginner flow courses.'},
+{name:'Warrior Flow',eq:'mace',lvl:3,sw:'mid',steps:['360','Lunge to 360','Uppercut','Offset march, 4 steps','Hand switches ×2','Mirror'],note:'Long cycle; keep breathing on every swing.'},
+{name:'Three-Club Mini Flow',eq:'club',lvl:2,sw:'end',steps:['Arm cast','Mill','Inside shield cast','Switch hands'],note:'Three of the most fundamental club moves in one sequence. Pass the club to the other hand in order and repeat on that side.'},
+{name:'Club First Workout',eq:'club',lvl:1,sw:'end',steps:['Two-hand swing squat','Two-hand arm cast to flag press','Two-hand clean to torch press','Club barbarian squat','Switch hands'],note:'Dangerously Fit\u2019s first club workout: 5 reps of each, rest 60 s after all four, 5 rounds.'},
+{name:'Club Foundations',eq:'club',lvl:1,sw:'end',steps:['Two-hand side swing','Two-hand arm cast','Two-hand shield cast','Torch press','Switch hands'],note:'Two-handed only. Learn the arcs before going single-arm.'},
+{name:'Pullover to Press',eq:'club',lvl:1,sw:'end',steps:['Pullover','Order position','Torch press','Lower behind the head','Switch hands'],note:'Slow and controlled; teaches you to decelerate the club.'},
+{name:'Half Mill to Torch Press',eq:'club',lvl:2,sw:'end',steps:['Half mill (top circle)','Rotational torch press','Shield cast to switch sides'],note:'Uses the shield cast for momentum into the other side.'},
+{name:'Lunge Cast & Flag',eq:'club',lvl:2,sw:'end',steps:['Reverse lunge arm cast','Stand to order position','Forward lunge flag press','Return','Switch hands'],note:'Legs and shoulders together.'},
 {name:'Swing–Clean–Press–Squat',eq:'kb',lvl:2,steps:['One-arm swing','Clean','Press','Front squat','Switch hands'],note:'The bell never touches down; switch hands on the swing.'},
 {name:'Halo & Figure 8 Flow',eq:'kb',lvl:2,steps:['Around-the-world ×5 each way','Halo ×3 each way','Figure-8 ×5 each leg','Alternating halo ×4','Figure 8 back to front ×5 each leg'],note:'The coach\'s warm-up order: feet together for around the world, wider for the figure 8s. Stand all the way up between passes.'},
 {name:'Halo Flow',eq:'kb',lvl:1,steps:['Halo ×2 each way','Goblet squat','Around-the-world ×2 each way','Two-hand swing ×5'],note:'A good first flow and a solid warm-up.'},
@@ -1257,7 +1267,7 @@ function warmBlock(eqs,min){
   const pools=eqs.map(k=>(WARM[k]||[]).map(n=>[n,k])),own=[];
   for(let i=0;own.length<3&&pools.some(p=>p.length>i);i++)pools.forEach(p=>{if(p[i]&&own.length<3)own.push(p[i])});
   const items=[...WARM.gen.slice(0,3).map(n=>[n,'']),...own];
-  return{kind:'Warm-up',title:'Warm-up',min,fmt:'Easy pace. 30–45 s each, move straight to the next.',moves:items.map(([n,k])=>({name:n,dose:WDOSE[n]||'30–45 s',eq:k}))};
+  return{kind:'Warm-up',title:'Warm-up',min,fmt:'Easy pace. 30–45 s each, move straight to the next.'+(own.some(([n,k])=>k==='club'||k==='mace')?' Club and mace drills: switch lead side halfway.':''),moves:items.map(([n,k])=>({name:n,dose:WDOSE[n]||'30–45 s',eq:k}))};
 }
 function coolBlock(min){return{kind:'Cool-down',title:'Cool-down',min,fmt:'Hold each stretch, breathing slowly through the nose.',moves:shuffle(COOL).slice(0,Math.max(3,Math.min(5,Math.round(min/1.2)))).map(n=>({name:n,dose:'45–60 s'}))}}
 
@@ -1275,7 +1285,7 @@ function flowBlock(eqs,min,used,pref){
   const st=effEq(f.eq).w;let wt=st[Math.min(st.length-1,Math.floor((st.length-1)/2))]+' '+unitOf(f.eq),up;
   const pp=progPick(f.name,f.eq,false);let need;if(pp){wt=pp.wt+' '+unitOf(f.eq);if(pp.dir!=='hold')up={from:pp.from,dir:pp.dir};need=pp.need}
   const work=S.level===1?45:60,rest=30;const rounds=Math.max(2,Math.floor((min*60-120)/(work+rest)));
-  return{kind:'Flow',title:f.name,min,flow:f,wt,up,need,fmt:`Learn it first: 2 minutes of slow cycles, pausing at each position. Then flow ${work} s on, ${rest} s off for ${rounds} rounds. Switch your lead side every cycle.`,note:f.note,timer:{work,rest,rounds,lead:120}};
+  return{kind:'Flow',title:f.name,min,flow:f,wt,up,need,fmt:`Learn it first: 2 minutes of slow cycles, pausing at each position. Then flow ${work} s on, ${rest} s off for ${rounds} rounds. ${f.sw==='mid'?'Each cycle covers both lead sides: the hand switch in the middle changes your lead.':f.sw==='end'?'The hand switch at the end of each cycle changes your lead side, so cycles alternate sides.':'Switch your lead side every cycle.'}`,note:f.note,timer:{work,rest,rounds,lead:120}};
 }
 function forced(p,names){
   if(!names)return null;
@@ -1283,24 +1293,25 @@ function forced(p,names){
   return out.length?out:null;
 }
 const repBase=()=>S.level===1?6:S.level===2?8:10;
-const sideDose=(x,r)=>x.u?`${Math.ceil(r/2)}/side`:`${r} reps`;
+const sideDose=(x,r)=>sided(x)?`${Math.ceil(r/2)}/side`:`${r} reps`;
 function circuitBlock(p,min,o){
   const [w,r]=S.level===1?[30,30]:S.level===2?[40,20]:[45,15];
   let n=min<=8?4:min<=14?5:6;const ex=forced(p,o&&o.force)||pickBalanced(p,n);n=ex.length;if(!n)return null;
   const rounds=Math.max(1,Math.floor((min*60+60)/(n*(w+r)+60)));
-  return{kind:'Intervals',title:'Interval circuit',min,fmt:`${w} s work, ${r} s rest, ${rounds} round${rounds>1?'s':''}. Rest 60 s between rounds. One-sided moves: switch sides halfway through the interval.`,
+  return{kind:'Intervals',title:'Interval circuit',min,fmt:`${w} s work, ${r} s rest, ${rounds} round${rounds>1?'s':''}. Rest 60 s between rounds.${sideNote(ex,'switch lead side halfway through each interval.')}`,
     moves:ex.map(x=>mv(x,`${w} s`)),timer:{work:w,rest:r,rounds:rounds*n,between:n}};
 }
 function emomBlock(p,min,o){
   const ex=forced(p,o&&o.force)||pickBalanced(p.filter(x=>x.b||x.pat==='squat'||x.pat==='press'),min>=9?3:2,['hinge','swing','squat','press']);if(!ex.length)return null;
   const reps=(o&&o.reps)||(S.level===1?6:S.level===2?8:10);
-  return{kind:'EMOM',title:'EMOM',min,repBase:reps,fmt:`Every minute on the minute for ${min} minutes, rotating through the moves. Do the reps, rest the remainder of the minute.`,
+  return{kind:'EMOM',title:'EMOM',min,repBase:reps,fmt:`Every minute on the minute for ${min} minutes, rotating through the moves. Do the reps, rest the remainder of the minute.${sideNote(ex,'split the reps and switch lead side halfway.')}`,
     moves:ex.map(x=>mv(x,sideDose(x,reps))),timer:{work:60,rest:0,rounds:min}};
 }
 function tabataPhases(moves){
   const ph=[];const k=Math.floor(moves.length/2);
   for(let t=0;t<k;t++){
-    for(let i=0;i<8;i++){const m=moves[t*2+i%2];ph.push({name:m.name,label:`Tabata ${t+1} · round ${i+1}/8`,secs:20,rest:false});
+    for(let i=0;i<8;i++){const m=moves[t*2+i%2],k=Math.floor(i/2);
+      ph.push({name:m.name,label:`Tabata ${t+1} · round ${i+1}/8${sided(m)?(k===0?' · first lead side':' · switch lead side'):''}`,secs:20,rest:false});
       if(i<7)ph.push({name:'Next: '+moves[t*2+(i+1)%2].name,label:'Rest',secs:10,rest:true})}
     if(t<k-1)ph.push({name:'Next tabata coming up',label:'Rest',secs:60,rest:true});
   }
@@ -1312,25 +1323,25 @@ function tabataBlock(p,min,o){
   let ex=forced(p,o&&o.force)||pickBalanced(src,k*2,['hinge','squat','swing','press','lunge','core']);
   if(ex.length<2)return null;ex=ex.slice(0,Math.floor(ex.length/2)*2);const kk=ex.length/2;
   const moves=ex.map(x=>mv(x,'20 s'));
-  return{kind:'Tabata',title:'Tabata',min,fmt:`${kk} tabata${kk>1?'s':''}: 20 s hard, 10 s easy, 8 rounds, alternating the two moves.${kk>1?' Rest 60 s between tabatas.':''} Go hard but keep every rep clean.`,
+  return{kind:'Tabata',title:'Tabata',min,fmt:`${kk} tabata${kk>1?'s':''}: 20 s hard, 10 s easy, 8 rounds, alternating the two moves.${kk>1?' Rest 60 s between tabatas.':''} Go hard but keep every rep clean.${sideNote(ex,'switch lead side each time the move comes round.')}`,
     moves,timer:{phases:tabataPhases(moves)}};
 }
 function amrapBlock(p,min,o){
   const ex=forced(p,o&&o.force)||pickBalanced(p,min>=10?4:3);if(!ex.length)return null;
   const r=(o&&o.reps)||repBase();
-  return{kind:'AMRAP',title:`AMRAP ${min}`,min,repBase:r,counter:'rounds',fmt:`As many rounds as possible in ${min} minutes. Move steadily, rest only when form slips, and count your rounds.`,
+  return{kind:'AMRAP',title:`AMRAP ${min}`,min,repBase:r,counter:'rounds',fmt:`As many rounds as possible in ${min} minutes. Move steadily, rest only when form slips, and count your rounds.${sideNote(ex,'split the reps and switch lead side halfway.')}`,
     moves:ex.map(x=>mv(x,sideDose(x,r))),timer:{single:true}};
 }
 function ladderBlock(p,min,o){
   const ex=forced(p,o&&o.force)||pickBalanced(p.filter(x=>x.pat!=='core'),min>=10?3:2,['hinge','press','squat','pull']);if(!ex.length)return null;
   const top=S.level===1?8:S.level===2?10:12;const rungs=[];for(let r=2;r<=top;r+=2)rungs.push(r);
-  return{kind:'Ladder',title:'Ladder',min,rungs,counter:'rungs',fmt:`Climb ${rungs.join(', ')} reps of each move${ex.some(x=>x.u)?' (per side on one-sided moves)':''}. At the top, start again at 2. Rest as needed until time is up.`,
+  return{kind:'Ladder',title:'Ladder',min,rungs,counter:'rungs',fmt:`Climb ${rungs.join(', ')} reps of each move${ex.some(x=>x.u)?' (one-handed moves: each rung on each lead side)':''}${ex.some(x=>sided(x)&&!x.u)?' (two-hand club and mace moves: split each rung across both lead sides)':''}. At the top, start again at 2. Rest as needed until time is up.`,
     moves:ex.map(x=>mv(x,rungs.join('-'))),timer:{single:true}};
 }
 const SUITS=['♠','♥','♦','♣'];
 function deckBlock(p,min,o){
   const ex=forced(p,o&&o.force)||pickBalanced(p,4,['hinge','squat','press','pull']);if(ex.length<2)return null;
-  return{kind:'Deck of cards',title:'Deck of cards',min,counter:'deck',fmt:`Draw a card: the suit picks the move and the number sets the reps (face cards 10, ace 11${S.level===1?', scaled down for beginners':''}). Keep drawing until time runs out.`,
+  return{kind:'Deck of cards',title:'Deck of cards',min,counter:'deck',fmt:`Draw a card: the suit picks the move and the number sets the reps (face cards 10, ace 11${S.level===1?', scaled down for beginners':''}). Keep drawing until time runs out.${sideNote(ex,'split the card\'s reps and switch lead side halfway.')}`,
     moves:ex.map((x,i)=>Object.assign(mv(x,'card = reps'),{tag:SUITS.filter((s,j)=>j%ex.length===i).join('')})),timer:{single:true}};
 }
 function strengthBlock(p,min){
@@ -1338,8 +1349,8 @@ function strengthBlock(p,min){
   const pairs=min>=20?2:1;const perPair=min/pairs;const sets=Math.max(2,Math.min(5,Math.floor(perPair*60/170)));
   const ex=pickBalanced(src,pairs*2,['squat','pull','hinge','press','lunge','core']);if(!ex.length)return null;
   const reps=S.level===1?'8':S.level===2?'6–8':'5–6';
-  return{kind:'Strength',title:'Strength supersets',min,sets,reps,fmt:`Pair moves A1/A2 and B1/B2. ${sets} sets of each pair. Rest 60–90 s after each pair. Leave one or two good reps in the tank.`,
-    moves:ex.map((x,i)=>Object.assign(mv(x,`${sets}×${x.u?reps+'/side':reps}`),{tag:(i<2?'A':'B')+(i%2+1)}))};
+  return{kind:'Strength',title:'Strength supersets',min,sets,reps,fmt:`Pair moves A1/A2 and B1/B2. ${sets} sets of each pair. Rest 60–90 s after each pair. Leave one or two good reps in the tank.${sideNote(ex,'do the reps on one lead side, then switch.')}`,
+    moves:ex.map((x,i)=>Object.assign(mv(x,`${sets}×${sided(x)?perSide(x,reps)+'/side':reps}`),{tag:(i<2?'A':'B')+(i%2+1)}))};
 }
 const FORMATS={auto:'Mix it up',intervals:'Intervals',emom:'EMOM',tabata:'Tabata',amrap:'AMRAP',ladder:'Ladder',deck:'Deck of cards'};
 function condBlock(p,min,fmt,o,exclude){
@@ -1496,7 +1507,7 @@ function swapMove(w,bi,mi){
   let c=p.filter(x=>x.pat===m.pat);if(!c.length)c=p.filter(x=>x.eq===m.eq);if(!c.length)c=p;
   if(!c.length)return false;
   const x=rnd(c);let dose=m.dose;
-  if(b.kind==='Strength')dose=`${b.sets}×${x.u?b.reps+'/side':b.reps}`;
+  if(b.kind==='Strength')dose=`${b.sets}×${sided(x)?perSide(x,b.reps)+'/side':b.reps}`;
   else if(b.repBase)dose=sideDose(x,b.repBase);
   b.moves[mi]=Object.assign(mv(x,dose),m.tag?{tag:m.tag}:{});
   if(b.kind==='Tabata')b.timer.phases=tabataPhases(b.moves);
@@ -1633,21 +1644,22 @@ function guidedSteps(w){
       steps.push(Object.assign({},base,{name:'Get ready: '+b.title,detail:cool?'Set the equipment down. Stretches next.':`${b.kind}${b.min?' · '+b.min+' min':''}. Look over the moves and set up your equipment.`,rest:true,prep:true,secs:cool?Math.min(gap,10):gap}))}
     if(b.kind==='Warm-up'||b.kind==='Cool-down'){
       const s=b.kind==='Warm-up'?40:50;
-      b.moves.forEach((m,i)=>steps.push(Object.assign({},base,{name:m.name,detail:`${b.kind} · ${i+1} of ${b.moves.length}`,eq:m.eq,secs:s})));return;
+      b.moves.forEach((m,i)=>{const h=b.kind==='Warm-up'&&sided(m);
+        steps.push(Object.assign({},base,{name:m.name,detail:`${b.kind} · ${i+1} of ${b.moves.length}${h?' · switch lead side halfway':''}`,eq:m.eq,secs:s,half:h}))});return;
     }
     if(b.flow){
       const t=b.timer;
       steps.push(Object.assign({},base,{name:b.flow.name,detail:'Learn it slowly: pause at each position',flow:b.flow,wt:b.wt,eq:b.flow.eq,secs:t.lead,lastKey:[b.flow.name,b.flow.eq],nocount:true}));
       for(let i=0;i<t.rounds;i++){
         steps.push(Object.assign({},base,{name:b.flow.name,detail:`Flow · round ${i+1} of ${t.rounds}`,flow:b.flow,wt:b.wt,eq:b.flow.eq,secs:t.work,lastKey:[b.flow.name,b.flow.eq]}));
-        if(i<t.rounds-1)steps.push(Object.assign({},base,{name:'Rest',detail:'Next round: switch your lead side',rest:true,secs:t.rest}));
+        if(i<t.rounds-1)steps.push(Object.assign({},base,{name:'Rest',detail:b.flow.sw==='mid'?'Next round: start again on your first lead side':'Next round: switch your lead side',rest:true,secs:t.rest}));
       }
       return;
     }
     if(b.kind==='Strength'){
       const pairs=[];for(let i=0;i<b.moves.length;i+=2)pairs.push(b.moves.slice(i,i+2));
       pairs.forEach((pr,pi)=>{for(let s=1;s<=b.sets;s++){
-        pr.forEach(m=>steps.push(Object.assign({},base,{name:m.name,tag:m.tag,detail:`Set ${s} of ${b.sets} · ${m.u?b.reps+' per side':b.reps+' reps'}`,wt:m.wt,eq:m.eq,cue:m.cue,secs:null,lastKey:[m.name,m.eq]})));
+        pr.forEach(m=>steps.push(Object.assign({},base,{name:m.name,tag:m.tag,detail:`Set ${s} of ${b.sets} · ${sided(m)?perSide(m,b.reps)+' on each lead side: switch halfway':b.reps+' reps'}`,wt:m.wt,eq:m.eq,cue:m.cue,secs:null,lastKey:[m.name,m.eq]})));
         if(!(pi===pairs.length-1&&s===b.sets))steps.push(Object.assign({},base,{name:'Rest',detail:s<b.sets?'Next: '+pr[0].name+', set '+(s+1):'Next pair: '+pairs[pi+1][0].name,rest:true,secs:75}));
       }});
       return;
@@ -1658,7 +1670,10 @@ function guidedSteps(w){
     phasesFor(b).forEach(ph=>{
       if(ph.rest){steps.push(Object.assign({},base,{name:'Rest',detail:ph.name,phase:ph.label,rest:true,secs:ph.secs}));return}
       const m=(b.moves||[]).find(x=>x.name===ph.name)||{};
-      steps.push(Object.assign({},base,{name:ph.name,detail:`${ph.label}${m.dose&&!/ s$/.test(m.dose)?' · '+m.dose:''}`,wt:m.wt,eq:m.eq,cue:m.cue,secs:ph.secs,lastKey:m.eq?[m.name,m.eq]:null}));
+      // timed work on a sided move (intervals): a "switch lead side" call at the halfway mark.
+      // EMOM reps are split per side in the dose; Tabata switches each round (in the label).
+      const half=sided(m)&&b.kind!=='Tabata'&&b.kind!=='EMOM'&&ph.secs>=20,emom=sided(m)&&b.kind==='EMOM';
+      steps.push(Object.assign({},base,{name:ph.name,detail:`${ph.label}${m.dose&&!/ s$/.test(m.dose)?' · '+m.dose:''}${half?' · switch lead side halfway':emom?' · switch lead side halfway through the reps':''}`,wt:m.wt,eq:m.eq,cue:m.cue,secs:ph.secs,half,lastKey:m.eq?[m.name,m.eq]:null}));
     });
   });
   // number the working sets of each section and of each move, for the "sets done / left" line in guided mode
@@ -1784,7 +1799,9 @@ function startGuided(w,fromBlock,resume){
 function gTick(){
   if(!G||!G.run||G.done)return;G.elapsed++;
   const s=G.steps[G.i];if(!s.secs){gClock();return}
-  G.left--;if(G.elapsed%10===0)snapGuided();if(voiceOn())countdownCue();else if(G.left<=3&&G.left>0)beep(660,.08);
+  G.left--;if(G.elapsed%10===0)snapGuided();
+  if(s.half&&G.left===Math.ceil(s.secs/2)){beep(990,.12);setTimeout(()=>beep(990,.12),180);$('gDetail').textContent='Switch lead side now';if(voiceOn())say('Switch lead side.',{interrupt:true})}
+  if(voiceOn())countdownCue();else if(G.left<=3&&G.left>0)beep(660,.08);
   if(G.left<=0)gGo(1);else gClock();
 }
 function gGo(d){
@@ -1834,7 +1851,7 @@ function gDraw(){
     if(s.counter==='rungs'){const r=G.rung[s.bi]||0;const at=s.rungs[r%s.rungs.length];ex+=`<div class="ctr"><div><b>${at}</b><span>reps on this rung</span></div><button class="btn" data-g="rung">Rung done</button></div><p class="hint">${r} rung${r===1?'':'s'} climbed. ${s.rungs.map((x,j)=>j===r%s.rungs.length?`[${x}]`:x).join(' · ')}</p>`}
     if(s.counter==='deck'){const c=G.card[s.bi];const left=(G.deck[s.bi]||[]).length;
       let cardHTML='<p class="hint">Draw your first card.</p>';
-      if(c){const m=s.list[c.s%s.list.length];const r=cardReps(c.v);cardHTML=`<div class="card ${c.s===1||c.s===2?'red':''}"><span>${cardLabel(c.v)}${SUITS[c.s]}</span></div><p class="card-do"><b>${esc(m.name)}</b> × ${m.u?Math.ceil(r/2)+' per side':r}</p>`}
+      if(c){const m=s.list[c.s%s.list.length];const r=cardReps(c.v);cardHTML=`<div class="card ${c.s===1||c.s===2?'red':''}"><span>${cardLabel(c.v)}${SUITS[c.s]}</span></div><p class="card-do"><b>${esc(m.name)}</b> × ${sided(m)?Math.ceil(r/2)+' per side, then switch lead side':r}</p>`}
       ex+=`<div class="deckrow">${cardHTML}</div><div class="ctr"><button class="btn" data-g="draw">Draw a card</button><span class="hint">${G.deck[s.bi]?left+' left in the deck':'52 cards'}</span></div>${G.w.blocks[s.bi]&&G.w.blocks[s.bi].target?`<p class="hint">Target: ${G.w.blocks[s.bi].target} cards</p>`:''}`}
   }
   $('gExtra').innerHTML=ex;
@@ -1844,7 +1861,7 @@ function gDraw(){
     if(k==='r-')G.counts[s.bi]=Math.max(0,(G.counts[s.bi]||0)-1);
     if(k==='rung')G.rung[s.bi]=(G.rung[s.bi]||0)+1;
     if(k==='draw'){if(!G.deck[s.bi]||!G.deck[s.bi].length)G.deck[s.bi]=newDeck();const c=G.card[s.bi]=G.deck[s.bi].pop();
-      const m=s.list[c.s%s.list.length],r=cardReps(c.v);say(spoken(`${['Ace','2','3','4','5','6','7','8','9','10','Jack','Queen','King'][c.v-1]} of ${['spades','hearts','diamonds','clubs'][c.s]}. ${m.name}, ${m.u?Math.ceil(r/2)+' per side':r+' reps'}.`),{interrupt:true})}
+      const m=s.list[c.s%s.list.length],r=cardReps(c.v);say(spoken(`${['Ace','2','3','4','5','6','7','8','9','10','Jack','Queen','King'][c.v-1]} of ${['spades','hearts','diamonds','clubs'][c.s]}. ${m.name}, ${sided(m)?Math.ceil(r/2)+' per side, then switch lead side':r+' reps'}.`),{interrupt:true})}
     if(k==='rung'){const r=G.rung[s.bi],at=s.rungs[r%s.rungs.length];say(`${at} reps.`,{interrupt:true})}
     gDraw();
   });
