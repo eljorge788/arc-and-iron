@@ -181,6 +181,17 @@ ol.moves li{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:9px
 .day.rest{opacity:.55;cursor:default;background:transparent}
 .prog{border-left:3px solid var(--accent);padding:4px 0 4px 12px;color:var(--muted);font-size:.9rem;margin:0}
 .prog b{color:var(--ink)}
+.wktabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.wktab{font:inherit;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:8px;padding:6px 10px;cursor:pointer;text-align:left;display:grid;line-height:1.2;min-width:72px;flex:0 0 auto}
+.wktab b{font-family:var(--mono);font-size:.8rem}
+.wktab span{font-size:.72rem;color:var(--muted)}
+.wktab[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 -3px 0 var(--accent)}
+.wktab.dn{background:var(--good-soft);border-color:transparent}
+.wktab.dn b{color:var(--good)}
+.day.nx{border-style:dashed;border-color:var(--accent)}
+.day.sk{opacity:.6}
+.day.dn span:last-child{color:var(--good)}
+.planact{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
 details.lib{border-top:2px solid var(--ink);padding-top:10px}
 details.lib summary{cursor:pointer;font-family:var(--display);font-size:1.5rem;text-transform:uppercase;list-style:none}
 details.lib summary::after{content:" +";color:var(--accent)}
@@ -588,6 +599,7 @@ html.guiding,html.guiding body{overflow:hidden}
         <div class="range"><input type="range" id="minutes" min="10" max="60" step="5" aria-label="Minutes per workout"><output id="minOut"></output></div></div>
       <div class="field"><span>Build</span><div class="seg" id="mode"></div></div>
       <div class="field" id="daysField"><span>Time you have each day</span><span class="hint">Pick minutes for each day you can train. Leave the rest as Rest.</span><div class="daylist" id="days"></div><span class="hint" id="daySum"></span></div>
+      <div class="field" id="lenField"><span>Plan length</span><div class="seg" id="planLen"></div><span class="hint">Longer plans repeat your week so the moves get familiar, step up as you log, and end with a lighter week.</span></div>
       <div class="go">
         <button class="btn" id="gen">Build workout</button>
         <button class="btn ghost" id="copy">Copy as text</button>
@@ -874,7 +886,7 @@ const DAYNAMES={2:['Mon','Thu'],3:['Mon','Wed','Fri'],4:['Mon','Tue','Thu','Fri'
 const WEEK=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const DAYTYPES={flow:['flow','strength','flow','conditioning','flow','mixed'],conditioning:['conditioning','strength','conditioning','flow','conditioning','mixed'],strength:['strength','flow','strength','conditioning','strength','mixed'],mixed:['strength','flow','conditioning','mixed','flow','strength']};
 
-const DEFAULT={eq:{kb:{on:true,w:[16],pair:false,unit:'kg'},mace:{on:true,w:[10,15],pair:false,unit:'lb'},club:{on:true,w:[10,15],pair:false,unit:'lb'}},level:1,goal:'mixed',minutes:30,mode:'single',
+const DEFAULT={eq:{kb:{on:true,w:[16],pair:false,unit:'kg'},mace:{on:true,w:[10,15],pair:false,unit:'lb'},club:{on:true,w:[10,15],pair:false,unit:'lb'}},level:1,goal:'mixed',minutes:30,mode:'single',planWeeks:4,
   week:{Mon:30,Tue:0,Wed:30,Thu:0,Fri:45,Sat:0,Sun:0}};
 let S=JSON.parse(JSON.stringify(DEFAULT)), fromStore=false;
 try{const raw=localStorage.getItem('ironflow');if(raw){const p=JSON.parse(raw);delete p.days;S=Object.assign(S,p);if(!S.week)S.week=JSON.parse(JSON.stringify(DEFAULT.week));fromStore=true}}catch(e){}
@@ -993,10 +1005,12 @@ function renderSettings(){
   if(S.prep==null)S.prep=30;
   seg('prepSeg',[[0,'Off'],[15,'15 s'],[30,'30 s'],[45,'45 s'],[60,'60 s']],'prep');
   $('progSet').checked=progOn();$('progSet').onchange=e=>{S.prog=e.target.checked;save();renderCoach();renderRec(true)};
-  const modeUI=()=>{const wk=S.mode==='week';if($('todayNote'))renderSetupBar();$('daysField').hidden=!wk;$('minField').hidden=wk;$('gen').textContent=wk?'Build week':'Build workout'};
+  const modeUI=()=>{const wk=S.mode==='week';if($('todayNote'))renderSetupBar();$('daysField').hidden=!wk;$('lenField').hidden=!wk;$('minField').hidden=wk;$('gen').textContent=wk?'Build plan':'Build workout'};
+  if(![1,4,6].includes(S.planWeeks))S.planWeeks=4;
+  seg('planLen',[[1,'1 week'],[4,'4 weeks'],[6,'6 weeks']],'planWeeks');
   seg('mode',[['single','Single workout'],['week','Weekly plan']],'mode',modeUI);
   renderDays();modeUI();
-  $('gen').textContent=S.mode==='week'?'Build week':'Build workout';
+  $('gen').textContent=S.mode==='week'?'Build plan':'Build workout';
   $('minutes').value=S.minutes;$('minOut').textContent=S.minutes+' min';
   $('minutes').oninput=e=>{S.minutes=+e.target.value;$('minOut').textContent=S.minutes+' min';save()};
 }
@@ -1010,7 +1024,7 @@ function activeEq(){return Object.keys(EQ).filter(k=>{const e=effEq(k);return e.
    one step instead. Counted workouts get targets from your records. Every change is listed on the workout with an undo. */
 const progOn=()=>S.prog!==false;
 const noProgNow=()=>!progOn()||!!(BUILD_CTX&&BUILD_CTX.noProg);
-function deloadActive(){const c=Store.state.coach;return !!(progOn()&&c&&c.deload&&c.deload===mondayOf(todayStr()))}
+function deloadActive(){if(BUILD_CTX&&BUILD_CTX.light)return progOn();const c=Store.state.coach;return !!(progOn()&&c&&c.deload&&c.deload===mondayOf(todayStr()))}
 function rackList(eq){return (effEq(eq).w||[]).map(Number).filter(x=>!isNaN(x)).sort((a,b)=>a-b)}
 function moveHist(name,eq,dbl){
   const out=[],u=unitOf(eq);
@@ -1267,7 +1281,7 @@ function split(total,fr){const raw=fr.map(f=>Math.max(4,Math.round(total*f)));le
 function buildWorkout(type,eqs,minutes,opts){
   opts=opts||{};
   const rest=S.recov!==false?restingGroups():[];
-  BUILD_CTX={rest,avoided:false,noProg:!!opts.noProg};
+  BUILD_CTX={rest,avoided:false,noProg:!!opts.noProg,light:!!opts.light};
   const p=pool(eqs,S.level);
   const useWarm=S.warm!==false,useCool=S.cool!==false;
   const warm=useWarm?Math.max(3,Math.min(8,Math.round(minutes*.15))):0,cool=useCool?Math.max(2,Math.min(6,Math.round(minutes*.1))):0;
@@ -1291,10 +1305,10 @@ function buildWorkout(type,eqs,minutes,opts){
   }
   if(useCool)blocks.push(coolBlock(cool));
   const ctx=BUILD_CTX;BUILD_CTX=null;
-  return{id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),type,eqs,minutes,blocks,opts,avoided:ctx.avoided?rest:[],built:Date.now(),deload:!opts.noProg&&deloadActive()};
+  return{id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),type,eqs,minutes,blocks,opts,avoided:ctx.avoided?rest:[],built:Date.now(),deload:!opts.noProg&&(opts.light?progOn():deloadActive())};
 }
 
-let current=null,selDay=0;
+let current=null,selDay=0,selWk=0;
 function generate(jump){
   const eqs=activeEq();const m=$('msg');
   if(!eqs.length){m.textContent='Turn on at least one implement and pick a weight you own.';m.hidden=false;return}
@@ -1309,13 +1323,16 @@ function generate(jump){
       const rank={strength:3,mixed:2,conditioning:1,flow:0};const sortedT=types.slice().sort((a,b)=>rank[b]-rank[a]);
       const byLen=names.map((d,i)=>[d,i]).sort((a,b)=>S.week[b[0]]-S.week[a[0]]);byLen.forEach(([,i],j)=>types[i]=sortedT[j]);
     }
-    const planId='p'+Date.now().toString(36);
-    const days=names.map((d,i)=>{
-      const t=types[i];const focus=(t==='mixed'||eqs.length===1)?eqs:[eqs[i%eqs.length]];
-      return Object.assign(buildWorkout(t,focus,S.week[d]),{day:d,weekRef:{id:planId,day:d}});
-    });
-    Store.state.week={id:planId,created:Date.now(),goal:S.goal,setup:activeSetup().name,days,done:{}};
-    current={week:days};selDay=0;
+    const planId='p'+Date.now().toString(36),phases=planPhases(S.planWeeks||4);
+    // week 1 is built now; later weeks are built when you reach them so they use your latest logged weights
+    const plan=phases.map((ph,k)=>({days:names.map((d,i)=>{
+      const t=types[i];const focus=(t==='mixed'||eqs.length===1)?eqs:[eqs[i%eqs.length]];const ref={id:planId,day:d,wk:k+1};
+      if(k===0)return Object.assign(buildWorkout(t,focus,S.week[d]),{day:d,weekRef:ref});
+      const full=S.week[d],light=ph==='light';
+      return Object.assign({day:d,type:t,eqs:focus,minutes:light?Math.min(full,Math.max(10,Math.round(full*.7/5)*5)):full,weekRef:ref,stub:1,fullMin:full},light?{light:1}:{});
+    })}));
+    Store.state.week={id:planId,created:Date.now(),goal:S.goal,setup:activeSetup().name,weeks:phases.length,phases,plan,done:{},skip:{}};
+    current={week:plan[0].days};selWk=0;selDay=0;
   }
   render();
   if(jump===true){
@@ -1414,14 +1431,30 @@ function keepBuilt(){
 }
 function render(){
   const out=$('out');if(!current){out.innerHTML='';return}
-  if(current.week&&Store.state.week&&Store.state.week.days===current.week)Store.saveState();
   if(current.single){out.innerHTML=workoutHTML(current.single,0)}
   else{
-    const wk=current.week;const byName={};wk.forEach((w,i)=>byName[w.day]=i);
-    out.innerHTML=`<div class="week"><div class="eyebrow">${wk.length}-day week · ${wk.reduce((a,w)=>a+w.minutes,0)} min · ${GOALS[S.goal]}</div><div class="days">${WEEK.map(d=>byName[d]!=null?`<button class="day${weekDone(wk[byName[d]])?' dn':''}" data-day="${byName[d]}" aria-pressed="${byName[d]===selDay}"><b>${d}${weekDone(wk[byName[d]])?' ✓':''}</b><span>${wk[byName[d]].minutes} min · ${GOALS[wk[byName[d]].type]}</span><span>${eqLabel(wk[byName[d]].eqs)}</span></button>`:`<div class="day rest"><b>${d}</b><span>Rest or walk</span></div>`).join('')}</div>
-      <p class="prog"><b>Four-week progression.</b> Week 1: learn the moves at the weights shown. Week 2: add one round or 2–3 minutes of flow. Week 3: move up one weight on the strength moves where form holds. Week 4: cut the rounds by a third to recover, then build a fresh week.</p></div>
-      ${workoutHTML(wk[selDay],selDay,wk[selDay].day)}`;
+    const p=planNorm();if(!p){current=null;out.innerHTML='';return}
+    selWk=Math.max(0,Math.min(selWk,p.plan.length-1));selDay=Math.max(0,Math.min(selDay,p.plan[selWk].days.length-1));
+    ensureBuilt(selWk,selDay);const wk=current.week=p.plan[selWk].days;Store.saveState();
+    const n=p.plan.length,dn=p.done||{},sk=p.skip||{},nx=planNext(p),key=(k,w)=>(k+1)+':'+w.day,byName={};wk.forEach((w,i)=>byName[w.day]=i);
+    const tot=n*wk.length,doneN=p.plan.reduce((a,x,k)=>a+x.days.filter(w=>dn[key(k,w)]).length,0),ph=PHASE[(p.phases||[])[selWk]]||PHASE.learn;
+    const sel=wk[selDay],sKey=key(selWk,sel);
+    const dayBtn=(w,i)=>{const kk=key(selWk,w),d=dn[kk],s=sk[kk],isNx=nx&&nx.k===selWk&&nx.i===i;
+      return `<button class="day${d?' dn':''}${s?' sk':''}${isNx?' nx':''}" data-day="${i}" aria-pressed="${i===selDay}" aria-label="${w.day}${d?', done':s?', skipped':isNx?', up next':''}"><b>${w.day}${d?' ✓':''}</b><span>${w.minutes} min · ${GOALS[w.type]}</span><span>${d?'Done '+fmtDate(d):s?'Skipped':isNx?'Up next':esc(eqLabel(w.eqs))}</span></button>`};
+    out.innerHTML=`<div class="week"><div class="eyebrow">${n>1?n+'-week plan · ':''}${wk.length} days a week · ${GOALS[p.goal]||GOALS[S.goal]} · ${doneN} of ${tot} done</div>
+      ${n>1?`<div class="wktabs">${p.plan.map((x,k)=>{const all=x.days.every(w=>dn[key(k,w)]||sk[key(k,w)]);const cur=nx&&nx.k===k;
+        return `<button class="wktab${all?' dn':''}" data-wk="${k}" aria-pressed="${k===selWk}"><b>Week ${k+1}${all?' ✓':''}</b><span>${(PHASE[(p.phases||[])[k]]||PHASE.learn)[0]}${cur?' · now':''}</span></button>`}).join('')}</div>`:''}
+      <div class="days">${WEEK.map(d=>byName[d]!=null?dayBtn(wk[byName[d]],byName[d]):`<div class="day rest"><b>${d}</b><span>Rest or walk</span></div>`).join('')}</div>
+      <p class="prog">${n>1?`<b>Week ${selWk+1} · ${ph[0]}.</b> ${ph[1]}`:`<b>One-week plan.</b> Log each day as you finish it. When the week is done, build the next one, or pick a 4- or 6-week plan so it steps up for you.`}</p>
+      <div class="planact">${dn[sKey]?`<span class="hint">${esc(sel.day)} done ${fmtDate(dn[sKey])}.</span><button class="link" type="button" data-pd="undo">Undo</button>`:sk[sKey]?`<span class="hint">${esc(sel.day)} skipped.</span><button class="link" type="button" data-pd="undo">Undo</button>`:`<button class="link" type="button" data-pd="done">Mark ${esc(sel.day)} done</button><button class="link" type="button" data-pd="skip">Skip ${esc(sel.day)}</button>`}</div></div>
+      ${workoutHTML(sel,selDay,n>1?`Week ${selWk+1} · ${sel.day}`:sel.day)}`;
     out.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{selDay=+b.dataset.day;render()});
+    out.querySelectorAll('[data-wk]').forEach(b=>b.onclick=()=>{selWk=+b.dataset.wk;const x=p.plan[selWk].days.findIndex(w=>!dn[key(selWk,w)]&&!sk[key(selWk,w)]);selDay=x<0?0:x;render()});
+    out.querySelectorAll('[data-pd]').forEach(b=>b.onclick=()=>{const a=b.dataset.pd;
+      if(a==='done'){finishedWorkout(null,sel.weekRef);return}
+      if(a==='skip'){p.skip=Object.assign({},p.skip,{[sKey]:Date.now()})}
+      if(a==='undo'){const d=Object.assign({},p.done),k2=Object.assign({},p.skip);delete d[sKey];delete k2[sKey];p.done=d;p.skip=k2}
+      Store.saveState();renderContinue();render()});
   }
   $('logThis').onclick=()=>{prefillLog(current.single||current.week[selDay]);go('log')};
   $('reroll').onclick=()=>{
@@ -1448,7 +1481,8 @@ function render(){
   out.querySelectorAll('[data-prog]').forEach(b=>b.onclick=()=>{const[k,wi]=b.dataset.prog.split(':'),w=wkAt(+wi);
     if(k==='undo')undoProg(w);
     if(k==='off'){S.prog=false;save();undoProg(w);const c=$('progSet');if(c)c.checked=false;renderRec()}
-    if(k==='skipdl'){const c=Store.state.coach||{};c.skipDeload=c.deload;c.deload=null;Store.state.coach=c;Store.saveState();undoProg(w);w.opts=Object.assign({},w.opts,{noProg:false});
+    if(k==='skipdl'&&w.opts&&w.opts.light){const o=Object.assign({},w.opts,{light:false,noProg:false});current.week[+wi]=Object.assign(buildWorkout(w.type,w.eqs,w.opts.fullMin||w.minutes,o),{day:w.day,weekRef:w.weekRef})}
+    else if(k==='skipdl'){const c=Store.state.coach||{};c.skipDeload=c.deload;c.deload=null;Store.state.coach=c;Store.saveState();undoProg(w);w.opts=Object.assign({},w.opts,{noProg:false});
       const nw=Object.assign(buildWorkout(w.type,w.eqs,w.minutes,w.opts),w.day?{day:w.day}:{},w.program?{program:w.program}:{},w.weekRef?{weekRef:w.weekRef}:{});if(current.single)current.single=nw;else current.week[+wi]=nw;renderCoach();renderRec()}
     if(k==='again'){const o=Object.assign({},w.opts);delete o.noProg;const nw=Object.assign(buildWorkout(w.type,w.eqs,w.minutes,o),w.day?{day:w.day}:{},w.program?{program:w.program}:{},w.weekRef?{weekRef:w.weekRef}:{});if(current.single)current.single=nw;else current.week[+wi]=nw}
     if(current.single)keepBuilt();render()});
@@ -1468,7 +1502,8 @@ function workoutText(w,head){
 }
 $('copy').onclick=async()=>{
   if(!current){generate()}
-  const text=current.single?workoutText(current.single):current.week.map(w=>workoutText(w,w.day)).join('\n\n');
+  if(current.week)current.week.forEach((_,i)=>ensureBuilt(selWk,i));
+  const text=current.single?workoutText(current.single):current.week.map(w=>workoutText(w,(w.weekRef&&w.weekRef.wk?'Week '+w.weekRef.wk+' · ':'')+w.day)).join('\n\n');
   const m=$('msg');
   try{await navigator.clipboard.writeText(text);m.textContent='Copied.';}catch(e){m.textContent='Copy was blocked here. Select the workout text and copy it by hand.'}
   m.hidden=false;setTimeout(()=>m.hidden=true,2500);
@@ -1975,7 +2010,7 @@ function workoutMoves(w){
 }
 function prefillLog(w,extra){
   extra=extra||{};
-  pendingLog=w?{type:w.type,eqs:w.eqs.slice(),minutes:extra.minutes||w.minutes,moves:workoutMoves(w),kinds:[...new Set(w.blocks.map(b=>b.kind).filter(k=>k&&k!=='Warm-up'&&k!=='Cool-down'))],emom:(w.blocks.find(b=>b.kind==='EMOM')||{}).repBase||null,counts:extra.counts||[],guided:!!extra.guided,program:w.program||null,wid:w.id||null,weekRef:w.weekRef||null,title:w.program?w.program.label:`${GOALS[w.type]} · ${w.minutes} min${w.day?' ('+w.day+' plan)':''}`}:null;
+  pendingLog=w?{type:w.type,eqs:w.eqs.slice(),minutes:extra.minutes||w.minutes,moves:workoutMoves(w),kinds:[...new Set(w.blocks.map(b=>b.kind).filter(k=>k&&k!=='Warm-up'&&k!=='Cool-down'))],emom:(w.blocks.find(b=>b.kind==='EMOM')||{}).repBase||null,counts:extra.counts||[],guided:!!extra.guided,program:w.program||null,wid:w.id||null,weekRef:w.weekRef||null,title:w.program?w.program.label:`${GOALS[w.type]} · ${w.minutes} min${w.day?(w.weekRef&&w.weekRef.wk&&planNorm()&&planNorm().plan.length>1?' (Week '+w.weekRef.wk+' · '+w.day+')':' ('+w.day+' plan)'):''}`}:null;
   lgFeel={};
   if(extra.notes)$('lgNotes').value=extra.notes;
   $('lgMin').value='';
@@ -2200,8 +2235,9 @@ function evalAch(){
   if(first){achRetro=fresh.length;return []}
   return fresh;
 }
-function notePlanDone(){const p=Store.state.week;if(!p||!p.days||!p.days.length)return;
-  if(p.days.every(w=>(p.done||{})[w.day])){const l=Store.state.plansDone||(Store.state.plansDone=[]);if(!l.includes(p.id))l.push(p.id)}}
+// each week of a plan finished in full counts once (week 1 keeps the plan id so older saves are not counted twice)
+function notePlanDone(){const p=planNorm();if(!p)return;const dn=p.done||{};
+  p.plan.forEach((x,k)=>{if(x.days.length&&x.days.every(w=>dn[(k+1)+':'+w.day])){const l=Store.state.plansDone||(Store.state.plansDone=[]),id=k?p.id+':'+(k+1):p.id;if(!l.includes(id))l.push(id)}})}
 /* new records in one log, compared with everything logged before it */
 function recordsIn(rec){
   const prior=Store.logs,best={},cbest={};let longest=0;
@@ -2480,21 +2516,66 @@ function renderLook(){
 
 /* ---- continue ---- */
 const ago=ts=>{const m=Math.round((Date.now()-ts)/6e4);if(m<2)return'just now';if(m<60)return m+' min ago';const h=Math.round(m/60);if(h<24)return h+' h ago';const d=Math.round(h/24);return d===1?'yesterday':d+' days ago'};
-function weekDone(w){const p=Store.state.week;return !!(p&&w&&w.weekRef&&p.id===w.weekRef.id&&(p.done||{})[w.weekRef.day])}
+/* ---- weekly plans ----
+   Store.state.week = {id, created, goal, setup, weeks, phases, plan:[{days:[workout or stub]}], done:{'wk:Day':ts}, skip:{'wk:Day':ts}}.
+   Week 1 is built when the plan is made. Later weeks start as stubs (day, type, eqs, minutes) and are built the first time
+   they are opened: Build and Push weeks repeat the same moves with weights and targets refreshed from your latest logs;
+   the Lighter week is a shorter fresh build with weights a step down. Older saves ({days, done:{Day:ts}}) are moved
+   into this shape once by planNorm(). plan is an array of objects (not nested arrays) so it can sync to the cloud store. */
+const PHASE={learn:['Learn','Learn the moves at the weights shown. Log each day so the next weeks can build on it.'],
+  build:['Build','Same workouts as week 1. Where your last sessions felt good, the coach adds reps, rounds or a weight step.'],
+  push:['Push','Same workouts, your strongest week. Move up where form holds and end a set when it slips.'],
+  light:['Lighter','Shorter sessions, weights a step down and no new targets. Keep effort around 6 out of 10 so the next block starts fresh.']};
+function planPhases(n){return n>=6?['learn','build','build','push','push','light']:n>=4?['learn','build','push','light']:['learn']}
+const wkKey=r=>(r.wk||1)+':'+r.day;
+function planNorm(){const p=Store.state.week;if(!p)return null;
+  if(!p.plan){if(!p.days||!p.days.length)return null;
+    const done={};Object.entries(p.done||{}).forEach(([k,v])=>{done[k.includes(':')?k:'1:'+k]=v});
+    p.days.forEach(w=>{if(w.weekRef)w.weekRef.wk=1});
+    p.plan=[{days:p.days}];p.weeks=1;p.phases=['learn'];p.done=done;p.skip={};delete p.days}
+  if(!p.plan.length||!p.plan[0].days||!p.plan[0].days.length)return null;
+  return p}
+function planNext(p){const dn=p.done||{},sk=p.skip||{};
+  for(let k=0;k<p.plan.length;k++)for(let i=0;i<p.plan[k].days.length;i++){const kk=(k+1)+':'+p.plan[k].days[i].day;if(!dn[kk]&&!sk[kk])return{k,i}}return null}
+function planLast(p){return Math.max(p.created||0,...Object.values(p.done||{}),...Object.values(p.skip||{}))}
+// repeat a workout with weights and targets worked out again from the latest logs (same moves, same timing)
+function refreshWorkout(src){
+  const w=JSON.parse(JSON.stringify(src)),o=Object.assign({},src.opts);delete o.noProg;delete o.light;
+  BUILD_CTX={rest:[],avoided:false,noProg:false};
+  try{w.blocks.forEach(b=>{
+    if(b.coachPrev){b.fmt=b.coachPrev.fmt;if(b.coachPrev.rungs)b.rungs=b.coachPrev.rungs;(b.moves||[]).forEach((m,i)=>{if(b.coachPrev.doses[i]!=null)m.dose=b.coachPrev.doses[i]});
+      if(b.coachPrev.repBase)b.repBase=b.coachPrev.repBase;delete b.target;delete b.coachNote;delete b.coachPrev}
+    delete b.up;delete b.need;
+    if(b.flow&&rackList(b.flow.eq).length){const st=effEq(b.flow.eq).w;let wt=st[Math.min(st.length-1,Math.floor((st.length-1)/2))];
+      const pp=progPick(b.flow.name,b.flow.eq,false);if(pp){wt=pp.wt;if(pp.dir!=='hold')b.up={from:pp.from,dir:pp.dir};if(pp.need)b.need=pp.need}b.wt=wt+' '+unitOf(b.flow.eq)}
+    (b.moves||[]).forEach(m=>{const ex=X.find(x=>x.name===m.name&&x.eq===m.eq);if(!ex||!rackList(ex.eq).length)return;
+      delete m.up;delete m.need;const wi=wtInfo(ex);m.wt=wi.val;if(wi.up)m.up=wi.up;if(wi.need)m.need=wi.need});
+    if(['AMRAP','Deck of cards','EMOM','Ladder'].includes(b.kind))coachBlock(b);
+  })}finally{BUILD_CTX=null}
+  return Object.assign(w,{id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),opts:o,built:Date.now(),avoided:[],deload:deloadActive()});
+}
+function ensureBuilt(k,i){const p=planNorm();if(!p||!p.plan[k])return null;const d=p.plan[k].days[i];if(!d||!d.stub)return d;
+  let w;
+  if(d.light)w=buildWorkout(d.type,d.eqs,d.minutes,{light:true,fullMin:d.fullMin});
+  else{const prev=k>0&&p.plan[k-1].days[i],src=prev&&!prev.stub&&!(prev.opts&&prev.opts.light)?prev:p.plan[0].days[i];
+    try{w=src&&!src.stub?refreshWorkout(src):null}catch(e){w=null}
+    if(!w)w=buildWorkout(d.type,d.eqs,d.minutes)}
+  p.plan[k].days[i]=Object.assign(w,{day:d.day,weekRef:d.weekRef});Store.saveState();return p.plan[k].days[i]}
+function weekDone(w){const p=planNorm();return !!(p&&w&&w.weekRef&&p.id===w.weekRef.id&&(p.done||{})[wkKey(w.weekRef)])}
 function finishedWorkout(wid,wref){
-  const st=Store.state;
-  if(wref&&st.week&&st.week.id===wref.id){st.week.done=Object.assign({},st.week.done,{[wref.day]:Date.now()})}
+  const st=Store.state,p=planNorm();
+  if(wref&&p&&p.id===wref.id){p.done=Object.assign({},p.done,{[wkKey(wref)]:Date.now()});const m=planNext(p);if(m&&current&&current.week){selWk=m.k;selDay=m.i}}
   notePlanDone();
   if(wid&&st.lastBuilt&&st.lastBuilt.id===wid)st.lastBuilt=null;
   const r=readResume();if(r&&wid&&r.w.id===wid)clearResume();
   Store.saveState();renderContinue();if(current&&current.week)render();
 }
-function openWeek(dayIdx){const p=Store.state.week;if(!p)return;current={week:p.days};selDay=dayIdx;go('build');render();try{$('out').scrollIntoView({block:'start'})}catch(e){}}
+function openWeek(k,i){const p=planNorm();if(!p)return;current={week:p.plan[k].days};selWk=k;selDay=i;go('build');render();try{$('out').scrollIntoView({block:'start'})}catch(e){}}
 function openBuilt(){const w=Store.state.lastBuilt;if(!w)return;current={single:w};go('build');render();try{$('out').scrollIntoView({block:'start'})}catch(e){}}
 function contItems(){
   const it=[];const st=Store.state;
   const r=readResume();if(r)it.push('resume');
-  const p=st.week;if(p&&p.days&&p.days.length&&p.days.some(w=>!(p.done||{})[w.day])&&Date.now()-p.created<21*864e5)it.push('week');
+  const p=planNorm();if(p&&planNext(p)&&Date.now()-planLast(p)<21*864e5)it.push('week');
   const prog=st.program&&PROGRAMS.find(x=>x.id===st.program.id);if(prog&&progNext(prog,st.program))it.push('program');
   const progCard=it.includes('program');
   if(st.lastBuilt&&!(r&&r.w.id===st.lastBuilt.id)&&!(progCard&&st.lastBuilt.program)&&Date.now()-(st.lastBuilt.built||0)<7*864e5)it.push('built');
@@ -2510,12 +2591,15 @@ function renderContinue(){
       <p class="hint">Stopped at step ${r.i+1} of ${r.total}${r.name?' · '+esc(r.name):''} · ${ago(r.ts)} · ${Math.round(r.elapsed/60)} min done</p>
       <span class="meter"><i class="s-ready" style="width:${pct}%"></i></span>
       <div class="go"><button class="btn" data-c="resume">▶ Resume</button><button class="btn ghost small" data-c="restart">Start over</button><button class="link" data-c="drop">Discard</button></div></article>`}
-  if(items.includes('week')){const p=st.week,dn=p.done||{},n=p.days.filter(w=>dn[w.day]).length,nx=p.days.findIndex(w=>!dn[w.day]),w=p.days[nx];
-    h+=`<article class="ccard"><div class="eyebrow">This week's plan · ${esc(p.setup||'')}</div><h3>${n} of ${p.days.length} days done</h3>
-      <div class="cdays">${WEEK.map(d=>{const i=p.days.findIndex(x=>x.day===d);if(i<0)return`<span class="cday rest">${d}</span>`;
-        return `<button class="cday${dn[d]?' dn':''}${i===nx?' nx':''}" data-c="wday:${i}" aria-label="${d}${dn[d]?', done':''}">${d}${dn[d]?'<i>✓</i>':''}</button>`}).join('')}</div>
-      <p class="hint">Next: <b>${w.day}</b> · ${GOALS[w.type]} · ${w.minutes} min · ${esc(eqLabel(w.eqs))}</p>
-      <div class="go"><button class="btn" data-c="wday:${nx}">Open ${w.day}'s workout</button><button class="btn ghost small" data-c="wdone:${nx}">Mark ${w.day} done</button></div></article>`}
+  if(items.includes('week')){const p=planNorm(),dn=p.done||{},sk=p.skip||{},nx=planNext(p),n=p.plan.length,days=p.plan[nx.k].days,w=days[nx.i],kk=(k,x)=>(k+1)+':'+x.day;
+    const tot=p.plan.reduce((a,x)=>a+x.days.length,0),doneN=p.plan.reduce((a,x,k)=>a+x.days.filter(y=>dn[kk(k,y)]).length,0),ph=PHASE[(p.phases||[])[nx.k]]||PHASE.learn;
+    const last=Math.max(0,...Object.values(dn));
+    h+=`<article class="ccard"><div class="eyebrow">${n>1?`Your ${n}-week plan · Week ${nx.k+1} of ${n} · ${ph[0]}`:"This week's plan"}${p.setup?' · '+esc(p.setup):''}</div><h3>${doneN} of ${tot} days done</h3>
+      ${n>1?`<span class="meter"><i class="s-ready" style="width:${Math.round(doneN/tot*100)}%"></i></span>`:''}
+      <div class="cdays">${WEEK.map(d=>{const i=days.findIndex(x=>x.day===d);if(i<0)return`<span class="cday rest">${d}</span>`;const t=dn[kk(nx.k,days[i])];
+        return `<button class="cday${t?' dn':''}${i===nx.i?' nx':''}" data-c="wday:${nx.k}:${i}" aria-label="${d}${t?', done '+fmtDate(t):''}">${d}${t?'<i>✓</i>':''}</button>`}).join('')}</div>
+      <p class="hint">Next: <b>${n>1?'Week '+(nx.k+1)+' · ':''}${w.day}</b> · ${GOALS[w.type]} · ${w.minutes} min · ${esc(eqLabel(w.eqs))}${last?` · last done ${fmtDate(last)}`:''}</p>
+      <div class="go"><button class="btn" data-c="wday:${nx.k}:${nx.i}">Open ${w.day}'s workout</button><button class="btn ghost small" data-c="wdone:${nx.k}:${nx.i}">Mark ${w.day} done</button></div></article>`}
   if(items.includes('program')){const prog=PROGRAMS.find(x=>x.id===st.program.id),nx=progNext(prog,st.program),spec=prog.day(nx.w,nx.d),doneN=Object.keys(st.program.done||{}).length,tot=prog.weeks*prog.days;
     h+=`<article class="ccard">${artHTML(PROG_ART[prog.id])}<div class="eyebrow">Program · ${doneN} of ${tot} sessions</div><h3>${esc(prog.name)}</h3>
       <span class="meter"><i class="s-ready" style="width:${Math.round(doneN/tot*100)}%"></i></span>
@@ -2533,12 +2617,12 @@ function renderContinue(){
       <div class="go"><button class="btn" data-c="tobuild">Build a workout</button><button class="btn ghost" data-c="progs">Browse programs</button></div></div>`;
   box.innerHTML=(gst?goalCardHTML(gst,true):'')+h;
   box.querySelectorAll('[data-goal="see"]').forEach(b=>b.onclick=()=>go('progress'));
-  box.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{const[k,a]=b.dataset.c.split(':');const r=readResume();
+  box.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{const[k,a,c]=b.dataset.c.split(':');const r=readResume();
     if(k==='resume'&&r)startGuided(r.w,0,r);
     if(k==='restart'&&r){clearResume();startGuided(r.w,0)}
     if(k==='drop'){if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Tap again to discard';return}clearResume();renderContinue()}
-    if(k==='wday')openWeek(+a);
-    if(k==='wdone'){const p=st.week,w=p.days[+a];finishedWorkout(null,w.weekRef)}
+    if(k==='wday')openWeek(+a,+c);
+    if(k==='wdone'){const p=planNorm(),w=p&&p.plan[+a].days[+c];if(w)finishedWorkout(null,w.weekRef)}
     if(k==='prog'){const prog=PROGRAMS.find(x=>x.id===st.program.id),nx=progNext(prog,st.program),lb=st.lastBuilt;
       if(lb&&lb.program&&lb.program.id===prog.id&&lb.program.key===progKey(nx.w,nx.d))openBuilt();else openProgramDay(prog,nx.w,nx.d)}
     if(k==='progs'){go('programs')}
@@ -2564,7 +2648,10 @@ function go(v,noHash){
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>go(b.dataset.v));
 window.addEventListener('hashchange',()=>go(location.hash.slice(1),true));
 
-$('gen').onclick=()=>generate(true);
+$('gen').onclick=()=>{const b=$('gen'),p=S.mode==='week'&&planNorm();
+  if(p&&planNext(p)&&Object.keys(p.done||{}).length&&!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Tap again: this replaces your current plan';
+    setTimeout(()=>{if(b.classList.contains('armed')){b.classList.remove('armed');b.textContent='Build plan'}},4000);return}
+  b.classList.remove('armed');if(S.mode==='week')b.textContent='Build plan';generate(true)};
 $('useSkills').onchange=e=>{S.useSkills=e.target.checked;save()};
 $('gearDone').onclick=()=>{$('gearBox').open=false;$('gearBox').scrollIntoView({block:'nearest'})};
 $('suName').oninput=e=>{const v=e.target.value.trim().slice(0,24);if(!v)return;activeSetup().name=v;$('gearSum').textContent=v;save();renderSetupBar()};
@@ -2576,7 +2663,11 @@ $('todayReset').onclick=()=>{S.today=null;save();renderSetupBar()};
 {let setup=false;try{setup=localStorage.getItem('ironflow-setup')==='1'}catch(e){}$('gearBox').open=!setup&&!fromStore}
 applyLook();renderRack();renderSettings();renderLib();renderSoreForm();renderLook();paintViewArt();
 Store.loadLocal();
-if(Store.state.lastBuilt&&Store.state.lastBuilt.blocks){current={single:Store.state.lastBuilt};render()}else generate();
+{const p=planNorm();
+  if(S.mode==='week'&&p){const m=planNext(p);current={week:[]};selWk=m?m.k:p.plan.length-1;selDay=m?m.i:0;render()}
+  else if(Store.state.lastBuilt&&Store.state.lastBuilt.blocks){current={single:Store.state.lastBuilt};render()}
+  else if(S.mode==='week'||p){if(p){const m=planNext(p);current={week:[]};selWk=m?m.k:0;selDay=m?m.i:0;render()}else generate()}
+  else generate()}
 {const h=(location.hash||'').slice(1);go(VIEWS.includes(h)?h:(contItems().some(x=>x!=='skills')?'continue':'build'),true)}
 Store.init();
 /* ---- backup ---- */
