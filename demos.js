@@ -68,6 +68,13 @@ function chain(...parts){
   return out;
 }
 const both=(kf,grip=true)=>chain(kf,mirrorKF(kf,grip));
+// swap which hand is on top without moving anything. The lead side is the top hand, and a two-hand club
+// is held on the top hand's side of the body, so a move built with the club on the right takes the
+// right hand on top; both() then gives the left side with the left hand on top.
+const topSwap=kf=>kf.map(([t,p])=>{const o=Object.assign({},p);
+  if('gL' in p||'gR' in p){o.gL=p.gR;o.gR=p.gL;if(o.gL===undefined)delete o.gL;if(o.gR===undefined)delete o.gR}
+  if('offL' in p||'offR' in p){o.offL=p.offR;o.offR=p.offL;if(o.offL===undefined)delete o.offL;if(o.offR===undefined)delete o.offR}
+  return [t,o]});
 const shaft=(G,tip)=>norm(sub(tip,G));
 // in-between keyframes that move the mace by its head (the working hand), not by its base, so a hand
 // sliding along the shaft follows a sensible path. a and b must be full poses.
@@ -992,7 +999,7 @@ Object.assign(MOVES,{
     cue:'Swing the club low across your body, up one side and behind your head, then cast it out to the other side at arm’s length and swing back down. Feet pivot throughout. Both directions.'},
   'club:swing squat':{kf:swingSquat(),
     cue:'From order, cast forward into a swing with your arms locked out. Catch the club back in order as you sit into a squat, then stand.'},
-  'club:arm cast to flag press':{kf:both(castFlag()),
+  'club:arm cast to flag press':{kf:both(topSwap(castFlag())),
     cue:'From side order, arm cast with the elbow tucked to your ear, then drive the club forward and up, angled out like a flag. Both sides.'},
   'club:clean to torch press':{kf:cleanPress(),
     cue:'Clean the club to order, then drive it forward and up to straight arms, still upright. Lower to order under control.'},
@@ -1004,7 +1011,7 @@ Object.assign(MOVES,{
     cue:'Club upright in order on one side. Hinge and swing it down the outside of your body, past the outside of the same knee, then swing it back up the same path to order. Keep it outside the legs. Both sides.'},
   'club:side clean':{kf:both(sideClean()),
     cue:'Club in order on one side. Turn your torso away from it, weight on the near leg and held by that glute, and cast the club out to the far side. Let it swing down in front and across to the near side as your weight shifts over, then swing it back up the same path and catch it in order. Both sides.'},
-  'club:shield cast':{kf:both(shieldCast()),
+  'club:shield cast':{kf:both(topSwap(shieldCast())),
     cue:'Both hands, club upright and close in front of the chest. Drop it behind one shoulder and circle it round the head and shoulder, then back out over the same shoulder. Keep it close. Alternate sides.'},
   'club:torch press':{kf:both(torchPress()),
     cue:'Club upright like a torch at the shoulder. Press it straight up, keeping it vertical, and lower under control. Both arms.'}

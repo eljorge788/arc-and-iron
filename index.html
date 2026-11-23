@@ -924,12 +924,13 @@ const X=[
 ['Clock squat','club',3,'med','squat','','Squat while the club circles the clock face.'],
 ['Front lever hold','club',2,'light','core','u','Arm straight, club level; hold 15–20 s.']
 ].map(a=>({name:a[0],eq:a[1],lvl:a[2],load:a[3],pat:a[4],u:a[5].includes('u'),d:a[5].includes('d'),b:a[5].includes('b'),cue:a[6]}));
-// Every club and mace move has a lead side (the working arm, the top hand or the side the implement
-// starts on), as does every one-sided move. Workouts call out a lead side switch for all of them:
+// Every club and mace move has a lead side, as does every one-sided move. The lead side is the top hand
+// (a two-hand club is held on the top hand's side of the body); on a one-handed move it is the working hand. Workouts call out a lead side switch for all of them:
 // halfway through the move, or each round in Tabata and flows. Works on saved moves too (they keep eq).
 const sided=m=>!!(m&&(m.u||m.eq==='club'||m.eq==='mace'));
 const SIDE_NOTE='Club, mace and one-sided moves: ';
-const sideNote=(ms,how)=>ms.some(sided)?' '+SIDE_NOTE+how:'';
+const sideNote=(ms,how)=>{if(!ms.some(sided))return '';const two=ms.filter(m=>sided(m)&&!m.u);
+  return ' '+SIDE_NOTE+how+(two.length?' Your lead side is your top hand'+(two.some(m=>m.eq==='club')?'; hold the club on that side.':'.'):'')};
 // one-handed moves (u) do the full reps on each side; two-hand club and mace moves split the same
 // total across their two lead sides ("8" -> "4/side", "6–8" -> "3–4/side")
 const halfR=r=>String(r).replace(/\d+/g,n=>Math.max(1,Math.ceil(+n/2))).replace(/^(\d+)–\1$/,'$1');
@@ -1672,8 +1673,8 @@ function guidedSteps(w){
       const m=(b.moves||[]).find(x=>x.name===ph.name)||{};
       // timed work on a sided move (intervals): a "switch lead side" call at the halfway mark.
       // EMOM reps are split per side in the dose; Tabata switches each round (in the label).
-      const half=sided(m)&&b.kind!=='Tabata'&&b.kind!=='EMOM'&&ph.secs>=20,emom=sided(m)&&b.kind==='EMOM';
-      steps.push(Object.assign({},base,{name:ph.name,detail:`${ph.label}${m.dose&&!/ s$/.test(m.dose)?' · '+m.dose:''}${half?' · switch lead side halfway':emom?' · switch lead side halfway through the reps':''}`,wt:m.wt,eq:m.eq,cue:m.cue,secs:ph.secs,half,lastKey:m.eq?[m.name,m.eq]:null}));
+      const half=sided(m)&&b.kind!=='Tabata'&&b.kind!=='EMOM'&&ph.secs>=20,emom=sided(m)&&b.kind==='EMOM',one=!!m.u;
+      steps.push(Object.assign({},base,{name:ph.name,detail:`${ph.label}${m.dose&&!/ s$/.test(m.dose)?' · '+m.dose:''}${half?' · switch lead side halfway':emom?' · switch lead side halfway through the reps':''}`,wt:m.wt,eq:m.eq,cue:m.cue,secs:ph.secs,half,one,lastKey:m.eq?[m.name,m.eq]:null}));
     });
   });
   // number the working sets of each section and of each move, for the "sets done / left" line in guided mode
@@ -1800,7 +1801,7 @@ function gTick(){
   if(!G||!G.run||G.done)return;G.elapsed++;
   const s=G.steps[G.i];if(!s.secs){gClock();return}
   G.left--;if(G.elapsed%10===0)snapGuided();
-  if(s.half&&G.left===Math.ceil(s.secs/2)){beep(990,.12);setTimeout(()=>beep(990,.12),180);$('gDetail').textContent='Switch lead side now';if(voiceOn())say('Switch lead side.',{interrupt:true})}
+  if(s.half&&G.left===Math.ceil(s.secs/2)){const t=s.one?'Switch hands now':'Switch lead side now: change your top hand';beep(990,.12);setTimeout(()=>beep(990,.12),180);$('gDetail').textContent=t;if(voiceOn())say(s.one?'Switch hands.':'Switch lead side. Change your top hand.',{interrupt:true})}
   if(voiceOn())countdownCue();else if(G.left<=3&&G.left>0)beep(660,.08);
   if(G.left<=0)gGo(1);else gClock();
 }
