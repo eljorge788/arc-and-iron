@@ -540,6 +540,114 @@ function orderSquat(){
     [2.8,Object.assign({},UPRIGHT,C_ORDER2)],[3.0,{}]];
 }
 
+/* ---------- steel club, round two (review build) ----------
+   Sources: Mark Wildman's heavy club progressions (two-hand and single-arm order, as charted in the
+   wildman-skill-trees project), Dangerously Fit's mill, reverse mill and mini-flow teaching points, and Coach
+   Vaughn's two-hand pullover to pressout. Named positions: order (club upright in front of the shoulder), sword in
+   sheath (hand by the head, club hanging down the back), Y (arm long, club cast out about 45 degrees).
+   Right hand by default; both() gives the left. */
+const C_SHEATH={G:[-10,160,-2],D:norm([0.35,-0.86,-0.36]),eR:[-0.3,0.6,1]};      // sword in sheath, right hand
+const C_OUTR={G:[-17,158,4],D:norm([-0.9,-0.25,-0.35]),eR:[-0.3,0.6,1],pass:true}; // club swung round the outside, behind
+const C_OVER={G:[-16,146,22],D:norm([-0.35,0.6,0.72]),eR:[-1,-0.6,0.2],pass:true}; // coming over the shoulder to the front
+const C_TIPIN={G:[-10,150,14],D:norm([0.75,0.35,-0.55]),eR:[-0.5,0.2,0.9],pass:true}; // head falls toward the midline
+// play a keyframe list backwards (for the outside circle and reverse mill, which run the inside paths the other way)
+function backwardsKF(kf){const r=resolve(kf),T=r[r.length-1][0];return r.map(([t,p])=>[T-t,p]).reverse()}
+function insideCircle(){
+  // From order the club head falls toward the midline and drops behind the head into sword in sheath; the
+  // elbow then circles inward (like a cross punch) and brings the club round the outside and over the
+  // shoulder back to order. The wrist stays neutral; the elbow does the work.
+  return [[0,C_ONE],[0.3,{}],[0.75,C_TIPIN],[1.15,C_SHEATH],[1.3,{}],[1.7,C_OUTR],[2.05,C_OVER],[2.45,Object.assign({},C_ORDER1)],[2.7,{}]];
+}
+function outsideCircle(){
+  // The inside circle's path the other way: the elbow opens outward (like a jab), the club drops out to the
+  // side and round behind into sword in sheath, then comes back over the top to order.
+  return backwardsKF(insideCircle());
+}
+function clubMill(){
+  // Cast out to the Y with the arm long, swing low across the midline with the chest following the club, rise
+  // on the far side and draw the club to the body into sword in sheath, then an inside elbow circle brings it
+  // over the shoulder to order. Weight shifts with the club; feet pivot a little.
+  const cast={yaw:-12,hipYaw:-6,G:[-40,138,30],D:norm([-0.55,0.8,0.25]),eR:[-1,-0.3,0.1],pass:true};
+  const low={P:[0,90,-3],pitch:10,yaw:-6,hipYaw:-4,G:[-20,98,34],D:norm([-0.35,-0.9,0.25]),eR:[-1,-0.5,-0.2],pass:true};
+  const across={P:[2,90,-3],yaw:10,hipYaw:6,G:[2,96,36],D:norm([0.4,-0.88,0.25]),pass:true};
+  const upL={P:STAND.P,pitch:0,yaw:24,hipYaw:12,tR:0.3,fyR:20,G:[8,120,30],D:norm([0.9,0.3,0.3]),eR:[-0.6,-0.6,0.4],pass:true};
+  const draw={yaw:8,hipYaw:4,tR:0,fyR:0,G:[-4,150,14],D:norm([0.6,0.5,-0.6]),eR:[-0.5,0.3,0.9],pass:true};
+  const sheath=Object.assign({yaw:0,hipYaw:0},C_SHEATH);
+  return [[0,C_ONE],[0.25,{}],[0.65,cast],[1.0,low],[1.3,across],[1.6,upL],[1.95,draw],[2.25,sheath],[2.35,{}],
+    [2.7,C_OUTR],[3.0,C_OVER],[3.4,Object.assign({},C_ORDER1)],[3.6,{}]];
+}
+function reverseMill(){
+  // The mill run backwards: an outside elbow circle takes the club from order to sword in sheath, it casts out
+  // the far side, swings 180 degrees low across the front, and comes back up to order.
+  return backwardsKF(clubMill());
+}
+const C_STACK2={G:[-14,124,20],D:[0,1,0],eL:[1,-1,-0.2],eR:[-1,-1,-0.2]};   // side stack: two hands, club upright by the right chest
+function pullover(press){
+  // Coach Vaughn's pullover to pressout: side stack, body tall like a plank, shoulders packed. Let the club drop
+  // behind the head, pull it over with the lats (elbow pits turned up), and press out to the top middle with
+  // the arms locked; then back down to the other side. Without the press, the club comes back to order.
+  const tip=Object.assign({},TIPBACK2,{G:[-6,146,14]}),behind=Object.assign({},BEHIND2),pull=Object.assign({},PULL2);
+  const out={G:[0,160,44],D:[0,1,0],eL:[1,-0.3,0.1],eR:[-1,-0.3,0.1]};
+  const stackL=mirror(C_STACK2);
+  const one=(start,end,t0)=>[[t0,start],[t0+0.2,{}],[t0+0.6,tip],[t0+0.95,behind],[t0+1.1,{}],[t0+1.45,pull],
+    ...(press?[[t0+1.85,out],[t0+2.15,{}],[t0+2.6,end],[t0+2.8,{}]]:[[t0+1.85,Object.assign({},C_ORDER2)],[t0+2.05,{}]])];
+  return [[0,C_TWO]].concat(one(C_STACK2,stackL,0.35),press?one(stackL,C_STACK2,3.15):[],[[press?6.3:2.8,Object.assign({},C_ORDER2)],[press?6.5:3.0,{}]]);
+}
+function flagPress(){
+  // Two hands from side stack; press up and slightly forward with the club tilted out to the side like a flag,
+  // and resist the lean it pulls you into. Lower under control.
+  const top={G:[-12,180,16],D:norm([-0.55,0.83,0]),eL:[1,-0.3,0],eR:[-1,-0.3,0]};
+  return [[0,C_TWO],[0.35,C_STACK2],[0.5,{}],[1.1,top],[1.45,{}],[2.05,Object.assign({},C_STACK2)],[2.2,{}],[2.55,Object.assign({},C_ORDER2)],[2.75,{}]];
+}
+function sideClean(){
+  // One hand. Hinge and let the club hang outside the right leg; swing it back and forward like a pendulum from
+  // the hips, then on a forward swing bend the elbow and catch it upright in order. Decelerate, don't muscle it.
+  const hang=Object.assign({},HINGE,{feet:STAND.feet,turn:8,G:[-25,84,6],D:[0,-1,0.05],eR:[-1,-0.3,0.2],freeL:[22,84,10]});
+  const back={P:[0,86,-6],pitch:24,G:[-25,86,-12],D:norm([0,-0.55,-0.83]),pass:true};
+  const fwd={P:[0,92,-2],pitch:8,G:[-25,98,26],D:norm([0,-0.1,1]),pass:true};
+  const caught=Object.assign({},UPRIGHT,C_ORDER1,{freeL:CB1.freeL});
+  return [[0,C_ONE],[0.25,{}],[0.75,hang],[1.05,back],[1.45,fwd],[1.85,Object.assign({},hang,{pass:true})],[2.15,back],[2.55,fwd],[2.95,caught],[3.3,{}],
+    [3.8,Object.assign({},hang)],[4.0,{}],[4.4,Object.assign({},UPRIGHT,C_ORDER1,{freeL:CB1.freeL})],[4.6,{}]];
+}
+const lowerBy=(pose,base)=>add(base,sub(pose.P,STAND.P));
+function lungeCast(){
+  // Two hands. Step the right leg back into a reverse lunge as the club tips back into the arm cast (elbows by
+  // the ears, club down the back); stand up as the lats pull it back to order.
+  const feet={L:[12,8,6],R:[-12,15,-88]},bot={P:[0,54,-36],pitch:5,feet,tR:1};
+  const tipLow=Object.assign({},TIPBACK2,{G:lowerBy(Object.assign({},bot,{P:[0,74,-18]}),TIPBACK2.G),P:[0,74,-18],feet,tR:0.6});
+  const behindLow=Object.assign({},BEHIND2,bot,{G:lowerBy(bot,BEHIND2.G)});
+  const pullUp=Object.assign({},PULL2,{P:[0,76,-16],pitch:3,feet,tR:0.7,G:lowerBy({P:[0,76,-16]},PULL2.G)});
+  const tall=Object.assign({},UPRIGHT,C_ORDER2,{tR:0});
+  return both([[0,C_TWO],[0.3,{}],[0.7,tipLow],[1.1,behindLow],[1.35,{}],[1.75,pullUp],[2.15,tall],[2.4,{}]],false);
+}
+function frontLever(){
+  // One hand. From order, lower the arm straight out in front with the club level, pointing forward like the arm
+  // got longer. Hold it still for a few breaths, ribs down, then bring it back to order.
+  const lever={G:[-17,132,52],D:[0,0,1],eR:[-1,0.2,0]};
+  return both([[0,C_ONE],[0.3,{}],[0.9,lever],[2.6,{}],[3.2,Object.assign({},C_ORDER1)],[3.4,{}]]);
+}
+function rotTorch(){
+  // One hand, club upright like a torch at order. Pivot the right foot (heel turns out, "squish the bug") and
+  // turn the hips to the left as the arm drives the club forward and up, still vertical; lower with the lats.
+  const top={yaw:30,hipYaw:24,tR:0.55,fyR:38,G:[-2,174,34],D:[0,1,0],eR:[-1,-0.2,0.3]};
+  const back=Object.assign({},UPRIGHT,C_ORDER1,{tR:0,fyR:0});
+  return [[0,C_ONE],[0.3,{}],[0.95,top],[1.3,{}],[1.9,back],[2.1,{}]];
+}
+function halfMillTorch(){
+  // Dangerously Fit's half mill to rotational torch press: the top half of the mill (order, sword in sheath,
+  // inside elbow circle back to order), then the rotational torch press. both() changes sides.
+  return both(chain(insideCircle(),rotTorch()));
+}
+function lungeFlag(){
+  // Two hands. Step forward into a lunge (front shin near vertical) and press the club up into the flag over the
+  // back-leg side, resisting the lean; lower to side stack as you step back.
+  const feet={L:[12,8,72],R:[-12,15,-18]},bot={P:[0,54,26],pitch:4,feet,tR:1};
+  const stack=Object.assign({},C_STACK2,bot,{G:lowerBy(bot,C_STACK2.G)});
+  const top=Object.assign({},bot,{G:lowerBy(bot,[-12,180,16]),D:norm([-0.55,0.83,0]),eL:[1,-0.3,0],eR:[-1,-0.3,0]});
+  return both([[0,C_TWO],[0.3,C_STACK2],[0.45,{}],[1.15,stack],[1.3,{}],[1.85,top],[2.2,{}],[2.75,Object.assign({},stack)],[2.9,{}],
+    [3.6,Object.assign({},UPRIGHT,C_STACK2,{tR:0})],[3.75,{}],[4.1,Object.assign({},C_ORDER2)],[4.3,{}]],false);
+}
+
 /* ---------- kettlebell ----------
    From Chris's lesson notes (Mark Wildman, Wildman Athletica, kettlebell lessons 1 to 4): two-hand deadlift,
    two-hand swing, around the world and the single-direction halo. */
@@ -988,6 +1096,32 @@ Object.assign(MOVES,{
     cue:'Club resting back on the shoulder. Hinge and sweep it down and across the front in a big low arc, like swiping a table clear, driving with the hips and knees. Stand and bring it back to the shoulder. Both sides.'},
   'club:shield cast':{kf:both(shieldCast()),
     cue:'Both hands, club upright and close in front of the chest. Drop it behind one shoulder, circle it round behind and bring it back out over the same shoulder. Alternate sides.'},
+  'club:inside circle':{kf:both(insideCircle()),
+    cue:'From order, let the club head fall toward the midline and drop behind your head into sword in sheath. Then circle the elbow inward, like a cross punch, to bring the club round and over the shoulder to order. Wrist neutral; the elbow leads. Both arms.'},
+  'club:outside circle':{kf:both(outsideCircle()),
+    cue:'The inside circle the other way. Open the elbow outward, like a jab, so the club drops out to the side and round behind into sword in sheath, then bring it back over the top to order. Both arms.'},
+  'club:mill':{kf:both(clubMill()),
+    cue:'Cast out to the Y with a long arm, swing low across the front with your chest following the club, rise on the far side and draw it to your body into sword in sheath. An inside elbow circle brings it back to order. Shoulder packed; shift your weight with the club. Both arms.'},
+  'club:reverse mill':{kf:both(reverseMill()),
+    cue:'The mill backwards. An outside elbow circle takes the club from order to sword in sheath; cast it out to the side, let it swing 180 degrees low across the front and come back up to order. Move it with the elbow, not the wrist. Both arms.'},
+  'club:pullover':{kf:pullover(false),
+    cue:'Two hands, club stacked upright beside one side of the chest, body tall. Let it drop behind your head, then pull it over with your lats to the front. Elbow pits turned up, ribs down.'},
+  'club:pullover to pressout':{kf:pullover(true),
+    cue:'Side stack, body tall like a plank, shoulders packed. Drop the club behind your head, pull it over with your lats and press out to the top middle with your arms locked, thinking "break the bar". Lower to the other side and repeat.'},
+  'club:flag press':{kf:both(flagPress()),
+    cue:'Two hands from the side stack. Press up and slightly forward with the club tilted out like a flag, and resist the lean it pulls you into. Lower under control. Both sides.'},
+  'club:side clean':{kf:both(sideClean()),
+    cue:'One hand, club hanging outside your leg. Hinge and swing it back and forward like a pendulum from the hips, then on a forward swing bend the elbow and catch it upright in order. Let the hips do the lifting. Both arms.'},
+  'club:reverse lunge arm cast':{kf:lungeCast(),
+    cue:'Two hands. Step back into a reverse lunge as the club tips back into the arm cast: elbows by your ears, club down your back. Stand up as your lats pull it back to order. Alternate legs.'},
+  'club:front lever hold':{kf:frontLever(),
+    cue:'One hand. Lower the arm straight out in front with the club level, pointing forward. Hold 15 to 20 seconds, ribs down and shoulder packed, then return to order. Both arms.'},
+  'club:rotational torch press':{kf:both(rotTorch()),
+    cue:'One hand, club upright like a torch. Pivot the back foot and turn the hips as you drive the club forward and up, still vertical. Lower with the lats. Both sides.'},
+  'club:half mill to rotational torch press':{kf:halfMillTorch(),
+    cue:'The top half of the mill (order, sword in sheath, inside elbow circle back to order), then pivot the back foot and turn the hips into a torch press. Both sides.'},
+  'club:forward lunge flag press':{kf:lungeFlag(),
+    cue:'Two hands. Step forward into a lunge with the front shin near vertical and press the club up into the flag, resisting the lean. Lower as you step back. Alternate legs.'},
   'club:torch press':{kf:both(torchPress()),
     cue:'Club upright like a torch at the shoulder. Press it straight up, keeping it vertical, and lower under control. Both arms.'}
 });
@@ -1018,7 +1152,10 @@ const ALIAS={kb:{'goblet':'goblet squat','bottoms-up goblet squat':'goblet squat
     'two-handed mill':'two-hand mill','two-handed swing squat':'swing squat','two-hand swing squat':'swing squat',
     'two-hand arm cast to flag press':'arm cast to flag press','two-handed arm cast to flag press':'arm cast to flag press',
     'two-hand clean to torch press':'clean to torch press','two-handed clean to torch press':'clean to torch press',
-    'club barbarian squat':'barbarian squat','order-position squat':'order squat','two-handed arm cast':'two-hand arm cast'}};
+    'club barbarian squat':'barbarian squat','order-position squat':'order squat','two-handed arm cast':'two-hand arm cast',
+    'single arm mill':'mill','one-arm mill':'mill','outside mill':'reverse mill','inside mill':'mill','2h pullover to pressout':'pullover to pressout',
+    'pullover to press':'pullover to pressout','lower behind the head':'pullover','half mill':'half mill to rotational torch press',
+    'half mill to torch press':'half mill to rotational torch press','inside shield cast':'one-arm shield cast','front lever':'front lever hold'}};
 function key(name,eq){
   let n=String(name).toLowerCase().replace(/\s*[×x]\s*\d.*$/,'').replace(/\(.*?\)/g,'').trim();
   let side='';
