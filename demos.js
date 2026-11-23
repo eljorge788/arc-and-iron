@@ -414,6 +414,21 @@ function swipe(){
   return [[0,start],[0.25,{}]].concat(there,ret,
     [[2.85,Object.assign({},down)],[3.2,low],[3.4,back],[3.55,{}],[3.9,Object.assign({},low,{pass:true})],[4.2,Object.assign({},down)],[4.6,Object.assign({},order)],[4.8,{}]]);
 }
+function sideClean(){
+  // Two hands, club upright in order on the left side. Turn the torso to the right with the weight on the
+  // left leg (held by the left glute) and cast the club out to the right; it swings down in front of the
+  // body and up to the left while the weight shifts across to the right leg, then swings back up the same
+  // path and is caught in left-side order again. both() gives the right side.
+  const order=Object.assign({},TALL,{G:[13,124,20],D:norm([0.08,1,0]),eL:[1,-1,-0.25],eR:[-0.6,-1,-0.25]});
+  const start=Object.assign({},C_TWO,order);
+  const turnR={P:[5,93,0],pitch:0,yaw:-30,hipYaw:-12,feet:WIDE,turn:15,kneeOut:0.4,tR:0.25,fyR:-14,tL:0,fyL:0};
+  const wind=Object.assign({},turnR,{G:onBody(turnR,9,30,22),D:norm([0.1,1,0]),eL:[1,-1,-0.25],eR:[-0.6,-1,-0.25]});
+  const castR=Object.assign({},turnR,{G:[-22,126,32],D:norm([-0.82,0.25,0.5]),eL:[1,-0.4,-0.2],eR:[-1,-0.4,-0.2],pass:true});
+  const low={P:[0,89,-3],pitch:12,yaw:0,hipYaw:0,tR:0,fyR:0,tL:0,fyL:0,feet:WIDE,turn:15,kneeOut:0.5,G:[0,98,30],D:norm([0,-0.8,0.6]),eL:[1,-0.6,-0.3],eR:[-1,-0.6,-0.3],pass:true};
+  const left={P:[-5,92,-1],pitch:4,yaw:22,hipYaw:10,tL:0.25,fyL:14,tR:0,fyR:0,feet:WIDE,turn:15,kneeOut:0.4,G:[22,106,26],D:norm([0.85,-0.3,0.3]),eL:[1,-0.5,-0.2],eR:[-1,-0.5,-0.2]};
+  return [[0,start],[0.25,{}],[0.65,wind],[0.8,{}],[1.15,castR],[1.5,low],[1.85,left],[1.95,{}],
+    [2.3,Object.assign({},low)],[2.65,Object.assign({},castR)],[3.05,Object.assign({},wind,{pass:true})],[3.35,Object.assign({},start)],[3.55,{}]];
+}
 function shieldCast(){
   // Two hands, club upright in front of the chest and close to the body like a shield. Hands rise beside
   // the right side of the head and the club drops behind that shoulder to hang down the back; the head of
@@ -987,6 +1002,8 @@ Object.assign(MOVES,{
     cue:'Club upright in order, hands at the sternum, elbows by the ribs. Sit tall into the squat and stand.'},
   'club:swipe':{kf:both(swipe()),
     cue:'Club upright in order on one side. Hinge and swing it down the outside of your body, past the outside of the same knee, then swing it back up the same path to order. Keep it outside the legs. Both sides.'},
+  'club:side clean':{kf:both(sideClean()),
+    cue:'Club in order on one side. Turn your torso away from it, weight on the near leg and held by that glute, and cast the club out to the far side. Let it swing down in front and across to the near side as your weight shifts over, then swing it back up the same path and catch it in order. Both sides.'},
   'club:shield cast':{kf:both(shieldCast()),
     cue:'Both hands, club upright and close in front of the chest. Drop it behind one shoulder and circle it round the head and shoulder, then back out over the same shoulder. Keep it close. Alternate sides.'},
   'club:torch press':{kf:both(torchPress()),
@@ -1012,7 +1029,7 @@ const ALIAS={kb:{'goblet':'goblet squat','bottoms-up goblet squat':'goblet squat
     'around the world':'around-the-world','halos':'halo','light halos':'halo','single-direction halo':'halo'},
   mace:{'hand switch':'hand switches','rotational uppercut':'uppercut','overhead press':'offset press',
   'squat':'front squat','bent-over row':'offset bent-over row','offset row':'offset bent-over row','pendulum swings':'pendulum swing'},
-  club:{'two-hand side swing':'side rocker','two-handed side rocker':'side rocker','two-hand side rocker':'side rocker','cross-body swing':'lateral swing','cross-body swings':'lateral swing','two-hand side swings':'side rocker','side rock-it':'side rocker','side rocket':'side rocker',
+  club:{'side cleans':'side clean','two-hand side clean':'side clean','two-hand side swing':'side rocker','two-handed side rocker':'side rocker','two-hand side rocker':'side rocker','cross-body swing':'lateral swing','cross-body swings':'lateral swing','two-hand side swings':'side rocker','side rock-it':'side rocker','side rocket':'side rocker',
     'swing':'lateral swing','swings':'lateral swing','one-arm arm cast':'arm cast','two-hand swipe':'swipe','swipes':'swipe',
     'two-hand shield cast':'shield cast','shield cast, one arm':'one-arm shield cast',
     'clean':'two-hand clean','two-handed clean':'two-hand clean','180':'two-hand 180','two-handed 180':'two-hand 180',
