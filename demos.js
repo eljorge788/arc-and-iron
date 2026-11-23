@@ -571,6 +571,20 @@ function clubBarbarian(){
     [2.05,Object.assign({},TIPBACK2,{P:[0,80,-8],pitch:8,feet:WIDE,turn:15})],[2.45,behind],[2.6,{}],[2.95,PULL2],
     [3.3,lock(TALL)],[3.4,{}],[4.1,lock(SQUAT)],[4.3,{}],[5.0,lock(TALL)],[5.15,{}],[5.5,Object.assign({},UPRIGHT,C_ORDER2)],[5.7,{}]];
 }
+function diagSquat(){
+  // Two hands, from order. The club swings down to the right, then diagonally up and across the body to
+  // the upper left, and the hands pull it over the left shoulder so it hangs down the back (back-loaded).
+  // Squat with it there and stand, then cast it back out over the shoulder to order. both() gives the
+  // other side.
+  const start=Object.assign({},C_TWO,atOrder(TALL));
+  const low={P:[0,90,-3],pitch:12,yaw:-18,hipYaw:-10,feet:WIDE,turn:15,kneeOut:0.5,G:[-10,104,26],D:norm([-0.85,-0.45,0.25]),eL:[1,-0.5,-0.3],eR:[-1,-0.5,-0.3],pass:true};
+  const high=Object.assign({},TALL,{yaw:16,hipYaw:8,G:[10,138,34],D:norm([0.55,0.75,0.35]),eL:[1,-0.6,0],eR:[-1,-0.6,0],pass:true});
+  const over=Object.assign({},TALL,{G:[11,150,16],D:norm([0.2,0.4,-0.9]),eL:[1,0,0.3],eR:[-1,0,0.3],pass:true});
+  const back=Object.assign({},TALL,{G:[12,162,-2],D:norm([-0.1,-0.9,-0.42]),eL:[0.5,1,0.2],eR:[-0.4,1,0.2]});
+  const sq=carry(SQUAT,Object.assign({},back,{W:[1,0,0]}));delete sq.W;
+  return [[0,start],[0.25,{}],[0.6,low],[0.95,high],[1.15,over],[1.4,back],[1.55,{}],[2.25,sq],[2.45,{}],
+    [3.15,Object.assign({},back)],[3.3,{}],[3.6,Object.assign({},over)],[3.95,Object.assign({},start)],[4.15,{}]];
+}
 function orderSquat(){
   return [[0,C_TWO],[0.3,atOrder(TALL)],[0.45,{}],[1.25,atOrder(SQUAT)],[1.5,{}],[2.3,atOrder(TALL)],[2.45,{}],
     [2.8,Object.assign({},UPRIGHT,C_ORDER2)],[3.0,{}]];
@@ -1018,6 +1032,8 @@ Object.assign(MOVES,{
     cue:'Clean the club to order, then drive it forward and up to straight arms, still upright. Lower to order under control.'},
   'club:barbarian squat':{kf:clubBarbarian(),
     cue:'Arms locked out, club upright, squat. As you stand, arm cast; pull it back through with your lats and elbows, lock out and go straight into the next squat.'},
+  'club:diagonal swing squat':{kf:both(diagSquat()),
+    cue:'From order, swing the club down to one side and diagonally up across your body, then pull it over the opposite shoulder so it hangs down your back. Squat with it there, chest up, and stand. Cast it back out to order and switch sides.'},
   'club:order squat':{kf:orderSquat(),
     cue:'Club upright in order, hands at the sternum, elbows by the ribs. Sit tall into the squat and stand.'},
   'club:rotational swing':{kf:both(rotSwing()),
@@ -1051,7 +1067,7 @@ const ALIAS={kb:{'goblet':'goblet squat','bottoms-up goblet squat':'goblet squat
     'around the world':'around-the-world','halos':'halo','light halos':'halo','single-direction halo':'halo'},
   mace:{'hand switch':'hand switches','rotational uppercut':'uppercut','overhead press':'offset press',
   'squat':'front squat','bent-over row':'offset bent-over row','offset row':'offset bent-over row','pendulum swings':'pendulum swing'},
-  club:{'two-hand rotational swing':'rotational swing','two-handed rotational swing':'rotational swing','rotational clubbell swing':'rotational swing','rotational club swing':'rotational swing','side cleans':'side clean','two-hand side clean':'side clean','two-hand side swing':'side rocker','two-handed side rocker':'side rocker','two-hand side rocker':'side rocker','cross-body swing':'lateral swing','cross-body swings':'lateral swing','two-hand side swings':'side rocker','side rock-it':'side rocker','side rocket':'side rocker',
+  club:{'two-hand diagonal swing squat':'diagonal swing squat','two-handed diagonal swing squat':'diagonal swing squat','swing to back-loaded squat':'diagonal swing squat','two-hand rotational swing':'rotational swing','two-handed rotational swing':'rotational swing','rotational clubbell swing':'rotational swing','rotational club swing':'rotational swing','side cleans':'side clean','two-hand side clean':'side clean','two-hand side swing':'side rocker','two-handed side rocker':'side rocker','two-hand side rocker':'side rocker','cross-body swing':'lateral swing','cross-body swings':'lateral swing','two-hand side swings':'side rocker','side rock-it':'side rocker','side rocket':'side rocker',
     'swing':'lateral swing','swings':'lateral swing','one-arm arm cast':'arm cast','two-hand swipe':'swipe','swipes':'swipe',
     'two-hand shield cast':'shield cast','shield cast, one arm':'one-arm shield cast',
     'clean':'two-hand clean','two-handed clean':'two-hand clean','180':'two-hand 180','two-handed 180':'two-hand 180',
