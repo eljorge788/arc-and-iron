@@ -529,11 +529,13 @@ function mill(){
   // body turns against the weight the whole way.
   const big=circleStart(1).concat(seq(1.7,0.28,insideSwing()));
   const t=big[big.length-1][0]+0.32;
-  const cast=Object.assign({},body(12,0),{G:[-24,166,0],D:norm([0.7,0.3,-0.65]),eR:[-1,0.2,0.3],pass:true});
+  const cast=Object.assign({},body(12,0),{G:[-26,166,-2],D:norm([0.55,0.1,-0.83]),eR:[-1,0.2,0.3],pass:true});
   const behind=Object.assign({},body(16,-3),{G:[-15,160,-2],D:norm([0.15,-0.9,-0.4]),eR:[-0.3,0.6,1]});
   const round=Object.assign({},body(8,0),{G:[-16,158,6],D:norm([-0.92,-0.2,-0.3]),pass:true});
   const front=Object.assign({},body(0,0),{G:[-15,146,26],D:norm([-0.3,0.65,0.7]),eR:[-1,-0.6,0.2],pass:true});
-  return big.concat([[t,CATCH90()],[t+0.15,{}],[t+0.5,cast],[t+0.8,behind],[t+0.95,{}],[t+1.25,round],[t+1.55,front],[t+1.95,Object.assign({},UPRIGHT,C_ONE)],[t+2.15,{}]]);
+  // from the 90 at the side the elbow lifts out to the side (club still upright) before the cast behind the head
+  const out90=Object.assign({},body(-8,3),{G:[-36,160,8],D:norm([-0.1,1,-0.05]),eR:[-1,-0.3,-0.2],pass:true});
+  return big.concat([[t,CATCH90()],[t+0.15,{}],[t+0.45,out90],[t+0.75,cast],[t+1.05,behind],[t+1.2,{}],[t+1.5,round],[t+1.8,front],[t+2.2,Object.assign({},UPRIGHT,C_ONE)],[t+2.4,{}]]);
 }
 function reverseMill(){
   // One hand (right). Big circle: push out, then an outside circle with the arm long, caught with the elbow
