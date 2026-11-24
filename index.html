@@ -271,6 +271,14 @@ details.lib[open] summary::after{content:" –"}
 .libgrid{display:grid;gap:14px;margin-top:12px}
 .flowcard{display:grid;gap:6px;padding-bottom:12px;border-bottom:1px solid var(--line)}
 .flowcard p{margin:0;color:var(--muted);font-size:.9rem}
+.libbar{display:grid;gap:8px;margin-top:12px}
+.libtags{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+details.movegrp{border-top:1px solid var(--line);padding-top:10px}
+details.movegrp>summary{cursor:pointer;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:.85rem;list-style:none;display:flex;align-items:center;gap:8px}
+details.movegrp>summary::after{content:"+";color:var(--accent);margin-left:auto}
+details.movegrp[open]>summary::after{content:"–"}
+details.movegrp .movecard{margin-top:10px}
+details.movegrp .movecard:last-child{border-bottom:0}
 .note{font-size:.88rem;color:var(--muted);margin:0}
 a{color:var(--accent)}
 .demo{display:inline-block;font-family:var(--mono);font-size:.75rem;font-weight:500;text-decoration:none;color:var(--accent);
@@ -683,10 +691,14 @@ html.guiding,html.guiding body{overflow:hidden}
   <section id="out" aria-live="polite"></section>
 
   <details class="lib" id="lib">
-    <summary>Flow library</summary>
-    <p class="note" style="margin-top:8px">A flow chains three or more moves so each one starts where the last one ended. Learn each piece slowly, then link them and breathe with the movement. The builder draws from these.</p>
+    <summary>Movement library</summary>
+    <div class="libbar">
+      <div class="seg" id="libEq" role="group" aria-label="Equipment"></div>
+      <div class="seg" id="libView" role="group" aria-label="Moves or flows"></div>
+    </div>
+    <p class="note" id="libNote" style="margin-top:8px"></p>
     <div class="libgrid" id="libgrid"></div>
-    <p class="note">Sources for further study: <a href="https://www.setforset.com/blogs/news/how-to-flow-with-a-steel-mace" target="_blank" rel="noopener">SET FOR SET, How to flow with a steel mace</a> · <a href="https://www.setforset.com/blogs/news/steel-mace-basics" target="_blank" rel="noopener">SET FOR SET, Steel mace basics</a> · <a href="https://www.dangerouslyfit.com.au/steel-club-workout/the-3-club-flow-you-need-to-know/" target="_blank" rel="noopener">Dangerously Fit, The 3 club flow</a> · <a href="https://somble.com/seanpearse/programs/steel-mace-beginner-flow-102ef" target="_blank" rel="noopener">Sean Pearse, Beginner flow series</a> · <a href="https://fitnessvolt.com/steel-club-exercises/" target="_blank" rel="noopener">Fitness Volt, Steel club exercises</a></p>
+    <p class="note" id="libSrc">Sources for further study: <a href="https://www.setforset.com/blogs/news/how-to-flow-with-a-steel-mace" target="_blank" rel="noopener">SET FOR SET, How to flow with a steel mace</a> · <a href="https://www.setforset.com/blogs/news/steel-mace-basics" target="_blank" rel="noopener">SET FOR SET, Steel mace basics</a> · <a href="https://www.dangerouslyfit.com.au/steel-club-workout/the-3-club-flow-you-need-to-know/" target="_blank" rel="noopener">Dangerously Fit, The 3 club flow</a> · <a href="https://somble.com/seanpearse/programs/steel-mace-beginner-flow-102ef" target="_blank" rel="noopener">Sean Pearse, Beginner flow series</a> · <a href="https://fitnessvolt.com/steel-club-exercises/" target="_blank" rel="noopener">Fitness Volt, Steel club exercises</a></p>
   </details>
 
   <details class="lib" id="lookBox">
@@ -1601,9 +1613,35 @@ function render(){
     if(k==='again'){const o=Object.assign({},w.opts);delete o.noProg;const nw=Object.assign(buildWorkout(w.type,w.eqs,w.minutes,o),w.day?{day:w.day}:{},w.program?{program:w.program}:{},w.weekRef?{weekRef:w.weekRef}:{});if(current.single)current.single=nw;else current.week[+wi]=nw}
     if(current.single)keepBuilt();render()});
 }
+const LIB_EQ=['kb','mace','club'];
+const PAT_LABEL={hinge:'Hinges',squat:'Squats',lunge:'Lunges',press:'Presses',pull:'Pulls & cleans',swing:'Swings & casts',rotate:'Rotation & circles',core:'Core & carries'};
+const PAT_ORDER=['swing','hinge','squat','lunge','press','pull','rotate','core'];
+function flowCardHTML(f){
+  return `<div class="flowcard"><div class="block-head"><b>${esc(f.name)}</b><span class="tag">${LEVELS[f.lvl-1]}</span></div><ol class="flowsteps">${f.steps.map(s=>`<li>${stepLink(s,f.eq)}</li>`).join('')}</ol><p>${esc(f.note)}</p><p>${hasFlowAnim(f)?flowDemoBtn(f):`${f.video?`<a class="demo vid" href="https://www.youtube.com/watch?v=${f.video}" target="_blank" rel="noopener">▶ Watch a similar sequence</a> `:''}<a class="demo" href="https://www.youtube.com/results?search_query=${encodeURIComponent(EQWORD[f.eq]+' flow beginner')}" target="_blank" rel="noopener">▶ See full ${EQWORD[f.eq]} flows</a>`}</p></div>`;
+}
+function moveCardHTML(m){
+  const side=m.u?'<span class="tag">Each side</span>':'',pair=m.d?'<span class="tag">Pair</span>':'';
+  return `<div class="flowcard movecard"><div class="block-head"><b>${esc(m.name)}${handsTag(m)}</b><span class="libtags">${side}${pair}<span class="tag">${LEVELS[m.lvl-1]}</span></span></div><p>${esc(m.cue)}</p><p>${demo(m.name,m.eq)}</p></div>`;
+}
 function renderLib(){
-  const g=$('libgrid');
-  g.innerHTML=['mace','club','kb'].map(k=>`<h3>${EQ[k].name}</h3>`+FLOWS.filter(f=>f.eq===k).map(f=>`<div class="flowcard"><div class="block-head"><b>${esc(f.name)}</b><span class="tag">${LEVELS[f.lvl-1]}</span></div><ol class="flowsteps">${f.steps.map(s=>`<li>${stepLink(s,f.eq)}</li>`).join('')}</ol><p>${esc(f.note)}</p><p>${hasFlowAnim(f)?flowDemoBtn(f):`${f.video?`<a class="demo vid" href="https://www.youtube.com/watch?v=${f.video}" target="_blank" rel="noopener">▶ Watch a similar sequence</a> `:''}<a class="demo" href="https://www.youtube.com/results?search_query=${encodeURIComponent(EQWORD[f.eq]+' flow beginner')}" target="_blank" rel="noopener">▶ See full ${EQWORD[f.eq]} flows</a>`}</p></div>`).join('')).join('');
+  if(!LIB_EQ.includes(S.libEq))S.libEq='kb';
+  if(S.libView!=='flows')S.libView='moves';
+  const k=S.libEq,moves=X.filter(m=>m.eq===k),flows=FLOWS.filter(f=>f.eq===k);
+  seg('libEq',LIB_EQ.map(e=>[e,EQ[e].name]),'libEq',renderLib);
+  seg('libView',[['moves',`Individual moves (${moves.length})`],['flows',`Flows (${flows.length})`]],'libView',renderLib);
+  const g=$('libgrid'),note=$('libNote');
+  $('libSrc').hidden=k==='kb'||S.libView==='moves';
+  if(S.libView==='flows'){
+    note.textContent='A flow chains three or more moves so each one starts where the last one ended. Learn each piece slowly, then link them and breathe with the movement. The builder draws from these.';
+    g.innerHTML=flows.length?flows.map(flowCardHTML).join(''):'<p class="note">No flows for this equipment yet.</p>';
+    return;
+  }
+  note.textContent=`Every ${EQ[k].name.toLowerCase()} move the builder uses, grouped by movement. Tap a demo to see it from the front and side.`;
+  const warm=(WARM[k]||[]);
+  g.innerHTML=PAT_ORDER.filter(p=>moves.some(m=>m.pat===p)).map(p=>{
+    const ms=moves.filter(m=>m.pat===p).sort((a,b)=>a.lvl-b.lvl);
+    return `<details class="movegrp" open><summary>${PAT_LABEL[p]} <span class="tag">${ms.length}</span></summary>${ms.map(moveCardHTML).join('')}</details>`}).join('')
+    +(warm.length?`<details class="movegrp"><summary>Warm-up drills <span class="tag">${warm.length}</span></summary>${warm.map(n=>`<div class="flowcard movecard"><div class="block-head"><b>${esc(n)}</b><span class="tag">${WDOSE[n]||'30–45 s'}</span></div><p>${demo(n,k)}</p></div>`).join('')}</details>`:'');
 }
 
 /* ---------- copy ---------- */
