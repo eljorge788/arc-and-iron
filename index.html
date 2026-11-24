@@ -166,6 +166,7 @@ details.block[open] .bh-peek{display:none}
 ol.moves{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
 ol.moves li{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:9px 0;border-bottom:1px solid var(--line)}
 .mv-name{font-weight:700;min-width:0}
+.hands{font-weight:600;font-size:.78em;color:var(--muted,#667);white-space:nowrap;margin-left:.35em}
 .mv-dose{font-family:var(--mono);font-size:.85rem;text-align:right;white-space:nowrap}
 .mv-cue{grid-column:1/-1;color:var(--muted);font-size:.86rem}
 .wt{font-family:var(--mono);font-size:.78rem;background:var(--ember-soft);color:var(--ember);border-radius:4px;padding:1px 6px;margin-left:6px;white-space:nowrap}
@@ -842,7 +843,7 @@ const EQ={
 };
 const unitOf=k=>(S.eq[k]&&S.eq[k].unit)||EQ[k].unit;
 const LB_PER_KG=2.20462;
-// [name, eq, level, load, pattern, flags(u=each side,d=needs pair,b=ballistic), cue]
+// [name, eq, level, load, pattern, flags(u=each side,d=needs pair,b=ballistic,1=one hand,2=two clubs; club moves are two-handed otherwise), cue]
 const X=[
 ['Two-hand deadlift','kb',1,'heavy','hinge','','Bell between your insteps. Hips back, knees behind your toes, arms straight; stand all the way up and squeeze, then touch it down.'],
 ['Two-hand swing','kb',1,'heavy','hinge','b','Hike the bell back, snap the hips, let it float to chest height.'],
@@ -894,41 +895,49 @@ const X=[
 ['Plank pull-through','mace',1,'light','core','','From a high plank, drag the mace across beneath you.'],
 
 ['Two-hand side swing','club',1,'med','swing','b','Wide hinge, both hands: rock the club side to side in front of the shins and shift your weight with it.'],
-['Lateral swing','club',1,'light','swing','u','One hand, wide hinge: swing across the front from outside one leg to outside the other.'],
-['Arm cast','club',1,'light','swing','u','Drop the club behind the shoulder, circle it round, and cast it back up in front. The body stays still.'],
+['Lateral swing','club',1,'light','swing','u1','One hand, wide hinge: swing across the front from outside one leg to outside the other.'],
+['Arm cast','club',1,'light','swing','u1','Drop the club behind the shoulder, circle it round, and cast it back up in front. The body stays still.'],
 ['Two-hand swipe','club',1,'med','swing','b','From order on one side, hinge and swing the club down past the outside of the same knee, then back up the same path to order. Keep it outside the legs.'],
 ['Two-hand arm cast','club',1,'med','swing','b','From order, tip the club back: elbows by the ears, club down the back. Pull it back with the lats.'],
-['Two-hand shield cast','club',1,'med','swing','u','Club drops behind the back and returns over the same shoulder.'],
-['One-arm shield cast','club',2,'light','swing','u','Club up by the shoulder: cast it over, circle it behind you and back to the front.'],
-['Inside circle','club',1,'light','rotate','u','One hand, arm long: from order, turn away and cast the club across the top to the far side, down in front, across and up the near side back to order. Let the weight turn your body.'],
-['Outside circle','club',1,'light','rotate','u','One hand, arm long: from order, push the club out to your lead side, then circle it down, across the front and up over the top back to order.'],
-['Mill','club',2,'light','swing','u','One hand, big circle to small circle: a long-arm inside circle, catch with the elbow bent 90° out to the side, cast behind the head and let it swing down behind the shoulder, then pull it back to order. Turn the body against the weight.'],
-['Reverse mill','club',2,'light','swing','u','One hand, big circle to small circle: a long-arm outside circle, then cast over your lead shoulder and keep the arc going down behind, round behind the head and over the top back to order.'],
+['Two-hand shield cast','club',1,'med','swing','','Club drops behind the back and returns over the same shoulder.'],
+['One-arm shield cast','club',2,'light','swing','u1','Club up by the shoulder: cast it over, circle it behind you and back to the front.'],
+['Inside circle','club',1,'light','rotate','u1','One hand: from order, push the club straight out in front, club upright. Let it drop in across your body, down and out to your side with the arm long, and up into a 90° elbow at your side; then back to order. Never over the head.'],
+['Outside circle','club',1,'light','rotate','u1','One hand: from order, push the club straight out in front, club upright. Let it drop out to your side, down and across the front with the arm long, up the inside and across into a 90° elbow at your side; then back to order. Never over the head.'],
+['Mill','club',2,'light','swing','u1','One hand, big circle to small circle: push out, inside circle with the arm long and catch in a 90° elbow at your side; cast behind the head, let it swing down behind the shoulder and round, then back to order. Turn the body against the weight.'],
+['Reverse mill','club',2,'light','swing','u1','One hand, big circle to small circle: push out, outside circle with the arm long and catch in a 90° elbow at your side; cast over your lead shoulder, keep the arc going down behind and round behind the head, then pull it back over the shoulder to order.'],
 ['Gamma cast','club',2,'med','swing','b','Like the arm cast, but turn so the club travels round the head; change sides each rep.'],
-['Double swipe','club',2,'light','swing','d','Both clubs swing across the body together.'],
-['Double mill','club',3,'light','swing','d','Alternating mills, one club in each hand.'],
-['Torch press','club',2,'med','press','u','One or two hands: club upright like a torch in order on the lead side; press it straight up and lower.'],
-['Flag press','club',2,'med','press','u','One or two hands: from order on the lead side, press the club straight out in front at shoulder height, club upright, then back to order.'],
+['Double swipe','club',2,'light','swing','d2','Both clubs swing across the body together.'],
+['Double mill','club',3,'light','swing','d2','Alternating mills, one club in each hand.'],
+['Torch press','club',2,'med','press','u1','One hand: club upright like a torch in order at the shoulder; press it straight up and lower.'],
+['Two-hand torch press','club',1,'med','press','','Two hands: club upright like a torch in order on the lead side; press it straight up and lower.'],
+['Flag press','club',2,'med','press','u1','One hand: from order at the shoulder, press the club straight out in front at shoulder height, club upright, then back to order.'],
+['Two-hand flag press','club',1,'med','press','','Two hands: from order on the lead side, press the club straight out in front at shoulder height, club upright, then back to order.'],
 ['Club barbarian squat','club',1,'med','squat','','Arms locked out, squat; arm cast as you stand, pull through and lock out again.'],
 ['Order-position squat','club',1,'med','squat','','Club upright, hands at the sternum, elbows by the ribs; sit tall.'],
 ['Two-hand clean','club',1,'med','pull','b','Hinge, let the club drop between your legs, and drive the hips to float it up to order.'],
 ['Two-hand 180','club',1,'med','swing','','From upright on one side, swing down in a U past the front and pivot to upright on the other.'],
 ['Two-hand mill','club',2,'light','swing','','Low across, up one side and behind the head, cast out to the other side and back down.'],
 ['Two-hand swing squat','club',1,'med','squat','b','Cast forward into a swing, arms locked, and catch the club in order as you squat.'],
-['Two-hand arm cast to flag press','club',1,'med','press','u','From side order, arm cast with the elbow by the ear, then drive the club forward and up.'],
+['Two-hand arm cast to flag press','club',1,'med','press','','From side order, arm cast with the elbow by the ear, then drive the club forward and up.'],
 ['Two-hand clean to torch press','club',1,'med','press','b','Clean to order, then drive the club forward and up to straight arms.'],
-['Reverse lunge arm cast','club',2,'med','lunge','u','Step back as you cast; stand as the club returns.'],
-['Pullover','club',1,'light','pull','','One or two hands: arm cast over the lead shoulder, then pull the club back over the shoulder to order. Two hands: the lead elbow stays in at 90°, the supporting elbow goes up by the ear with the forearm over the head.'],
-['Side clean','club',2,'med','pull','ub','From order on one side, turn away with the weight on the near leg and cast the club out to the far side; let it swing down in front and across as your weight shifts, then back up the same path to order.'],
-['Bullwhip','club',3,'light','swing','u','Whip-like cast from the hip; stay loose and fast.'],
+['Reverse lunge arm cast','club',2,'med','lunge','u1','Step back as you cast; stand as the club returns.'],
+['Pullover','club',1,'light','pull','','Two hands: arm cast over the lead shoulder, then pull the club back over the shoulder to order. The lead elbow stays in at 90°, the supporting elbow goes up by the ear with the forearm over the head.'],
+['One-hand pullover','club',2,'light','pull','u1','One hand: arm cast over the shoulder with the elbow in and bent to 90°, then pull the club back over the shoulder to order, keeping the bend.'],
+['Side clean','club',2,'med','pull','b','From order on one side, turn away with the weight on the near leg and cast the club out to the far side; let it swing down in front and across as your weight shifts, then back up the same path to order.'],
+['Bullwhip','club',3,'light','swing','u1','Whip-like cast from the hip; stay loose and fast.'],
 ['Clock squat','club',3,'med','squat','','Squat while the club circles the clock face.'],
-['Front lever hold','club',2,'light','core','u','Arm straight, club level; hold 15–20 s.']
-].map(a=>({name:a[0],eq:a[1],lvl:a[2],load:a[3],pat:a[4],u:a[5].includes('u'),d:a[5].includes('d'),b:a[5].includes('b'),cue:a[6]}));
+['Front lever hold','club',2,'light','core','u1','Arm straight, club level; hold 15–20 s.']
+].map(a=>({name:a[0],eq:a[1],lvl:a[2],load:a[3],pat:a[4],u:a[5].includes('u'),d:a[5].includes('d'),b:a[5].includes('b'),one:a[5].includes('1'),dbl:a[5].includes('2'),cue:a[6]}));
 // Every club and mace move has a lead side, as does every one-sided move. The lead side is the top hand
 // (a two-hand club is held on the top hand's side of the body); on a one-handed move it is the working hand. Workouts call out a lead side switch for all of them:
 // halfway through the move, or each round in Tabata and flows. Works on saved moves too (they keep eq).
 const sided=m=>!!(m&&(m.u||m.eq==='club'||m.eq==='mace'));
 const SIDE_NOTE='Club, mace and one-sided moves: ';
+const handsOf=m=>{if(!m||m.eq!=='club')return '';
+  // warm-up drills use looser names ("Two-hand side swings", "Inside and outside circles, light")
+  const base=String(m.name).replace(/,.*$/,'').trim(),names=[m.name,base,base.replace(/s$/,''),base.replace(/^Inside and outside circles$/,'Inside circle')];
+  const x=X.find(y=>y.eq==='club'&&names.includes(y.name));if(!x)return '';return x.dbl?'Two clubs':x.one?'One hand':'Two hands'};
+const handsTag=m=>{const h=handsOf(m);return h?` <span class="hands">${h}</span>`:''};
 const sideNote=(ms,how)=>{if(!ms.some(sided))return '';const two=ms.filter(m=>sided(m)&&!m.u);
   return ' '+SIDE_NOTE+how+(two.length?' Your lead side is your top hand'+(two.some(m=>m.eq==='club')?'; hold the club on that side.':'.'):'')};
 // one-handed moves (u) do the full reps on each side; two-hand club and mace moves split the same
@@ -945,8 +954,8 @@ const FLOWS=[
 {name:'Warrior Flow',eq:'mace',lvl:3,sw:'mid',steps:['360','Lunge to 360','Uppercut','Offset march, 4 steps','Hand switches ×2','Mirror'],note:'Long cycle; keep breathing on every swing.'},
 {name:'Three-Club Mini Flow',eq:'club',lvl:2,sw:'end',steps:['Arm cast','Mill','Inside shield cast','Switch hands'],note:'Three of the most fundamental club moves in one sequence. Pass the club to the other hand in order and repeat on that side.'},
 {name:'Club First Workout',eq:'club',lvl:1,sw:'end',steps:['Two-hand swing squat','Two-hand arm cast to flag press','Two-hand clean to torch press','Club barbarian squat','Switch hands'],note:'Dangerously Fit\u2019s first club workout: 5 reps of each, rest 60 s after all four, 5 rounds.'},
-{name:'Club Foundations',eq:'club',lvl:1,sw:'end',steps:['Two-hand side swing','Two-hand arm cast','Two-hand shield cast','Torch press','Switch hands'],note:'Two-handed only. Learn the arcs before going single-arm.'},
-{name:'Pullover to Press',eq:'club',lvl:1,sw:'end',steps:['Pullover','Order position','Torch press','Lower behind the head','Switch hands'],note:'Slow and controlled; teaches you to decelerate the club.'},
+{name:'Club Foundations',eq:'club',lvl:1,sw:'end',steps:['Two-hand side swing','Two-hand arm cast','Two-hand shield cast','Two-hand torch press','Switch hands'],note:'Two-handed only. Learn the arcs before going single-arm.'},
+{name:'Pullover to Press',eq:'club',lvl:1,sw:'end',steps:['Pullover','Order position','Two-hand torch press','Lower behind the head','Switch hands'],note:'Slow and controlled; teaches you to decelerate the club.'},
 {name:'Half Mill to Torch Press',eq:'club',lvl:2,sw:'end',steps:['Half mill (top circle)','Rotational torch press','Shield cast to switch sides'],note:'Uses the shield cast for momentum into the other side.'},
 {name:'Lunge Cast & Flag',eq:'club',lvl:2,sw:'end',steps:['Reverse lunge arm cast','Stand to order position','Forward lunge flag press','Return','Switch hands'],note:'Legs and shoulders together.'},
 {name:'Swing–Clean–Press–Squat',eq:'kb',lvl:2,steps:['One-arm swing','Clean','Press','Front squat','Switch hands'],note:'The bell never touches down; switch hands on the swing.'},
@@ -1466,7 +1475,7 @@ function blockHTML(b,bi,wi){
       <div class="go">${hasFlowAnim(b.flow)?flowDemoBtn(b.flow):b.flow.video?`<a class="demo vid" href="https://www.youtube.com/watch?v=${b.flow.video}" target="_blank" rel="noopener">▶ Watch a similar sequence</a>`:''}<button class="link" data-sf="${wi}:${bi}">⇄ Different flow</button></div>`;
   }else{
     body=`<ol class="moves">${b.moves.map((m,mi)=>{const lt=m.eq?lastTxt(m.name,m.eq):'';
-      return `<li class="${m.eq?'has-eq eq-'+m.eq:''}">${m.eq?`<div class="wline">${eqBanner(m.eq,m.wt,{light:!m.wt})}${b.kind==='Warm-up'||b.kind==='Cool-down'?'':wtAdj(wi,bi,mi,m.eq,m)}</div>`:''}<span class="mv-name">${m.tag?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}</span><span class="mv-dose">${esc(m.dose)}</span>${m.eq?upTag(m,m.eq):''}${lt?`<span class="last">${esc(lt)}</span>`:''}<span class="mv-cue">${m.cue?esc(m.cue)+' ':''}${demo(m.name,m.eq)}${SWAPPABLE(b)&&m.eq?` <button class="link swap" data-sw="${wi}:${bi}:${mi}" aria-label="Swap ${esc(m.name)} for a similar move">⇄ Swap</button>`:''}</span></li>`}).join('')}</ol>`;
+      return `<li class="${m.eq?'has-eq eq-'+m.eq:''}">${m.eq?`<div class="wline">${eqBanner(m.eq,m.wt,{light:!m.wt})}${b.kind==='Warm-up'||b.kind==='Cool-down'?'':wtAdj(wi,bi,mi,m.eq,m)}</div>`:''}<span class="mv-name">${m.tag?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}${handsTag(m)}</span><span class="mv-dose">${esc(m.dose)}</span>${m.eq?upTag(m,m.eq):''}${lt?`<span class="last">${esc(lt)}</span>`:''}<span class="mv-cue">${m.cue?esc(m.cue)+' ':''}${demo(m.name,m.eq)}${SWAPPABLE(b)&&m.eq?` <button class="link swap" data-sw="${wi}:${bi}:${mi}" aria-label="Swap ${esc(m.name)} for a similar move">⇄ Swap</button>`:''}</span></li>`}).join('')}</ol>`;
   }
   const prep=b.kind==='Warm-up'||b.kind==='Cool-down';
   const peek=b.flow?b.flow.steps.slice(0,3).join(' → ')+(b.flow.steps.length>3?' …':''):(b.moves||[]).map(m=>m.name).slice(0,3).join(', ')+((b.moves||[]).length>3?` +${b.moves.length-3} more`:'');
@@ -1752,7 +1761,7 @@ function announceStep(){
   else if(s.rest){const nx=nextWorkStep(G.i);t=`Rest${s.secs?' '+s.secs+' seconds':''}.${nx?' Next up, '+nx.name+'.':''}`}
   else if(s.list){t=`${s.name}. ${Math.round((s.secs||0)/60)} minutes. ${s.counter==='deck'?'Draw a card to start.':s.counter==='rounds'?'Tap plus one after each round.':s.counter==='rungs'?'Start at '+s.rungs[0]+' reps.':''} Go.`}
   else{
-    const parts=[s.name];
+    const parts=[s.name];const hd=handsOf({name:s.name,eq:s.eq});if(hd&&!s.flow)parts.push(hd);
     if(s.wt)parts.push(s.wt);
     if(s.detail&&!/^Learn it slowly/.test(s.detail))parts.push(s.detail.replace(/^(Warm-up|Cool-down)\s·\s/,''));
     else if(s.detail)parts.push('Learn it slowly. Pause at each position');
@@ -1833,7 +1842,7 @@ function gDraw(){
   $('gBack').hidden=false;$('gPause').hidden=!s.secs;$('gPause').textContent=G.run?'Pause':'Resume';$('gEnd').textContent=G.armed?'Tap to end':'End';
   $('gBlock').textContent=s.block;$('gCount').textContent=`Step ${G.i+1} of ${n}`;$('gSets').innerHTML=gSetsHTML();
   $('gPhase').textContent=s.prep?'Next section':s.rest?'Rest':(s.tag?s.tag+' · ':'')+s.kind;
-  $('gName').textContent=s.name;$('gDetail').textContent=s.detail||'';
+  $('gName').textContent=s.name;const hd=!s.rest&&!s.flow&&!s.list?handsOf({name:s.name,eq:s.eq}):'';$('gDetail').textContent=(hd?hd+' · ':'')+(s.detail||'');
   $('gWt').innerHTML=(!s.rest&&s.eq&&!s.list)?eqBanner(s.eq,s.wt,{big:true,flow:!!s.flow,light:!s.wt}):'';
   $('gLast').textContent=s.lastKey?lastTxt(s.lastKey[0],s.lastKey[1]):'';
   $('gCue').textContent=s.cue||'';
@@ -1844,10 +1853,10 @@ function gDraw(){
   if(s.prep){const b=G.w.blocks[s.bi],gear=prepGear(b);
     ex=`${gear.length?`<div class="eyebrow">Grab</div><div class="prepgear">${gear.map(g=>eqBanner(g.eq,g.wt,{light:!g.wt})).join('')}</div>`:''}`+
       (b.flow?`<div class="eyebrow">${esc(b.flow.name)}</div><ol class="flowsteps">${b.flow.steps.map(t=>`<li>${esc(t)}</li>`).join('')}</ol>`
-        :`<div class="eyebrow">Moves</div><ol class="moves g-list">${(b.moves||[]).map(m=>`<li><span class="mv-name">${m.tag?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}</span><span class="mv-dose">${esc(b.counter==='deck'?'':m.dose||'')}</span></li>`).join('')}</ol>`)+
+        :`<div class="eyebrow">Moves</div><ol class="moves g-list">${(b.moves||[]).map(m=>`<li><span class="mv-name">${m.tag?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}${handsTag(m)}</span><span class="mv-dose">${esc(b.counter==='deck'?'':m.dose||'')}</span></li>`).join('')}</ol>`)+
       `<p class="hint">${esc(b.fmt||'')}</p>`}
   if(s.list){
-    ex+=`<ol class="moves g-list">${s.list.map(m=>`<li>${eqBanner(m.eq,m.wt)}<span class="mv-name">${m.tag&&s.counter==='deck'?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}</span><span class="mv-dose">${esc(s.counter==='deck'?'':m.dose)}</span><span class="mv-cue">${demo(m.name,m.eq)}</span></li>`).join('')}</ol>`;
+    ex+=`<ol class="moves g-list">${s.list.map(m=>`<li>${eqBanner(m.eq,m.wt)}<span class="mv-name">${m.tag&&s.counter==='deck'?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}${handsTag(m)}</span><span class="mv-dose">${esc(s.counter==='deck'?'':m.dose)}</span><span class="mv-cue">${demo(m.name,m.eq)}</span></li>`).join('')}</ol>`;
     if(s.counter==='rounds'){const c=G.counts[s.bi]||0;ex+=`<div class="ctr"><button class="btn ghost" data-g="r-">−</button><div><b>${c}</b><span>rounds</span></div><button class="btn" data-g="r+">+1 round</button></div>${G.w.blocks[s.bi]&&G.w.blocks[s.bi].target?`<p class="hint">Target: ${G.w.blocks[s.bi].target} rounds</p>`:''}`}
     if(s.counter==='rungs'){const r=G.rung[s.bi]||0;const at=s.rungs[r%s.rungs.length];ex+=`<div class="ctr"><div><b>${at}</b><span>reps on this rung</span></div><button class="btn" data-g="rung">Rung done</button></div><p class="hint">${r} rung${r===1?'':'s'} climbed. ${s.rungs.map((x,j)=>j===r%s.rungs.length?`[${x}]`:x).join(' · ')}</p>`}
     if(s.counter==='deck'){const c=G.card[s.bi];const left=(G.deck[s.bi]||[]).length;
