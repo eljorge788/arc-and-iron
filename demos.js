@@ -624,6 +624,75 @@ function reverseMill(){
   const front=Object.assign({},body(0,0),{G:[-17,150,22],D:norm([-0.2,0.7,0.68]),eR:[-1,-0.6,0.2],pass:true});
   return big.concat([[t,outR],[t+0.3,down],[t+0.45,{}],[t+0.75,left],[t+1.0,up],[t+1.3,front],[t+1.7,Object.assign({},UPRIGHT,C_ONE)],[t+1.9,{}]]);
 }
+// ---- from the Dangerously Fit switch and half mill videos ----
+// a body turned to one side (dir 1 = turned left, -1 = turned right), pivoting on the back foot ("squish
+// the bug": heel up, ball of the foot turning)
+const tb=(dir,deg=35)=>Object.assign({},CB_BODY,{yaw:deg*dir,hipYaw:deg*0.55*dir,P:[-3*dir,93,0],
+  tR:dir>0?0.45:0,fyR:dir>0?deg:0,tL:dir<0?0.45:0,fyL:dir<0?-deg:0});
+// rotational torch press, right hand: from order on a turned body, drive the club forward and up in the
+// direction you've turned, finishing in a forearm lock with the club upright like a torch; the free arm
+// reaches forward and out; pull it back down to order with the lat.
+function rtpTop(b){
+  const F=torsoFrame(b.P,b.pitch||0,b.yaw||0,b.roll||0),sR=shoulderOf(b,'R'),sL=shoulderOf(b,'L');
+  const u=norm(add(mul(F.f,0.55),[0,0.84,0]));
+  return Object.assign({},b,{G:add(sR,mul(u,54)),D:[0,1,0],eR:[-1,-0.2,0.2],freeL:add(sL,mul(norm(add(mul(F.f,0.8),mul(F.l,0.55))),50))});
+}
+function rotPress(dir,fromFront){
+  const b=tb(dir);
+  const start=fromFront?[[0,C_ONE],[0.25,{}],[0.65,orderOn(b)],[0.8,{}]]:[[0,Object.assign({},C_ONE,orderOn(b))],[0.25,{}]];
+  const t=start[start.length-1][0];
+  return start.concat([[t+0.5,rtpTop(b)],[t+0.75,{}],[t+1.3,orderOn(b)],[t+1.5,{}]]);
+}
+function rotTorchPress(){   // the move on its own: turn, press, lower, turn back to the front
+  const k=rotPress(1,true),t=k[k.length-1][0];
+  return k.concat([[t+0.4,Object.assign({},UPRIGHT,C_ONE)],[t+0.6,{}]]);
+}
+// half reverse mill: from order turned left, the small outside circle behind the head (over the right
+// shoulder, down behind, round behind the head and up), and the club whips the body round to face right
+function halfReverseMill(){
+  const a=tb(1),z=tb(-1);
+  const step=(deg,extra)=>Object.assign({},tb(deg>=0?1:-1,Math.abs(deg)),extra);
+  return [[0,Object.assign({},C_ONE,orderOn(a))],[0.2,{}],
+    [0.5,step(25,{G:[-20,163,0],D:norm([-0.85,0.1,-0.5]),eR:[-0.5,0.5,0.8],pass:true})],
+    [0.8,step(10,{G:[-15,160,-2],D:norm([0.15,-0.9,-0.4]),eR:[-0.3,0.6,1],pass:true})],
+    [1.1,step(-8,{G:[-13,164,-2],D:norm([0.9,-0.05,-0.42]),eR:[-0.3,0.7,0.8],pass:true})],
+    [1.35,step(-22,{G:[-18,166,0],D:norm([-0.25,0.88,-0.4]),eR:[-0.4,0.6,0.8],pass:true})],
+    [1.7,orderOn(z)],[1.9,{}]];
+}
+// half mill: from order turned right, the small inside circle behind the head (elbow out to the side, cast
+// behind the head, down behind the right shoulder and round to the front), whipping the body back to the left
+function halfMill(){
+  const a=tb(-1),z=tb(1);
+  const step=(deg,extra)=>Object.assign({},tb(deg>=0?1:-1,Math.abs(deg)),extra);
+  return [[0,Object.assign({},C_ONE,orderOn(a))],[0.2,{}],
+    [0.5,step(-22,{G:[-36,160,8],D:norm([-0.1,1,-0.05]),eR:[-1,-0.3,-0.2],pass:true})],
+    [0.8,step(-6,{G:[-26,166,-2],D:norm([0.55,0.1,-0.83]),eR:[-1,0.2,0.3],pass:true})],
+    [1.1,step(10,{G:[-15,160,-2],D:norm([0.15,-0.9,-0.4]),eR:[-0.3,0.6,1],pass:true})],
+    [1.4,step(24,{G:[-16,158,6],D:norm([-0.92,-0.2,-0.3]),pass:true})],
+    [1.75,orderOn(z)],[1.95,{}]];
+}
+// a move done with one hand that changes hands at the navel after every rep: the rep with the right
+// hand, both hands meet on the handle in front of the navel, then the same rep mirrored with the left
+const SWITCH2={G:[0,110,26],D:[0,1,0],offL:0,offR:0,gR:0,gL:7,eL:[1,-1,-0.2],eR:[-1,-1,-0.2],yaw:0,hipYaw:0};
+function switchBoth(kf){const t=kf[kf.length-1][0];const k=kf.concat([[t+0.35,Object.assign({},SWITCH2)],[t+0.55,{}]]);return chain(k,mirrorKF(k))}
+// switch 180, right hand to left: order with the elbow tucked; rotate through the upper back (away from the
+// club); cast it away to the right with the arm locked; it swings down and across the front in a low U,
+// the left hand takes it at the bottom, and it swings up the left side to be caught upright on top.
+function switch180(){
+  const free=[21,87,3],rot=Object.assign({},CB_BODY,{yaw:20,hipYaw:6});
+  const armR=(b,u,D,extra)=>Object.assign({},b,{G:add(shoulderOf(b,'R'),mul(norm(u),55)),D:norm(D),eR:[-1,-0.3,-0.2],freeL:free},extra||{});
+  const castOut=armR(Object.assign({},CB_BODY,{yaw:12,hipYaw:4}),[-0.95,-0.05,0.3],[-0.75,0.6,0.2],{pass:true});
+  const downR=armR(Object.assign({},CB_BODY,{yaw:-4,hipYaw:-2}),[-0.6,-0.72,0.35],[-0.55,-0.8,0.25],{pass:true});
+  const bottomB=Object.assign({},CB_BODY,{yaw:-2,hipYaw:-1,P:[0,90,-2],pitch:6});
+  const bottom=Object.assign({},armR(bottomB,[0.45,-0.82,0.38],[0.08,-1,0.15]),{offL:0,eL:[1,-0.6,-0.3],pass:true});
+  // the left hand now has it (at the pommel); the right lets go
+  const leftArm=(b,u,D,extra)=>Object.assign({},b,{G:add(shoulderOf(b,'L'),mul(norm(u),55)),D:norm(D),gL:0,gR:7,offL:0,offR:1,freeR:[-21,87,3],eL:[1,-0.3,-0.2]},extra||{});
+  const upL=leftArm(Object.assign({},CB_BODY,{yaw:-14,hipYaw:-5}),[0.6,-0.7,0.35],[0.6,-0.75,0.25],{pass:true});
+  const highL=leftArm(Object.assign({},CB_BODY,{yaw:-18,hipYaw:-6}),[0.85,-0.2,0.45],[0.7,0.6,0.3],{pass:true});
+  const caught=Object.assign({},UPRIGHT,mirror(C_ONE));
+  return [[0,C_ONE],[0.25,{}],[0.6,Object.assign({},rot,{G:onBody(rot,-16,24,22),D:[0,1,0]})],[0.75,{}],
+    [1.05,castOut],[1.35,downR],[1.6,bottom],[1.85,upL],[2.1,highL],[2.45,caught],[2.65,{}]];
+}
 function shieldCast(){
   // Two hands, club upright in front of the chest and close to the body like a shield. Hands rise beside
   // the right side of the head and the club drops behind that shoulder to hang down the back; the head of
@@ -1208,6 +1277,18 @@ Object.assign(MOVES,{
     cue:'One hand. From order, elbow at your side, turn toward the inside and push the club straight out, club upright. Inside circle with the arm long; as it rises up your side, carry it straight on: cast it behind your head, let it swing down behind the shoulder and round, turning your body against the weight, and pull it back in front to order. Both arms.'},
   'club:reverse mill':{kf:both(reverseMill()),
     cue:'One hand. From order, elbow at your side, turn toward your lead side and push the club straight out, club upright. Outside circle with the arm long, then carry it straight on over your lead shoulder, down behind and round behind your head, and pull it back over the shoulder to order. Both arms.'},
+  'club:rotational torch press':{kf:both(rotTorchPress()),
+    cue:'One hand, club in order. Rotate through your hip and pivot on the back foot (heel up) to turn away from the club. Thumb on the back of the handle. Drive the club forward and up in the direction you have turned to a forearm lock, club upright like a torch, free arm reaching forward. Pull it back down to order with the lat. Both arms.'},
+  'club:rotational torch press:left':{kf:rotPress(1,true),cue:'Turn left, pivoting on the right foot, and press the club forward and up to a forearm lock. Pull it down to order with the lat.'},
+  'club:rotational torch press:right':{kf:rotPress(-1,false),cue:'Now turned the other way, pivoting on the left foot: press forward and up again, and pull it down to order.'},
+  'club:half reverse mill':{kf:halfReverseMill(),cue:'From order, the small outside circle: over the lead shoulder, down behind and round behind the head. Let the club whip your body round to the other side, pivoting the feet.'},
+  'club:half mill':{kf:halfMill(),cue:'From order, the small inside circle: elbow out to the side, cast behind the head, down behind the shoulder and round to the front. Let the momentum turn your hips back.'},
+  'club:switch shield cast':{kf:switchBoth(oneArmShield()),
+    cue:'One-arm shield cast that changes hands every rep. Cast over the opposite ear, swing down behind and pull it over your lead shoulder back to order at the navel. Let the club slide so there is handle free, take it with the other hand, let go, and cast to the other side.'},
+  'club:switch reverse mill':{kf:switchBoth(reverseMill()),
+    cue:'A reverse mill that changes hands every rep. Turn, push out, outside circle with the arm long, over the lead shoulder and round behind the head, back to order. Change hands in front of the navel and reverse mill with the other hand.'},
+  'club:switch 180':{kf:both(switch180()),
+    cue:'One hand, order with the elbow tucked, shoulder packed and wrist straight. Rotate through the upper back, cast the club away with the arm locked, and let it swing down and across the front in a low U. Pass it to the other hand at the bottom and catch it upright on top. Then the other way.'},
   'club:shield cast':{kf:both(topSwap(shieldCast())),
     cue:'Both hands, club upright and close in front of the chest. Drop it behind one shoulder and circle it round the head and shoulder, then back out over the same shoulder. Keep it close. Alternate sides.'},
   'club:torch press':{kf:both(torchPress()),label:'One hand',alt:'club:two-hand torch press',
@@ -1235,7 +1316,7 @@ const ALIAS={kb:{'goblet':'goblet squat','bottoms-up goblet squat':'goblet squat
     'around the world':'around-the-world','halos':'halo','light halos':'halo','single-direction halo':'halo'},
   mace:{'hand switch':'hand switches','rotational uppercut':'uppercut','overhead press':'offset press',
   'squat':'front squat','bent-over row':'offset bent-over row','offset row':'offset bent-over row','pendulum swings':'pendulum swing'},
-  club:{'side swipes':'side swipe','one-hand swipe':'swipe','one-arm swipe':'swipe','inside and outside circles':'inside circle','inside circles':'inside circle','outside circles':'outside circle','mills':'mill','reverse mills':'reverse mill','pullover':'two-hand arm cast','pullovers':'two-hand arm cast','club pullover':'two-hand arm cast','two-hand pullover':'two-hand arm cast','two-handed pullover':'two-hand arm cast','one-hand pullover':'arm cast','one-handed pullover':'arm cast','one-arm pullover':'arm cast','arm casts':'arm cast','two-handed flag press':'two-hand flag press','one-hand flag press':'flag press','two-handed torch press':'two-hand torch press','one-hand torch press':'torch press','side cleans':'side clean','two-hand side clean':'side clean','two-hand side swing':'side swing','two-handed side swing':'side swing','two-hand side swings':'side swing','side swings':'side swing','steel club side swing':'side swing','single-arm side swing':'single-arm side swing','single side swing':'single-arm side swing','one-arm side swing':'single-arm side swing','one-hand side swing':'single-arm side swing','single-arm side swings':'single-arm side swing','two-handed side rocker':'side rocker','two-hand side rocker':'side rocker','cross-body swing':'lateral swing','cross-body swings':'lateral swing','side rock-it':'side rocker','side rocket':'side rocker',
+  club:{'switch shield casts':'switch shield cast','switch 180s':'switch 180',"switch 180's":'switch 180','switch reverse mills':'switch reverse mill','half mill rotational torch press':'rotational torch press','side swipes':'side swipe','one-hand swipe':'swipe','one-arm swipe':'swipe','inside and outside circles':'inside circle','inside circles':'inside circle','outside circles':'outside circle','mills':'mill','reverse mills':'reverse mill','pullover':'two-hand arm cast','pullovers':'two-hand arm cast','club pullover':'two-hand arm cast','two-hand pullover':'two-hand arm cast','two-handed pullover':'two-hand arm cast','one-hand pullover':'arm cast','one-handed pullover':'arm cast','one-arm pullover':'arm cast','arm casts':'arm cast','two-handed flag press':'two-hand flag press','one-hand flag press':'flag press','two-handed torch press':'two-hand torch press','one-hand torch press':'torch press','side cleans':'side clean','two-hand side clean':'side clean','two-hand side swing':'side swing','two-handed side swing':'side swing','two-hand side swings':'side swing','side swings':'side swing','steel club side swing':'side swing','single-arm side swing':'single-arm side swing','single side swing':'single-arm side swing','one-arm side swing':'single-arm side swing','one-hand side swing':'single-arm side swing','single-arm side swings':'single-arm side swing','two-handed side rocker':'side rocker','two-hand side rocker':'side rocker','cross-body swing':'lateral swing','cross-body swings':'lateral swing','side rock-it':'side rocker','side rocket':'side rocker',
     'swing':'lateral swing','swings':'lateral swing','one-arm arm cast':'arm cast','two-hand swipe':'swipe','swipes':'swipe',
     'two-hand shield cast':'shield cast','shield cast, one arm':'one-arm shield cast',
     'clean':'two-hand clean','two-handed clean':'two-hand clean','180':'two-hand 180','two-handed 180':'two-hand 180',
