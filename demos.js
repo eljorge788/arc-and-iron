@@ -538,13 +538,16 @@ function outsideCircle(){return circleKF(outsideSwing(),-1)}
 // (top) elbow stays in at 90 degrees in front, and the supporting (right) elbow goes vertical, the bicep by
 // the ear and the forearm reaching over the top of the head to the club. Then pull it back over the
 // shoulder to order.
-// Side swipe: one hand (right), from order. The single-arm side swing: cast low to the left, then the return swing
+// Side swipe: one hand (right), from order. An outside circle carries the club to the far (left) side, low; then the return swing
 // carries the club up the right side, and instead of stopping at shoulder height it goes on up and over the
 // shoulder into a side arm cast: the elbow opens out to the side and the club drops behind the right shoulder. Pull it back over the
 // shoulder to order.
 function sideSwipe(){
-  const kf=sideSwingKF(true);
-  const upto=kf.findIndex(([t])=>t>=1.6);const head=[[0,C_ONE],[0.3,{}]].concat(kf.slice(2,upto+1));const t=head[head.length-1][0];
+  // from order: turn toward the lead side and push out, and an outside circle (out, down and across the
+  // front) carries the club to the far side, low, where the side swing's return begins
+  const kf=sideSwingKF(true),pose=at=>kf.find(([t])=>Math.abs(t-at)<1e-6)[1];
+  const circ=circleStart(-1).concat(seq(1.7,0.28,outsideSwing().slice(0,4)));const tc=circ[circ.length-1][0];
+  const head=circ.concat([[tc+0.3,Object.assign({},pose(0.95),{pass:true})],[tc+0.6,pose(1.35)],[tc+0.85,pose(1.6)]]);const t=head[head.length-1][0];
   const free=[21,87,3];
   const high=ssArm1(ssBody([2,94,-1],2,-34),[-0.85,0.45,0.28],[-0.5,0.85,0.15],free,{pass:true});
   const b=ssBody([0,94,0],0,-12);
@@ -711,9 +714,9 @@ function swingSquat(){
 }
 function castFlag(){
   // Two hands, order on the lead (left, top hand) side. The two-hand arm cast exactly as in its own demo:
-  // cast over the left shoulder, club behind, and pull it back over; then drive it forward and up, angled
-  // out like a flag, and lower to order. both() does the other side.
-  const flag={G:[8,170,26],D:norm([0.3,0.72,0.62]),eL:[1,-0.4,0],eR:[-1,-0.4,0]};
+  // cast over the left shoulder, club behind, and pull it back over; then press it straight out in front at
+  // shoulder height, club upright, exactly like the two-hand flag press, and back to order. both() does the other side.
+  const flag={G:[6,136,50],D:norm([0,1,0.05]),eL:[1,-0.3,0],eR:[-1,-0.3,0]};   // the two-hand flag press's end position
   return [[0,Object.assign({},C_TWO,AC2.order)],[0.3,{}],[0.7,ac2('tip')],[1.05,ac2('back')],[1.3,{}],[1.65,ac2('pull')],
     [2.0,flag],[2.3,{}],[2.85,ac2('order')],[3.05,{}]];
 }
@@ -1180,11 +1183,11 @@ Object.assign(MOVES,{
   'club:swing squat':{kf:swingSquat(),
     cue:'From order, cast forward into a swing with your arms locked out. Catch the club back in order as you sit into a squat, then stand.'},
   'club:arm cast to flag press':{kf:both(castFlag()),
-    cue:'Two hands, club in order on the lead side. Two-hand arm cast over that shoulder (lead elbow in at 90 degrees, supporting elbow up by the ear), pull it back over, then drive it forward and up, angled out like a flag. Lower to order. Both sides.'},
+    cue:'Two hands, club in order on the lead side. Two-hand arm cast over that shoulder (lead elbow in at 90 degrees, supporting elbow up by the ear) and pull it back over, then press the club straight out in front at shoulder height, club upright, like the flag press. Back to order. Both sides.'},
   'club:clean to torch press':{kf:cleanPress(),
     cue:'Clean the club to order, then drive it forward and up to straight arms, still upright. Lower to order under control.'},
-  'club:barbarian squat':{kf:clubBarbarian(),
-    cue:'Start with a two-hand arm cast over the lead shoulder. As you pull the club back to the front, sink into the squat and lock the arms out, club upright. Arm cast again as you stand, and repeat.'},
+  'club:barbarian squat':{kf:both(clubBarbarian()),
+    cue:'Start with a two-hand arm cast over the lead shoulder. As you pull the club back to the front, sink into the squat and lock the arms out, club upright. Arm cast again as you stand, and repeat. Then switch your top hand and do the same on the other side.'},
   'club:order squat':{kf:orderSquat(),
     cue:'Club upright in order, hands at the sternum, elbows by the ribs. Sit tall into the squat and stand.'},
   'club:side swipe':{kf:both(sideSwipe()),
