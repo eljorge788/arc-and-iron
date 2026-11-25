@@ -671,27 +671,45 @@ function halfMill(){
     [1.4,step(24,{G:[-16,158,6],D:norm([-0.92,-0.2,-0.3]),pass:true})],
     [1.75,orderOn(z)],[1.95,{}]];
 }
-// a move done with one hand that changes hands at the navel after every rep: the rep with the right
-// hand, both hands meet on the handle in front of the navel, then the same rep mirrored with the left
-const SWITCH2={G:[0,110,26],D:[0,1,0],offL:0,offR:0,gR:0,gL:7,eL:[1,-1,-0.2],eR:[-1,-1,-0.2],yaw:0,hipYaw:0};
-function switchBoth(kf){const t=kf[kf.length-1][0];const k=kf.concat([[t+0.35,Object.assign({},SWITCH2)],[t+0.55,{}]]);return chain(k,mirrorKF(k))}
+// switch moves change hands every rep: the free hand catches the club as it arrives on that hand's side
+// (or at the navel for the shield cast), and the next rep starts from there with the new hand. Each is
+// built right hand to left; both() mirrors it for the way back.
+// the free (left) hand catches the club upright in left-side order; the right hand lets go
+const catchLeft=()=>({G:[16,118,22],D:[0,1,0],offL:0,offR:0,gR:0,gL:7,eL:[1,-1,-0.1],eR:[-0.5,-1,0.6],yaw:0,hipYaw:0});
+const leftHas=()=>Object.assign({},UPRIGHT,mirror(C_ONE));
+// switch shield cast: the cast starts and ends at the navel; the club comes down to the navel, where the
+// other hand catches it and begins its own cast
+function switchShield(){
+  const navel={G:[-2,108,26],D:[0,1,0],eR:[-0.6,-1,0.2],freeL:[22,92,6]};
+  const k=oneArmShield();
+  const mid=k.filter(([t])=>t>=0.5&&t<=2.4);          // lift ... front
+  const t=mid[mid.length-1][0];
+  return [[0,Object.assign({},C_ONE,navel)],[0.25,{}]].concat(mid,[[t+0.4,Object.assign({},navel,{G:[-1,108,26],pass:true})],
+    [t+0.6,{G:[0,108,26],D:[0,1,0],offL:0,offR:0,gR:0,gL:7,eL:[1,-1,-0.1],eR:[-1,-1,-0.1]}],[t+0.8,{}]]);
+}
+// switch reverse mill: the reverse mill, then an extra outside circle carries the club across to the left
+// side, where the left hand catches it
+function switchRevMill(){
+  const k=reverseMill();const body=k.slice(0,k.length-2);   // up to the pull to the front, without stopping at order
+  const t=body[body.length-1][0];
+  const circ=seq(t+0.3,0.28,outsideSwing().slice(0,5));const tc=circ[circ.length-1][0];
+  return body.concat(circ,[[tc+0.35,catchLeft()],[tc+0.5,{}],[tc+0.75,leftHas()],[tc+0.9,{}]]);
+}
 // switch 180, right hand to left: order with the elbow tucked; rotate through the upper back (away from the
-// club); cast it away to the right with the arm locked; it swings down and across the front in a low U,
-// the left hand takes it at the bottom, and it swings up the left side to be caught upright on top.
+// club); cast it away to the right with the arm locked; it swings down and across the front in a low U and
+// up the left side, where the left hand catches it upright on top.
 function switch180(){
   const free=[21,87,3],rot=Object.assign({},CB_BODY,{yaw:20,hipYaw:6});
   const armR=(b,u,D,extra)=>Object.assign({},b,{G:add(shoulderOf(b,'R'),mul(norm(u),55)),D:norm(D),eR:[-1,-0.3,-0.2],freeL:free},extra||{});
   const castOut=armR(Object.assign({},CB_BODY,{yaw:12,hipYaw:4}),[-0.95,-0.05,0.3],[-0.75,0.6,0.2],{pass:true});
   const downR=armR(Object.assign({},CB_BODY,{yaw:-4,hipYaw:-2}),[-0.6,-0.72,0.35],[-0.55,-0.8,0.25],{pass:true});
   const bottomB=Object.assign({},CB_BODY,{yaw:-2,hipYaw:-1,P:[0,90,-2],pitch:6});
-  const bottom=Object.assign({},armR(bottomB,[0.45,-0.82,0.38],[0.08,-1,0.15]),{offL:0,eL:[1,-0.6,-0.3],pass:true});
-  // the left hand now has it (at the pommel); the right lets go
-  const leftArm=(b,u,D,extra)=>Object.assign({},b,{G:add(shoulderOf(b,'L'),mul(norm(u),55)),D:norm(D),gL:0,gR:7,offL:0,offR:1,freeR:[-21,87,3],eL:[1,-0.3,-0.2]},extra||{});
-  const upL=leftArm(Object.assign({},CB_BODY,{yaw:-14,hipYaw:-5}),[0.6,-0.7,0.35],[0.6,-0.75,0.25],{pass:true});
-  const highL=leftArm(Object.assign({},CB_BODY,{yaw:-18,hipYaw:-6}),[0.85,-0.2,0.45],[0.7,0.6,0.3],{pass:true});
-  const caught=Object.assign({},UPRIGHT,mirror(C_ONE));
+  const bottom=armR(bottomB,[0.1,-0.92,0.38],[0.05,-1,0.15],{pass:true});
+  // the right arm carries on across and up the left side, where the left hand catches it
+  const upL=armR(Object.assign({},CB_BODY,{yaw:-14,hipYaw:-5}),[0.6,-0.55,0.58],[0.7,-0.6,0.3],{pass:true});
+  const highL=armR(Object.assign({},CB_BODY,{yaw:-18,hipYaw:-6}),[0.62,-0.05,0.78],[0.55,0.78,0.3],{pass:true});
   return [[0,C_ONE],[0.25,{}],[0.6,Object.assign({},rot,{G:onBody(rot,-16,24,22),D:[0,1,0]})],[0.75,{}],
-    [1.05,castOut],[1.35,downR],[1.6,bottom],[1.85,upL],[2.1,highL],[2.45,caught],[2.65,{}]];
+    [1.05,castOut],[1.35,downR],[1.6,bottom],[1.85,upL],[2.1,highL],[2.4,catchLeft()],[2.55,{}],[2.8,leftHas()],[2.95,{}]];
 }
 function shieldCast(){
   // Two hands, club upright in front of the chest and close to the body like a shield. Hands rise beside
@@ -1283,12 +1301,12 @@ Object.assign(MOVES,{
   'club:rotational torch press:right':{kf:rotPress(-1,false),cue:'Now turned the other way, pivoting on the left foot: press forward and up again, and pull it down to order.'},
   'club:half reverse mill':{kf:halfReverseMill(),cue:'From order, the small outside circle: over the lead shoulder, down behind and round behind the head. Let the club whip your body round to the other side, pivoting the feet.'},
   'club:half mill':{kf:halfMill(),cue:'From order, the small inside circle: elbow out to the side, cast behind the head, down behind the shoulder and round to the front. Let the momentum turn your hips back.'},
-  'club:switch shield cast':{kf:switchBoth(oneArmShield()),
-    cue:'One-arm shield cast that changes hands every rep. Cast over the opposite ear, swing down behind and pull it over your lead shoulder back to order at the navel. Let the club slide so there is handle free, take it with the other hand, let go, and cast to the other side.'},
-  'club:switch reverse mill':{kf:switchBoth(reverseMill()),
-    cue:'A reverse mill that changes hands every rep. Turn, push out, outside circle with the arm long, over the lead shoulder and round behind the head, back to order. Change hands in front of the navel and reverse mill with the other hand.'},
+  'club:switch shield cast':{kf:both(switchShield()),
+    cue:'One-arm shield cast that changes hands every rep. Cast over the opposite ear, swing down behind and pull it over your lead shoulder, then bring the club down toward the navel. The other hand catches it there and starts its own shield cast.'},
+  'club:switch reverse mill':{kf:both(switchRevMill()),
+    cue:'A reverse mill that changes hands every rep. Turn, push out, outside circle with the arm long, over the lead shoulder and round behind the head. Then an extra outside circle carries the club across to the other side, where the free hand catches it and reverse mills from there.'},
   'club:switch 180':{kf:both(switch180()),
-    cue:'One hand, order with the elbow tucked, shoulder packed and wrist straight. Rotate through the upper back, cast the club away with the arm locked, and let it swing down and across the front in a low U. Pass it to the other hand at the bottom and catch it upright on top. Then the other way.'},
+    cue:'One hand, order with the elbow tucked, shoulder packed and wrist straight. Rotate through the upper back, cast the club away with the arm locked, and let it swing down and across the front in a low U and up the other side. The free hand catches it upright there. Then the other way.'},
   'club:shield cast':{kf:both(topSwap(shieldCast())),
     cue:'Both hands, club upright and close in front of the chest. Drop it behind one shoulder and circle it round the head and shoulder, then back out over the same shoulder. Keep it close. Alternate sides.'},
   'club:torch press':{kf:both(torchPress()),label:'One hand',alt:'club:two-hand torch press',
