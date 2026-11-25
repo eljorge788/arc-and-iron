@@ -966,7 +966,6 @@ const FLOWS=[
 {name:'Three-Club Mini Flow',eq:'club',lvl:2,sw:'end',steps:['Arm cast','Mill','One-arm shield cast','Switch hands'],note:'Three of the most fundamental club moves in one sequence. Pass the club to the other hand in order and repeat on that side.'},
 {name:'Club First Workout',eq:'club',lvl:1,sw:'end',steps:['Two-hand swing squat','Two-hand arm cast to flag press','Two-hand clean to torch press','Club barbarian squat','Switch hands'],note:'Dangerously Fit\u2019s first club workout: 5 reps of each, rest 60 s after all four, 5 rounds.'},
 {name:'Club Foundations',eq:'club',lvl:1,sw:'end',steps:['Two-hand side swing','Two-hand arm cast','Two-hand shield cast','Two-hand torch press','Switch hands'],note:'Two-handed only. Learn the arcs before going single-arm.'},
-{name:'Arm Cast to Press',eq:'club',lvl:1,sw:'end',steps:['Two-hand arm cast','Order position','Two-hand torch press','Lower behind the head','Switch hands'],note:'Slow and controlled; teaches you to decelerate the club.'},
 {name:'Half Mill to Torch Press',eq:'club',lvl:2,sw:'end',steps:['Half mill (top circle)','Rotational torch press','Shield cast to switch sides'],note:'Uses the shield cast for momentum into the other side.'},
 {name:'Lunge Cast & Flag',eq:'club',lvl:2,sw:'end',steps:['Reverse lunge arm cast','Stand to order position','Forward lunge flag press','Return','Switch hands'],note:'Legs and shoulders together.'},
 {name:'Swing–Clean–Press–Squat',eq:'kb',lvl:2,steps:['One-arm swing','Clean','Press','Front squat','Switch hands'],note:'The bell never touches down; switch hands on the swing.'},
@@ -1465,7 +1464,7 @@ function eqBanner(eq,wt,opts={}){
 /* ---------- render output ---------- */
 function eqLabel(eqs){return eqs.map(k=>EQ[k].name).join(' + ')}
 // moves and flows that were renamed: old log name -> current name, so history and weights carry over
-const RENAMED={'club|Two-hand swipe':'Swipe','club|Pullover':'Two-hand arm cast','club|One-hand pullover':'Arm cast','club|Pullover to Press':'Arm Cast to Press'};
+const RENAMED={'club|Two-hand swipe':'Swipe','club|Pullover':'Two-hand arm cast','club|One-hand pullover':'Arm cast'};
 const sameMove=(logName,name,eq)=>logName===name||RENAMED[eq+'|'+logName]===name;
 function lastFor(name,eq){
   let best=null;
@@ -2018,7 +2017,7 @@ const PROGRAMS=[
   {id:'club-found',name:'Club Foundations',weeks:4,days:3,needs:['club'],level:'Beginner',
    blurb:'Four weeks of two-hand swings, casts and mills that build strong, mobile shoulders.',
    day(w,d){const m=[20,20,25,25][w-1];
-     return [{type:'flow',min:m,flow:['Club Foundations','Club Foundations','Arm Cast to Press','Three-Club Mini Flow'][w-1],label:'Flow practice'},
+     return [{type:'flow',min:m,flow:['Club Foundations','Club Foundations','Club First Workout','Three-Club Mini Flow'][w-1],label:'Flow practice'},
        {type:'strength',min:m,label:'Club strength'},
        {type:'conditioning',min:m,format:['intervals','emom','ladder','amrap'][w-1],label:'Conditioning'}][d-1]},
    notes:['Two hands only. Learn the arcs with a light club.','Smooth out the shield cast and add a round.','Start one-arm work if two-hand casts feel easy.','Link the three-club mini flow on both sides.']},
