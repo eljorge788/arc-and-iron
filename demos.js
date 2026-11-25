@@ -395,6 +395,61 @@ function lateralSwing(){
   return [[0,C_ONE],[0.25,{}],[0.75,hang],[1.25,R],[1.8,L],[2.35,R],[2.9,L],[3.4,{P:HINGE.P,yaw:0,hipYaw:0,G:hang.G,D:hang.D,freeL:hang.freeL}],
     [3.95,Object.assign({},UPRIGHT,C_ORDER1,{freeL:CB1.freeL})],[4.2,{}]];
 }
+// Side swing (Dangerously Fit, "Steel Club Side Swing"; notes in the Arc & Iron project,
+// steel-club-side-swing.md). The normal swing turned sideways: feet shoulder-width with the toes forward,
+// cast the club low to one side with a 45-degree hinge back and toward that side, wait for it to cross in
+// front of the knees, then snap the hips forward so it rises across the front to shoulder height on the
+// other side, arms locked and the chest and eyes turned to the club. Same path back. Built swinging up to
+// the right: the right arm is the long arm, so the right hand is on top (lead side) and the left hand is
+// "married to the pommel". both() gives the other set, up to the left with the hands swapped.
+const SS_FEET={L:[14,8,0],R:[-14,8,0]};
+// hands at locked-arm length from the shoulders, out along u (world direction); the club carries on along D
+function ssArms(body,u,D,extra){
+  const mid=vl(shoulderOf(body,'L'),shoulderOf(body,'R'),0.5);
+  return Object.assign({},body,{G:add(mid,mul(norm(u),45)),D:norm(D),eL:[1,-0.3,-0.2],eR:[-1,-0.3,-0.2]},extra||{});
+}
+function ssBody(P,pitch,yaw,extra){
+  return Object.assign({P,pitch,yaw,hipYaw:yaw*0.45,roll:0,feet:SS_FEET,turn:4,kneeOut:0.35,tL:0,tR:0,fyL:0,fyR:0},extra||{});
+}
+// one hand on the handle (the right), at locked-arm length from that shoulder
+function ssArm1(body,u,D,free,extra){
+  return Object.assign({},body,{G:add(shoulderOf(body,'R'),mul(norm(u),55)),D:norm(D),eR:[-1,-0.3,-0.2],freeL:free,eL:[1,-0.4,-0.6]},extra||{});
+}
+function sideSwingKF(one){
+  // weight on the right foot as the club casts low to the left (the coach's cue), hips back at 45 degrees
+  const bottomB=ssBody([-4,85,-11],44,30);
+  const lowB=ssBody([-1,87,-8],32,4);                 // still hinged while the club crosses the knees
+  const riseB=ssBody([2,92,-3],12,-34);               // hips snapping through
+  const topB=ssBody([4,94,0],0,-60);                  // tall, chest facing the club
+  const standB=ssBody([0,94,0],0,0);
+  const castB=ssBody([-2,90,-4],16,16);              // first cast: out to the side in front, then back
+  let start,cast,bottom,low,rise,top;
+  if(!one){
+    const grip={len:CLUB,choke:3,gL:0,gR:7,offL:0,offR:0};
+    start=Object.assign({},STAND,grip,ssArms(standB,[0,-0.94,0.34],[0,-1,0.12]));
+    cast=ssArms(castB,[0.32,-0.88,0.36],[0.62,-0.62,0.48],{pass:true});
+    bottom=ssArms(bottomB,[0.36,-0.9,0.24],[0.25,-0.72,-0.64]);
+    low=ssArms(lowB,[0,-0.92,0.4],[-0.15,-0.9,0.4],{pass:true});
+    rise=ssArms(riseB,[-0.72,-0.5,0.48],[-0.78,-0.38,0.5],{pass:true});
+    top=ssArms(topB,[-0.9,0.02,0.44],[-0.88,0.18,0.44]);
+  }else{
+    // free arm held out the other way for balance
+    const grip={len:CLUB,choke:3,gR:0,gL:7,offL:1,offR:0,freeL:[21,87,3]};
+    const freeOut=(b,dir)=>add(shoulderOf(b,'L'),mul(norm(dir),52));
+    start=Object.assign({},STAND,grip,ssArm1(standB,[0.05,-0.96,0.28],[0,-1,0.12],[21,87,3]));
+    cast=ssArm1(castB,[0.36,-0.86,0.36],[0.62,-0.62,0.48],freeOut(castB,[0.6,-0.6,-0.5]),{pass:true});
+    bottom=ssArm1(bottomB,[0.42,-0.86,0.3],[0.25,-0.72,-0.64],freeOut(bottomB,[0.5,-0.2,-0.84]));
+    low=ssArm1(lowB,[0.08,-0.92,0.38],[-0.15,-0.9,0.4],freeOut(lowB,[0.8,-0.5,-0.3]),{pass:true});
+    rise=ssArm1(riseB,[-0.75,-0.45,0.48],[-0.78,-0.38,0.5],freeOut(riseB,[0.85,-0.3,-0.4]),{pass:true});
+    top=ssArm1(topB,[-0.9,0.02,0.44],[-0.88,0.18,0.44],freeOut(topB,[0.86,0.02,-0.5]));
+  }
+  const c=o=>Object.assign({},o);
+  // the club travels the same path both ways: up through low and rise, back down through rise and low
+  return [[0,start],[0.3,{}],[0.6,c(cast)],[0.95,c(bottom)],[1.05,{}],[1.35,c(low)],[1.6,c(rise)],[1.9,c(top)],[2.05,{}],
+    [2.35,c(rise)],[2.6,c(low)],[2.95,c(bottom)],[3.1,{}],[3.4,c(low)],[3.65,c(rise)],[3.95,c(top)],[4.1,{}],
+    [4.4,c(rise)],[4.7,Object.assign({},low)],[5.15,c(start)],[5.4,{}]];
+}
+
 function armCast(two){
   // From the order position the club tips back and drops behind the shoulder to hang down the back, the
   // elbow pointing up beside the head. It circles out around the outside, the arm casts it to the front,
@@ -1098,6 +1153,10 @@ Object.assign(MOVES,{
     cue:'Feet wide, knees soft, slight hinge, both hands on the handle with the club hanging in front of your shins. Rock it side to side like a pendulum and shift your weight onto the leg it moves toward.'},
   'club:lateral swing':{kf:both(lateralSwing()),
     cue:'Same hinged stance, one hand. Swing the club across the front from outside one leg to outside the other; let your torso turn with it and your free arm move the other way. Both hands.'},
+  'club:side swing':{kf:both(sideSwingKF(false)),label:'Two hands',alt:'club:single-arm side swing',
+    cue:'Feet shoulder-width, toes forward. One hand on the pommel, the other over the top (the hand on the side the club swings up to goes on top). Elbows locked, shoulders packed, club pointing down. Cast it low to one side and hinge back at 45 degrees toward it, feeling your hamstrings load. Stay hinged until it crosses in front of your knees, then drive your hips forward so it rises across the front to shoulder height on the other side, chest and eyes on the club. Come back the same way. Your arms only hold on; the hips move the club. Swap hands each set.'},
+  'club:single-arm side swing':{kf:both(sideSwingKF(true)),label:'One hand',
+    cue:'Same swing with one hand. Cast the club out to one side and hinge back at 45 degrees. Keep your hips back until the arm has passed the middle of your body, then snap them forward so the arm rises to shoulder height on the other side. Free arm out the other way for balance. Follow the same path back down. Both arms.'},
   'club:arm cast':{kf:both(armCast(false)),
     cue:'One hand, standing tall, club upright at the shoulder. Let it drop behind the shoulder to hang down your back, circle it round, and cast it back up to vertical in front. The arm and shoulder move; the body stays still. Both arms.'},
   'club:two-hand arm cast':{kf:twoArmCast(),
@@ -1169,7 +1228,7 @@ const ALIAS={kb:{'goblet':'goblet squat','bottoms-up goblet squat':'goblet squat
     'around the world':'around-the-world','halos':'halo','light halos':'halo','single-direction halo':'halo'},
   mace:{'hand switch':'hand switches','rotational uppercut':'uppercut','overhead press':'offset press',
   'squat':'front squat','bent-over row':'offset bent-over row','offset row':'offset bent-over row','pendulum swings':'pendulum swing'},
-  club:{'inside and outside circles':'inside circle','inside circles':'inside circle','outside circles':'outside circle','mills':'mill','reverse mills':'reverse mill','club pullover':'pullover','two-hand pullover':'pullover','two-handed pullover':'pullover','one-handed pullover':'one-hand pullover','two-handed flag press':'two-hand flag press','one-hand flag press':'flag press','two-handed torch press':'two-hand torch press','one-hand torch press':'torch press','side cleans':'side clean','two-hand side clean':'side clean','two-hand side swing':'side rocker','two-handed side rocker':'side rocker','two-hand side rocker':'side rocker','cross-body swing':'lateral swing','cross-body swings':'lateral swing','two-hand side swings':'side rocker','side rock-it':'side rocker','side rocket':'side rocker',
+  club:{'inside and outside circles':'inside circle','inside circles':'inside circle','outside circles':'outside circle','mills':'mill','reverse mills':'reverse mill','club pullover':'pullover','two-hand pullover':'pullover','two-handed pullover':'pullover','one-handed pullover':'one-hand pullover','two-handed flag press':'two-hand flag press','one-hand flag press':'flag press','two-handed torch press':'two-hand torch press','one-hand torch press':'torch press','side cleans':'side clean','two-hand side clean':'side clean','two-hand side swing':'side swing','two-handed side swing':'side swing','two-hand side swings':'side swing','side swings':'side swing','steel club side swing':'side swing','single-arm side swing':'single-arm side swing','single side swing':'single-arm side swing','one-arm side swing':'single-arm side swing','one-hand side swing':'single-arm side swing','single-arm side swings':'single-arm side swing','two-handed side rocker':'side rocker','two-hand side rocker':'side rocker','cross-body swing':'lateral swing','cross-body swings':'lateral swing','side rock-it':'side rocker','side rocket':'side rocker',
     'swing':'lateral swing','swings':'lateral swing','one-arm arm cast':'arm cast','two-hand swipe':'swipe','swipes':'swipe',
     'two-hand shield cast':'shield cast','shield cast, one arm':'one-arm shield cast',
     'clean':'two-hand clean','two-handed clean':'two-hand clean','180':'two-hand 180','two-handed 180':'two-hand 180',
