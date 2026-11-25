@@ -387,13 +387,18 @@ function sideRocker(){
     [3.95,Object.assign({},UPRIGHT,C_ORDER2)],[4.2,{}]];
 }
 function lateralSwing(){
-  // One hand (right), wide hinge. The club swings across the front from outside the right leg to outside
-  // the left; the torso turns with it and the free arm moves the other way.
-  const hang=Object.assign({},HINGE,{G:[-8,86,26],D:[0,-1,0.06],eR:[-1,-0.5,-0.4],freeL:[22,83,12]});
-  const R={P:[-6,88,-3],yaw:-14,hipYaw:-6,G:[-13,90,22],D:norm([-0.8,-0.58,0.1]),freeL:[17,88,27]};
-  const L={P:[6,88,-3],yaw:16,hipYaw:7,G:[7,89,25],D:norm([0.82,-0.55,0.1]),freeL:[27,88,-10]};
-  return [[0,C_ONE],[0.25,{}],[0.75,hang],[1.25,R],[1.8,L],[2.35,R],[2.9,L],[3.4,{P:HINGE.P,yaw:0,hipYaw:0,G:hang.G,D:hang.D,freeL:hang.freeL}],
-    [3.95,Object.assign({},UPRIGHT,C_ORDER1,{freeL:CB1.freeL})],[4.2,{}]];
+  // One hand (right), wide hinge. The arm stays straight with the elbow locked and the shoulder is the pivot:
+  // the hand stays at arm's length from the shoulder and the club stays in line with the arm as it swings
+  // across the front, from outside the right leg to outside the left. The torso turns with it and the free
+  // arm moves the other way. Keyframes every few degrees keep the hand on the arc, so the elbow never bends.
+  const H=(f)=>{const yaw=f*16;return {P:[6*f,88,-3],pitch:16,yaw,hipYaw:yaw*0.45,roll:0,feet:{L:[23,8,0],R:[-23,8,0]},turn:14,kneeOut:0.6}};
+  // f runs from -1 (club out past the right leg) to 1 (out past the left leg)
+  const at=(f,pass)=>{const b=H(f),a=f*36*Math.PI/180,u=norm([Math.sin(a)*1.1,-Math.cos(a),0.27]);
+    return Object.assign({},b,{G:add(shoulderOf(b,'R'),mul(u,57.5)),D:u,eR:[-0.3,-0.3,-1],freeL:[22-5*f,86,12-22*f],pass})};
+  const sweep=(from,to,t0,dt)=>{const out=[],n=6;for(let k=1;k<=n;k++){const f=from+(to-from)*k/n;out.push([t0+dt*k/n,at(f,k<n)])}return out};
+  const hang=at(0,false);
+  return [[0,C_ONE],[0.25,{}],[0.75,hang]].concat(sweep(0,-1,0.75,0.5),sweep(-1,1,1.25,0.55),sweep(1,-1,1.8,0.55),sweep(-1,1,2.35,0.55),sweep(1,0,2.9,0.5),
+    [[3.95,Object.assign({},UPRIGHT,C_ORDER1,{freeL:CB1.freeL})],[4.2,{}]]);
 }
 // Side swing (Dangerously Fit, "Steel Club Side Swing"; notes in the Arc & Iron project,
 // steel-club-side-swing.md). The normal swing turned sideways: feet shoulder-width with the toes forward,
@@ -533,27 +538,32 @@ function outsideCircle(){return circleKF(outsideSwing(),-1)}
 // (top) elbow stays in at 90 degrees in front, and the supporting (right) elbow goes vertical, the bicep by
 // the ear and the forearm reaching over the top of the head to the club. Then pull it back over the
 // shoulder to order.
-// Side swipe: one hand (right). The single-arm side swing: cast low to the left, then the return swing
-// carries the club up the right side, and instead of stopping at shoulder height it goes on into a side arm
-// cast: the elbow opens out to the side and the club drops behind the right shoulder. Pull it back over the
+// Side swipe: one hand (right), from order. The single-arm side swing: cast low to the left, then the return swing
+// carries the club up the right side, and instead of stopping at shoulder height it goes on up and over the
+// shoulder into a side arm cast: the elbow opens out to the side and the club drops behind the right shoulder. Pull it back over the
 // shoulder to order.
 function sideSwipe(){
   const kf=sideSwingKF(true);
-  const upto=kf.findIndex(([t])=>t>=1.6);const head=kf.slice(0,upto+1);const t=head[head.length-1][0];
+  const upto=kf.findIndex(([t])=>t>=1.6);const head=[[0,C_ONE],[0.3,{}]].concat(kf.slice(2,upto+1));const t=head[head.length-1][0];
   const free=[21,87,3];
   const high=ssArm1(ssBody([2,94,-1],2,-34),[-0.85,0.45,0.28],[-0.5,0.85,0.15],free,{pass:true});
   const b=ssBody([0,94,0],0,-12);
+  // the club carries on up and over the shoulder, toward the head and back, before it drops behind
+  const over=Object.assign({},ssBody([0,94,0],0,-18),{G:[-22,162,6],D:norm([0.2,0.6,-0.77]),eR:[-1,0.3,0.2],freeL:free,pass:true});
   const openCast=Object.assign({},b,{G:[-23,163,-2],D:norm([-0.05,-0.9,-0.42]),eR:[-1,0.3,0],freeL:free});
   const pull=Object.assign({},ssBody([0,94,0],0,-6),{G:[-20,156,10],D:norm([-0.1,0.8,-0.58]),eR:[-1,0.2,0.3],freeL:free,pass:true});
   const front=Object.assign({},ssBody([0,94,0],0,0),{G:[-16,146,24],D:norm([-0.2,0.7,0.68]),eR:[-1,-0.6,0.2],freeL:free,pass:true});
-  return head.concat([[t+0.3,high],[t+0.6,openCast],[t+0.75,{}],[t+1.05,pull],[t+1.3,front],[t+1.7,Object.assign({},C_ONE)],[t+1.9,{}]]);
+  return head.concat([[t+0.3,high],[t+0.55,over],[t+0.8,openCast],[t+0.95,{}],[t+1.25,pull],[t+1.5,front],[t+1.9,Object.assign({},C_ONE)],[t+2.1,{}]]);
 }
+// the two-hand arm cast's positions, shared by the arm cast, the arm cast to flag press, the barbarian squat
+// and the gamma cast so the arm cast looks the same in all of them
+const AC2={order:{G:[9,124,22],D:[0,1,0],eL:[1,-1,-0.25],eR:[-1,-1,-0.25]},
+  tip:{G:[11,156,10],D:norm([0.1,0.35,-0.93]),eL:[0.4,-0.5,1],eR:[-0.3,1,0.2],pass:true},
+  back:{G:[9,177,-4],D:norm([0.08,-0.9,-0.42]),eL:[0.4,-0.5,1],eR:[-0.2,1,0.1]},
+  pull:{G:[11,162,8],D:norm([0.05,0.8,-0.6]),eL:[0.4,-0.5,1],eR:[-0.3,1,0.2],pass:true}};
+const ac2=(k,extra)=>Object.assign({},AC2[k],extra||{});
 function twoArmCast(){
-  const order=Object.assign({},C_ORDER2,{G:[9,124,22]});
-  const tip={G:[11,156,10],D:norm([0.1,0.35,-0.93]),eL:[0.4,-0.5,1],eR:[-0.3,1,0.2],pass:true};
-  const back={G:[9,177,-4],D:norm([0.08,-0.9,-0.42]),eL:[0.4,-0.5,1],eR:[-0.2,1,0.1]};
-  const pull={G:[11,162,8],D:norm([0.05,0.8,-0.6]),eL:[0.4,-0.5,1],eR:[-0.3,1,0.2],pass:true};
-  return [[0,Object.assign({},C_TWO,order)],[0.3,{}],[0.7,tip],[1.05,back],[1.3,{}],[1.65,pull],[2.0,Object.assign({},order)],[2.25,{}]];
+  return [[0,Object.assign({},C_TWO,AC2.order)],[0.3,{}],[0.7,ac2('tip')],[1.05,ac2('back')],[1.3,{}],[1.65,ac2('pull')],[2.0,ac2('order')],[2.25,{}]];
 }
 // Arm cast, one hand (right hand; also called a pullover): arm cast over the right shoulder with the elbow bent 90 degrees and in,
 // club hanging behind; pull it back over the shoulder to order.
@@ -579,7 +589,7 @@ function flagPressTwo(){
 function torchPressTwo(){
   // Two hands, club upright in order on the lead side; press it straight up and lower, club vertical.
   const order=Object.assign({},C_ORDER2,{G:[9,124,22]});
-  const top={G:[7,186,6],D:[0,1,0],eL:[1,-0.2,0.2],eR:[-1,-0.2,0.2]};
+  const top={G:[7,181,22],D:[0,1,0],eL:[1,-0.2,0.2],eR:[-1,-0.2,0.2]};
   return [[0,Object.assign({},C_TWO,order)],[0.3,{}],[0.9,top],[1.15,{}],[1.75,Object.assign({},order)],[1.95,{}],[2.55,Object.assign({},top)],[2.8,{}],[3.4,Object.assign({},order)],[3.6,{}]];
 }
 function mill(){
@@ -622,9 +632,10 @@ function shieldCast(){
   return [[0,Object.assign({},C_TWO,{G:[-7,124,22]})],[0.25,{}],[0.6,shield],[1.0,behind],[1.2,{}],[1.55,round],[1.85,over],[2.25,Object.assign({},C_ORDER2,{G:[-7,124,22]})],[2.45,{}]];
 }
 function torchPress(){
-  // One hand. Club upright like a torch at the shoulder; press straight up and lower, club vertical.
+  // One hand. Club upright like a torch at the shoulder; press it up and a little out in front, club
+  // vertical, and lower.
   const rack={G:[-17,128,12],D:[0,1,0],eR:[-0.5,-1,0.3]};
-  const top={G:[-17,195,3],D:[0,1,0],eR:[-1,-0.2,0.2]};
+  const top={G:[-17,188,20],D:[0,1,0],eR:[-1,-0.2,0.2]};
   return [[0,C_ONE],[0.4,rack],[0.6,{}],[1.2,top],[1.45,{}],[2.05,rack],[2.25,{}],[2.65,Object.assign({},C_ORDER1)],[2.8,{}]];
 }
 
@@ -679,12 +690,15 @@ function two180(){
     [[4.5,Object.assign({},TALL,C_ORDER2)],[4.7,{}]]);
 }
 function gamma(){
-  // Starts like the arm cast, but the torso turns so the club travels round the head: over the right
-  // shoulder, behind the head, out over the left shoulder and back to order. both() changes sides.
-  const overR={yaw:-14,G:[-12,150,10],D:norm([-0.45,0.3,-0.84]),eL:[1,0,0.3],eR:[-1,0,0.3],pass:true};
-  const behind=Object.assign({},BEHIND2,{yaw:0,G:[0,166,-12]});
-  const overL={yaw:14,G:[12,154,12],D:norm([0.5,0.55,0.67]),eL:[1,-0.3,0.4],eR:[-1,-0.3,0.4],pass:true};
-  return [[0,C_TWO],[0.25,{}],[0.65,overR],[0.95,behind],[1.1,{}],[1.45,overL],[1.85,Object.assign({yaw:0},C_ORDER2)],[2.05,{}]];
+  // Two hands. Arm cast over the lead (left) shoulder; then, with the club still hanging behind, carry the
+  // hands over the top of the head to the right shoulder (no swing of the club) and pull it over that
+  // shoulder to order on the right. both() comes back the other way.
+  const backR={G:[-9,177,-4],D:norm([-0.08,-0.9,-0.42]),eL:[0.2,1,0.1],eR:[-0.4,-0.5,1]};
+  const over={G:[0,181,-6],D:norm([0,-0.9,-0.43]),eL:[0.5,1,0.2],eR:[-0.5,1,0.2],pass:true};
+  const pullR={G:[-11,162,8],D:norm([-0.05,0.8,-0.6]),eL:[0.3,1,0.2],eR:[-0.4,-0.5,1],pass:true};
+  const orderR={G:[-9,124,22],D:[0,1,0],eL:[1,-1,-0.25],eR:[-1,-1,-0.25]};
+  return [[0,Object.assign({},C_TWO,AC2.order)],[0.3,{}],[0.7,ac2('tip')],[1.05,ac2('back')],[1.25,{}],
+    [1.65,over],[2.05,backR],[2.25,{}],[2.6,pullR],[2.95,orderR],[3.15,{}]];
 }
 function swingSquat(){
   // From order, cast forward into a swing with the arms locked out, then catch the club back in order as
@@ -696,33 +710,31 @@ function swingSquat(){
     [3.3,Object.assign({},UPRIGHT,C_ORDER2)],[3.5,{}]];
 }
 function castFlag(){
-  // Two hands, side order on the lead (left, top hand) side. Arm cast over the left shoulder: the lead elbow
-  // in at 90 degrees, the supporting elbow up by the ear with the forearm over the head, club behind the
-  // shoulder. Then drive the club forward and up, angled out like a flag. both() does the other side.
-  const side={G:[12,124,20],D:[0,1,0],eL:[1,-1,-0.2],eR:[-0.6,-1,-0.2]};
-  const tip={G:[11,156,10],D:norm([0.1,0.35,-0.93]),eL:[0.4,-0.5,1],eR:[-0.3,1,0.2],pass:true};
-  const back={G:[9,177,-4],D:norm([0.08,-0.9,-0.42]),eL:[0.4,-0.5,1],eR:[-0.2,1,0.1]};
+  // Two hands, order on the lead (left, top hand) side. The two-hand arm cast exactly as in its own demo:
+  // cast over the left shoulder, club behind, and pull it back over; then drive it forward and up, angled
+  // out like a flag, and lower to order. both() does the other side.
   const flag={G:[8,170,26],D:norm([0.3,0.72,0.62]),eL:[1,-0.4,0],eR:[-1,-0.4,0]};
-  return [[0,C_TWO],[0.35,side],[0.5,{}],[0.85,tip],[1.2,back],[1.4,{}],[1.85,flag],[2.15,{}],[2.6,Object.assign({},side)],[2.75,{}],
-    [3.1,Object.assign({},C_ORDER2)],[3.3,{}]];
+  return [[0,Object.assign({},C_TWO,AC2.order)],[0.3,{}],[0.7,ac2('tip')],[1.05,ac2('back')],[1.3,{}],[1.65,ac2('pull')],
+    [2.0,flag],[2.3,{}],[2.85,ac2('order')],[3.05,{}]];
 }
 function cleanPress(){
   // Clean to order, then drive the club forward and up to straight arms, still upright; lower to order.
-  const top={G:[0,185,12],D:[0,1,0],eL:[1,-0.2,0],eR:[-1,-0.2,0]};
+  const top={G:[7,180,24],D:[0,1,0],eL:[1,-0.2,0],eR:[-1,-0.2,0]};
   return [[0,C_TWO],[0.25,{}]].concat(cleanKF()).concat([[2.65,top],[2.9,{}],[3.55,atOrder(TALL)],[3.75,{}],
     [4.1,Object.assign({},UPRIGHT,C_ORDER2)],[4.3,{}]]);
 }
 function clubBarbarian(){
-  // Lock the arms out with the club upright in front and squat. As you stand, arm cast over the lead (left)
-  // shoulder: lead elbow in at 90 degrees, supporting elbow up by the ear, forearm over the head. Pull it
-  // back through with the lats and elbows, lock out and go straight into the next squat.
+  // Start with the two-hand arm cast over the lead (left) shoulder. As the club is pulled back to the front,
+  // sink into the squat and lock the arms out, club upright in front. Arm cast again as you stand, and
+  // repeat; finish standing in order.
   const lock=pose=>Object.assign({G:onBody(pose,7,42,50),D:[0,1,0],eL:[1,-0.4,0],eR:[-1,-0.4,0]},pose);
-  const tip=Object.assign({},TALL,{G:[11,156,10],D:norm([0.1,0.35,-0.93]),eL:[0.4,-0.5,1],eR:[-0.3,1,0.2],pass:true});
-  const back=Object.assign({},TALL,{G:[9,177,-4],D:norm([0.08,-0.9,-0.42]),eL:[0.4,-0.5,1],eR:[-0.2,1,0.1]});
-  const pull=Object.assign({},TALL,{G:[11,162,8],D:norm([0.05,0.8,-0.6]),eL:[0.4,-0.5,1],eR:[-0.3,1,0.2],pass:true});
-  return [[0,C_TWO],[0.25,{}],[0.6,lock(TALL)],[0.75,{}],[1.45,lock(SQUAT)],[1.65,{}],
-    [2.05,tip],[2.45,back],[2.6,{}],[2.95,pull],
-    [3.3,lock(TALL)],[3.4,{}],[4.1,lock(SQUAT)],[4.3,{}],[5.0,lock(TALL)],[5.15,{}],[5.5,Object.assign({},UPRIGHT,C_ORDER2)],[5.7,{}]];
+  const MID={P:[0,76,-8],pitch:11,yaw:0,hipYaw:0,feet:WIDE,turn:15,kneeOut:0.4};
+  const onMid=k=>{const o=carry(MID,Object.assign({},AC2[k],{W:[1,0,0]}));delete o.W;return o};
+  const tall=k=>Object.assign({},TALL,AC2[k]);
+  return [[0,Object.assign({},C_TWO,AC2.order)],[0.3,{}],[0.7,tall('tip')],[1.05,tall('back')],[1.3,{}],
+    [1.7,onMid('pull')],[2.15,lock(SQUAT)],[2.35,{}],
+    [2.8,onMid('tip')],[3.2,tall('back')],[3.4,{}],
+    [3.8,onMid('pull')],[4.25,lock(SQUAT)],[4.45,{}],[5.15,lock(TALL)],[5.3,{}],[5.65,Object.assign({},UPRIGHT,C_ORDER2)],[5.85,{}]];
 }
 function orderSquat(){
   return [[0,C_TWO],[0.3,atOrder(TALL)],[0.45,{}],[1.25,atOrder(SQUAT)],[1.5,{}],[2.3,atOrder(TALL)],[2.45,{}],
@@ -1148,7 +1160,7 @@ Object.assign(MOVES,{
   'club:side rocker':{kf:sideRocker(),
     cue:'Feet wide, knees soft, slight hinge, both hands on the handle with the club hanging in front of your shins. Rock it side to side like a pendulum and shift your weight onto the leg it moves toward.'},
   'club:lateral swing':{kf:both(lateralSwing()),
-    cue:'Same hinged stance, one hand. Swing the club across the front from outside one leg to outside the other; let your torso turn with it and your free arm move the other way. Both hands.'},
+    cue:'One hand, wide hinge. Arm straight and elbow locked: the shoulder is the pivot. Swing the club across the front from outside one leg to outside the other, the torso turning with it and the free arm moving the other way.'},
   'club:side swing':{kf:both(sideSwingKF(false)),label:'Two hands',alt:'club:single-arm side swing',
     cue:'Feet shoulder-width, toes forward. One hand on the pommel, the other over the top (the hand on the side the club swings up to goes on top). Elbows locked, shoulders packed, club pointing down. Cast it low to one side and hinge back at 45 degrees toward it, feeling your hamstrings load. Stay hinged until it crosses in front of your knees, then drive your hips forward so it rises across the front to shoulder height on the other side, chest and eyes on the club. Come back the same way. Your arms only hold on; the hips move the club. Swap hands each set.'},
   'club:single-arm side swing':{kf:both(sideSwingKF(true)),label:'One hand',
@@ -1164,19 +1176,19 @@ Object.assign(MOVES,{
   'club:two-hand 180':{kf:two180(),
     cue:'Club upright on one side, body turned that way. Swing it down in a U past the front, pivot your feet and hips, and finish upright on the other side. Then back.'},
   'club:gamma cast':{kf:both(gamma()),
-    cue:'Start like the arm cast, but turn the torso so the club travels round your head: over one shoulder, behind the head, out over the other and back to order. Change sides each rep.'},
+    cue:'Two hands. Arm cast over your lead shoulder: lead elbow in at 90 degrees, supporting elbow up by the ear. With the club still hanging behind, carry your hands over the top of your head to the other shoulder, with no swing of the club, and pull it over that shoulder to order. Then back the other way.'},
   'club:swing squat':{kf:swingSquat(),
     cue:'From order, cast forward into a swing with your arms locked out. Catch the club back in order as you sit into a squat, then stand.'},
   'club:arm cast to flag press':{kf:both(castFlag()),
-    cue:'From side order, arm cast with the elbow tucked to your ear, then drive the club forward and up, angled out like a flag. Both sides.'},
+    cue:'Two hands, club in order on the lead side. Two-hand arm cast over that shoulder (lead elbow in at 90 degrees, supporting elbow up by the ear), pull it back over, then drive it forward and up, angled out like a flag. Lower to order. Both sides.'},
   'club:clean to torch press':{kf:cleanPress(),
     cue:'Clean the club to order, then drive it forward and up to straight arms, still upright. Lower to order under control.'},
   'club:barbarian squat':{kf:clubBarbarian(),
-    cue:'Arms locked out, club upright, squat. As you stand, arm cast; pull it back through with your lats and elbows, lock out and go straight into the next squat.'},
+    cue:'Start with a two-hand arm cast over the lead shoulder. As you pull the club back to the front, sink into the squat and lock the arms out, club upright. Arm cast again as you stand, and repeat.'},
   'club:order squat':{kf:orderSquat(),
     cue:'Club upright in order, hands at the sternum, elbows by the ribs. Sit tall into the squat and stand.'},
   'club:side swipe':{kf:both(sideSwipe()),
-    cue:'One hand. A side swing: cast the club low to the far side, then let it swing back up your lead side. Instead of stopping at shoulder height, open the elbow out to the side and let the club drop behind that shoulder in a side arm cast. Pull it back over the shoulder to order. Both arms.'},
+    cue:'One hand, from order. A side swing: cast the club low to the far side, then let it swing back up your lead side and carry it on up and over the shoulder, opening the elbow out to the side, so it drops behind that shoulder in a side arm cast. Pull it back over the shoulder to order. Both arms.'},
   'club:swipe':{kf:both(swipe()),
     cue:'One hand, from order. Hinge and swing the club down past the outside of the same knee, elbow tight to your body. Swing it back up the same way and on into an arm cast over the shoulder, then pull it back to order. Keep it outside the legs. Both arms.'},
   'club:side clean':{kf:both(sideClean()),
@@ -1196,9 +1208,9 @@ Object.assign(MOVES,{
   'club:shield cast':{kf:both(topSwap(shieldCast())),
     cue:'Both hands, club upright and close in front of the chest. Drop it behind one shoulder and circle it round the head and shoulder, then back out over the same shoulder. Keep it close. Alternate sides.'},
   'club:torch press':{kf:both(torchPress()),label:'One hand',alt:'club:two-hand torch press',
-    cue:'Club upright like a torch at the shoulder. Press it straight up, keeping it vertical, and lower under control. Both arms.'},
+    cue:'Club upright like a torch at the shoulder. Press it up and a little out in front of you, keeping it vertical, and lower under control. Both arms.'},
   'club:two-hand torch press':{kf:both(torchPressTwo()),label:'Two hands',
-    cue:'Two hands, club upright in order on the lead side. Press it straight up, keeping it vertical, and lower under control. Both sides.'},
+    cue:'Two hands, club upright in order on the lead side. Press it up and a little out in front of you, keeping it vertical, and lower under control. Both sides.'},
 });
 MOVES['mace:360']={kf:both(threeSixty()),cue:'One 360 each way. Elbows vertical and tight to the head: press just off one side, pull over, circle behind the back, finish in a press just off the other side.'};
 MOVES['mace:gravedigger']={kf:both(gravedigger()),cue:'Shovel grip. Dig the head down and across to the floor by the opposite foot, pivoting the back foot. Both sides.'};
