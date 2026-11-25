@@ -932,7 +932,7 @@ const X=[
 ['Club barbarian squat','club',1,'med','squat','','Start with a two-hand arm cast. As you pull the club back to the front, sink into the squat with the arms locked out; arm cast again as you stand. Both lead sides.'],
 ['Order-position squat','club',1,'med','squat','','Club upright, hands at the sternum, elbows by the ribs; sit tall.'],
 ['Two-hand clean','club',1,'med','pull','b','Hinge, let the club drop between your legs, and drive the hips to float it up to order.'],
-['Two-hand 180','club',1,'med','swing','','From upright on one side, swing down in a U past the front and pivot to upright on the other.'],
+['One-hand 180','club',1,'med','swing','ub1','One hand, and it stays in that hand: rotate and cast the club away with the arm locked, swing it down and across in a low U and up the other side into a cross-body order, then cast it back out to reverse the circle back to order.'],
 ['Switch 180','club',2,'med','swing','b1a','One hand, changing hands every rep: rotate, cast away with the arm locked, swing down and across in a low U and up the other side, where the free hand catches it upright.'],
 ['Two-hand swing squat','club',1,'med','squat','b','Cast forward into a swing, arms locked, and catch the club in order as you squat.'],
 ['Two-hand arm cast to flag press','club',1,'med','press','','Two hands: a two-hand arm cast over the lead shoulder, then press the club straight out in front at shoulder height, club upright, like the flag press, and back to order.'],
@@ -1470,7 +1470,7 @@ function eqBanner(eq,wt,opts={}){
 /* ---------- render output ---------- */
 function eqLabel(eqs){return eqs.map(k=>EQ[k].name).join(' + ')}
 // moves and flows that were renamed: old log name -> current name, so history and weights carry over
-const RENAMED={'club|Half Mill to Torch Press':'Half Mill to Rotational Torch Press','club|Two-hand swipe':'Swipe','club|Pullover':'Two-hand arm cast','club|One-hand pullover':'Arm cast'};
+const RENAMED={'club|Two-hand 180':'One-hand 180','club|Half Mill to Torch Press':'Half Mill to Rotational Torch Press','club|Two-hand swipe':'Swipe','club|Pullover':'Two-hand arm cast','club|One-hand pullover':'Arm cast'};
 const sameMove=(logName,name,eq)=>logName===name||RENAMED[eq+'|'+logName]===name;
 function lastFor(name,eq){
   let best=null;
