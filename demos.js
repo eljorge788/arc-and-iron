@@ -450,18 +450,6 @@ function sideSwingKF(one){
     [4.4,c(rise)],[4.7,Object.assign({},low)],[5.15,c(start)],[5.4,{}]];
 }
 
-function armCast(two){
-  // From the order position the club tips back and drops behind the shoulder to hang down the back, the
-  // elbow pointing up beside the head. It circles out around the outside, the arm casts it to the front,
-  // and it returns to vertical in front of the shoulder. The body stays still.
-  const x=two?-13:-15,base=two?C_TWO:C_ONE,order=two?C_ORDER2:C_ORDER1;
-  const el2=two?{eL:[0.5,1,0.2],eR:[-0.4,1,0.2]}:{eR:[-0.3,0.4,1]};
-  const tip={G:[x,146,14],D:norm([-0.1,0.25,-1]),pass:true};
-  const behind=Object.assign({G:[x,two?163:158,-2],D:norm([-0.08,-0.9,-0.42])},el2);
-  const out=Object.assign({G:[x-2,two?164:160,8],D:norm([-0.95,-0.15,-0.25]),pass:true},el2);
-  const cast={G:[x,140,38],D:norm([-0.05,0.55,0.83]),eL:[1,-0.6,0],eR:[-1,-0.6,0]};
-  return [[0,base],[0.25,{}],[0.6,tip],[0.95,behind],[1.15,{}],[1.45,out],[1.8,cast],[2.25,Object.assign({},order)],[2.45,{}]];
-}
 function swipe(){
   // Two hands, club upright in order on the left side of the chest. Hinge and swing it down the outside of
   // the body, past the outside of the left knee, then swing it back up the same path to order. It never
@@ -539,20 +527,20 @@ function circleKF(swing,dir){
 }
 function insideCircle(){return circleKF(insideSwing(),1)}
 function outsideCircle(){return circleKF(outsideSwing(),-1)}
-// Two-hand pullover, order on the lead (left, top hand) side. Arm cast over the left shoulder; the lead
+// Arm cast, two hands (also called a pullover), order on the lead (left, top hand) side. Arm cast over the left shoulder; the lead
 // (top) elbow stays in at 90 degrees in front, and the supporting (right) elbow goes vertical, the bicep by
 // the ear and the forearm reaching over the top of the head to the club. Then pull it back over the
 // shoulder to order.
-function pullover(){
+function twoArmCast(){
   const order=Object.assign({},C_ORDER2,{G:[9,124,22]});
   const tip={G:[11,156,10],D:norm([0.1,0.35,-0.93]),eL:[0.4,-0.5,1],eR:[-0.3,1,0.2],pass:true};
   const back={G:[9,177,-4],D:norm([0.08,-0.9,-0.42]),eL:[0.4,-0.5,1],eR:[-0.2,1,0.1]};
   const pull={G:[11,162,8],D:norm([0.05,0.8,-0.6]),eL:[0.4,-0.5,1],eR:[-0.3,1,0.2],pass:true};
   return [[0,Object.assign({},C_TWO,order)],[0.3,{}],[0.7,tip],[1.05,back],[1.3,{}],[1.65,pull],[2.0,Object.assign({},order)],[2.25,{}]];
 }
-// One-hand pullover (right hand): arm cast over the right shoulder with the elbow bent 90 degrees and in,
+// Arm cast, one hand (right hand; also called a pullover): arm cast over the right shoulder with the elbow bent 90 degrees and in,
 // club hanging behind; pull it back over the shoulder to order.
-function pulloverOne(){
+function armCast(){
   const tip={G:[-15,150,10],D:norm([-0.05,0.3,-0.95]),eR:[-0.3,0.6,1],pass:true};
   const back={G:[-15,160,-2],D:norm([0.1,-0.9,-0.42]),eR:[-0.3,0.6,1]};
   const pull={G:[-15,154,10],D:norm([0,0.8,-0.6]),eR:[-0.3,0.6,1],pass:true};
@@ -639,11 +627,6 @@ const BEHIND2={G:[0,166,-12],D:norm([0,-0.93,-0.36]),eL:[1,0.9,0.15],eR:[-1,0.9,
 const TIPBACK2={G:[0,146,14],D:norm([0,0.35,-0.94]),eL:[1,0,0.3],eR:[-1,0,0.3],pass:true};
 const PULL2={G:[0,152,16],D:norm([0,0.85,-0.5]),eL:[1,-0.4,0.4],eR:[-1,-0.4,0.4],pass:true};
 
-function twoArmCast(){
-  // From order the club tips back over the head and relaxes; elbows rise beside the ears, hands behind the
-  // head, club hanging down the back. Then the lats pull it back to order, elbows leading.
-  return [[0,C_TWO],[0.25,{}],[0.65,TIPBACK2],[1.0,BEHIND2],[1.3,{}],[1.65,PULL2],[2.0,Object.assign({},C_ORDER2)],[2.25,{}]];
-}
 function oneArmShield(){
   // One hand, club up by the shoulder, free hand down. The club casts over the shoulder, circles round
   // behind the back and comes back out to the front.
@@ -1157,10 +1140,10 @@ Object.assign(MOVES,{
     cue:'Feet shoulder-width, toes forward. One hand on the pommel, the other over the top (the hand on the side the club swings up to goes on top). Elbows locked, shoulders packed, club pointing down. Cast it low to one side and hinge back at 45 degrees toward it, feeling your hamstrings load. Stay hinged until it crosses in front of your knees, then drive your hips forward so it rises across the front to shoulder height on the other side, chest and eyes on the club. Come back the same way. Your arms only hold on; the hips move the club. Swap hands each set.'},
   'club:single-arm side swing':{kf:both(sideSwingKF(true)),label:'One hand',
     cue:'Same swing with one hand. Cast the club out to one side and hinge back at 45 degrees. Keep your hips back until the arm has passed the middle of your body, then snap them forward so the arm rises to shoulder height on the other side. Free arm out the other way for balance. Follow the same path back down. Both arms.'},
-  'club:arm cast':{kf:both(armCast(false)),
-    cue:'One hand, standing tall, club upright at the shoulder. Let it drop behind the shoulder to hang down your back, circle it round, and cast it back up to vertical in front. The arm and shoulder move; the body stays still. Both arms.'},
-  'club:two-hand arm cast':{kf:twoArmCast(),
-    cue:'Start in order, feet planted, knees soft. Let the club tip back over your head and relax: elbows beside your ears, hands behind your head, club hanging down your back. Pull it back to order with your lats, elbows leading, not the wrists.'},
+  'club:arm cast':{kf:both(armCast()),label:'One hand',alt:'club:two-hand arm cast',
+    cue:'Also called a pullover. One hand, club in order at the shoulder. Arm cast up and over the shoulder with the elbow in and bent to 90 degrees, club hanging behind, then pull it back over the shoulder to order, keeping the bend. Both arms.'},
+  'club:two-hand arm cast':{kf:both(twoArmCast()),label:'Two hands',alt:'club:arm cast',
+    cue:'Also called a pullover. Two hands, club in order on the lead side. Arm cast up and over that shoulder: the lead elbow stays in at 90 degrees, and the supporting elbow goes up with the bicep by your ear and the forearm reaching over your head to the club. Pull the club back over the shoulder to order. Both sides.'},
   'club:one-arm shield cast':{kf:both(oneArmShield()),
     cue:'One hand, club up by the shoulder, the other hand free. Cast it over the shoulder, circle it behind you and bring it back to the front. Both arms.'},
   'club:two-hand clean':{kf:twoClean(),
@@ -1189,10 +1172,6 @@ Object.assign(MOVES,{
     cue:'One hand, club in order with the elbow tight to your side. Turn your torso toward the inside to aim the club, then push it straight out, club upright. Let it drop in across your body, down and out to the side with the arm long, turning against its weight, and bring it back to a 90-degree elbow with the elbow at your side. Then order. The club never goes over your head. Both arms.'},
   'club:outside circle':{kf:both(outsideCircle()),
     cue:'One hand, club in order with the elbow tight to your side. Turn your torso toward your lead side to aim the club, then push it straight out, club upright. Let it drop out to the side, down, across the front and up the inside with the arm long, and bring it back to a 90-degree elbow with the elbow at your side. Then order. The club never goes over your head. Both arms.'},
-  'club:pullover':{kf:both(pullover()),label:'Two hands',alt:'club:one-hand pullover',
-    cue:'Two hands, club in order on the lead side. Arm cast up and over that shoulder: the lead elbow stays in at 90 degrees, and the supporting elbow goes up with the bicep by your ear and the forearm reaching over your head to the club. Pull the club back over the shoulder to order. Both sides.'},
-  'club:one-hand pullover':{kf:both(pulloverOne()),label:'One hand',
-    cue:'One hand, club in order at the shoulder. Arm cast up and over the shoulder with the elbow in and bent to 90 degrees, then pull the club back over the shoulder to order, keeping the bend. Both arms.'},
   'club:flag press':{kf:both(flagPress()),label:'One hand',alt:'club:two-hand flag press',
     cue:'One hand, club in order on your lead side. Press it straight out in front at shoulder height, club upright, then bring it back to order. Both arms.'},
   'club:two-hand flag press':{kf:both(flagPressTwo()),label:'Two hands',
@@ -1228,7 +1207,7 @@ const ALIAS={kb:{'goblet':'goblet squat','bottoms-up goblet squat':'goblet squat
     'around the world':'around-the-world','halos':'halo','light halos':'halo','single-direction halo':'halo'},
   mace:{'hand switch':'hand switches','rotational uppercut':'uppercut','overhead press':'offset press',
   'squat':'front squat','bent-over row':'offset bent-over row','offset row':'offset bent-over row','pendulum swings':'pendulum swing'},
-  club:{'inside and outside circles':'inside circle','inside circles':'inside circle','outside circles':'outside circle','mills':'mill','reverse mills':'reverse mill','club pullover':'pullover','two-hand pullover':'pullover','two-handed pullover':'pullover','one-handed pullover':'one-hand pullover','two-handed flag press':'two-hand flag press','one-hand flag press':'flag press','two-handed torch press':'two-hand torch press','one-hand torch press':'torch press','side cleans':'side clean','two-hand side clean':'side clean','two-hand side swing':'side swing','two-handed side swing':'side swing','two-hand side swings':'side swing','side swings':'side swing','steel club side swing':'side swing','single-arm side swing':'single-arm side swing','single side swing':'single-arm side swing','one-arm side swing':'single-arm side swing','one-hand side swing':'single-arm side swing','single-arm side swings':'single-arm side swing','two-handed side rocker':'side rocker','two-hand side rocker':'side rocker','cross-body swing':'lateral swing','cross-body swings':'lateral swing','side rock-it':'side rocker','side rocket':'side rocker',
+  club:{'inside and outside circles':'inside circle','inside circles':'inside circle','outside circles':'outside circle','mills':'mill','reverse mills':'reverse mill','pullover':'two-hand arm cast','pullovers':'two-hand arm cast','club pullover':'two-hand arm cast','two-hand pullover':'two-hand arm cast','two-handed pullover':'two-hand arm cast','one-hand pullover':'arm cast','one-handed pullover':'arm cast','one-arm pullover':'arm cast','arm casts':'arm cast','two-handed flag press':'two-hand flag press','one-hand flag press':'flag press','two-handed torch press':'two-hand torch press','one-hand torch press':'torch press','side cleans':'side clean','two-hand side clean':'side clean','two-hand side swing':'side swing','two-handed side swing':'side swing','two-hand side swings':'side swing','side swings':'side swing','steel club side swing':'side swing','single-arm side swing':'single-arm side swing','single side swing':'single-arm side swing','one-arm side swing':'single-arm side swing','one-hand side swing':'single-arm side swing','single-arm side swings':'single-arm side swing','two-handed side rocker':'side rocker','two-hand side rocker':'side rocker','cross-body swing':'lateral swing','cross-body swings':'lateral swing','side rock-it':'side rocker','side rocket':'side rocker',
     'swing':'lateral swing','swings':'lateral swing','one-arm arm cast':'arm cast','two-hand swipe':'swipe','swipes':'swipe',
     'two-hand shield cast':'shield cast','shield cast, one arm':'one-arm shield cast',
     'clean':'two-hand clean','two-handed clean':'two-hand clean','180':'two-hand 180','two-handed 180':'two-hand 180',

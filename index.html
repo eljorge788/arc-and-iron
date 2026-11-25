@@ -909,9 +909,9 @@ const X=[
 ['Two-hand side swing','club',1,'med','swing','b','The swing turned sideways. Feet shoulder-width, toes forward, one hand on the pommel and the other over it, elbows locked. Cast the club low to one side with a 45° hinge, wait for it to cross your knees, then drive the hips so it rises to shoulder height on the other side, chest and eyes on the club. Swap hands each set.'],
 ['Single-arm side swing','club',2,'med','swing','u1','One hand: cast the club low to one side with a 45° hinge. Keep the hips back until the arm passes the middle of your body, then snap them so the arm rises to shoulder height on the other side. Free arm out the other way.'],
 ['Lateral swing','club',1,'light','swing','u1','One hand, wide hinge: swing across the front from outside one leg to outside the other.'],
-['Arm cast','club',1,'light','swing','u1','Drop the club behind the shoulder, circle it round, and cast it back up in front. The body stays still.'],
+['Arm cast','club',1,'light','pull','u1','Also called a pullover. One hand: from order at the shoulder, arm cast up and over the shoulder with the elbow in and bent to 90°, then pull the club back over the shoulder to order, keeping the bend.'],
 ['Two-hand swipe','club',1,'med','swing','b','From order on one side, hinge and swing the club down past the outside of the same knee, then back up the same path to order. Keep it outside the legs.'],
-['Two-hand arm cast','club',1,'med','swing','b','From order, tip the club back: elbows by the ears, club down the back. Pull it back with the lats.'],
+['Two-hand arm cast','club',1,'med','pull','','Also called a pullover. Two hands: from order on the lead side, arm cast over that shoulder (lead elbow in at 90°, supporting elbow up by the ear with the forearm over the head), then pull the club back over the shoulder to order.'],
 ['Two-hand shield cast','club',1,'med','swing','','Club drops behind the back and returns over the same shoulder.'],
 ['One-arm shield cast','club',2,'light','swing','u1','Club up by the shoulder: cast it over, circle it behind you and back to the front.'],
 ['Inside circle','club',1,'light','rotate','u1','One hand: from order, elbow tight to your side, turn your torso toward the inside to aim the club. Push it straight out, club upright, and let it drop in across your body, down and out to your side with the arm long. Bring it back to a 90° elbow with the elbow at your side, then order. Never over the head.'],
@@ -934,8 +934,6 @@ const X=[
 ['Two-hand arm cast to flag press','club',1,'med','press','','From side order, arm cast with the elbow by the ear, then drive the club forward and up.'],
 ['Two-hand clean to torch press','club',1,'med','press','b','Clean to order, then drive the club forward and up to straight arms.'],
 ['Reverse lunge arm cast','club',2,'med','lunge','u1','Step back as you cast; stand as the club returns.'],
-['Pullover','club',1,'light','pull','','Two hands: arm cast over the lead shoulder, then pull the club back over the shoulder to order. The lead elbow stays in at 90°, the supporting elbow goes up by the ear with the forearm over the head.'],
-['One-hand pullover','club',2,'light','pull','u1','One hand: arm cast over the shoulder with the elbow in and bent to 90°, then pull the club back over the shoulder to order, keeping the bend.'],
 ['Side clean','club',2,'med','pull','b','From order on one side, turn away with the weight on the near leg and cast the club out to the far side; let it swing down in front and across as your weight shifts, then back up the same path to order.'],
 ['Bullwhip','club',3,'light','swing','u1','Whip-like cast from the hip; stay loose and fast.'],
 ['Clock squat','club',3,'med','squat','','Squat while the club circles the clock face.'],
@@ -968,7 +966,7 @@ const FLOWS=[
 {name:'Three-Club Mini Flow',eq:'club',lvl:2,sw:'end',steps:['Arm cast','Mill','Inside shield cast','Switch hands'],note:'Three of the most fundamental club moves in one sequence. Pass the club to the other hand in order and repeat on that side.'},
 {name:'Club First Workout',eq:'club',lvl:1,sw:'end',steps:['Two-hand swing squat','Two-hand arm cast to flag press','Two-hand clean to torch press','Club barbarian squat','Switch hands'],note:'Dangerously Fit\u2019s first club workout: 5 reps of each, rest 60 s after all four, 5 rounds.'},
 {name:'Club Foundations',eq:'club',lvl:1,sw:'end',steps:['Two-hand side swing','Two-hand arm cast','Two-hand shield cast','Two-hand torch press','Switch hands'],note:'Two-handed only. Learn the arcs before going single-arm.'},
-{name:'Pullover to Press',eq:'club',lvl:1,sw:'end',steps:['Pullover','Order position','Two-hand torch press','Lower behind the head','Switch hands'],note:'Slow and controlled; teaches you to decelerate the club.'},
+{name:'Arm Cast to Press',eq:'club',lvl:1,sw:'end',steps:['Two-hand arm cast','Order position','Two-hand torch press','Lower behind the head','Switch hands'],note:'Slow and controlled; teaches you to decelerate the club.'},
 {name:'Half Mill to Torch Press',eq:'club',lvl:2,sw:'end',steps:['Half mill (top circle)','Rotational torch press','Shield cast to switch sides'],note:'Uses the shield cast for momentum into the other side.'},
 {name:'Lunge Cast & Flag',eq:'club',lvl:2,sw:'end',steps:['Reverse lunge arm cast','Stand to order position','Forward lunge flag press','Return','Switch hands'],note:'Legs and shoulders together.'},
 {name:'Swing–Clean–Press–Squat',eq:'kb',lvl:2,steps:['One-arm swing','Clean','Press','Front squat','Switch hands'],note:'The bell never touches down; switch hands on the swing.'},
@@ -1135,7 +1133,7 @@ function rackList(eq){return (effEq(eq).w||[]).map(Number).filter(x=>!isNaN(x)).
 function moveHist(name,eq,dbl){
   const out=[],u=unitOf(eq);
   Store.logs.slice().sort((a,b)=>a.ts-b.ts).forEach(l=>(l.moves||[]).forEach(m=>{
-    if(m.name!==name||m.eq!==eq||m.wt==null||isNaN(m.wt)||!!m.dbl!==!!dbl||m.unit!==u)return;
+    if(!sameMove(m.name,name,eq)||m.eq!==eq||m.wt==null||isNaN(m.wt)||!!m.dbl!==!!dbl||m.unit!==u)return;
     const hard=m.feel==='h'||(!m.feel&&(l.rpe||6)>=9),ok=m.feel?m.feel!=='h':(l.rpe||6)<=7;out.push({wt:m.wt,ok,hard})}));
   return out;
 }
@@ -1466,10 +1464,13 @@ function eqBanner(eq,wt,opts={}){
 
 /* ---------- render output ---------- */
 function eqLabel(eqs){return eqs.map(k=>EQ[k].name).join(' + ')}
+// moves and flows that were renamed: old log name -> current name, so history and weights carry over
+const RENAMED={'club|Pullover':'Two-hand arm cast','club|One-hand pullover':'Arm cast','club|Pullover to Press':'Arm Cast to Press'};
+const sameMove=(logName,name,eq)=>logName===name||RENAMED[eq+'|'+logName]===name;
 function lastFor(name,eq){
   let best=null;
   for(const l of Store.logs)for(const m of (l.moves||[]))
-    if(m.name===name&&m.eq===eq&&m.wt!=null&&!isNaN(m.wt)&&(!best||l.ts>best.ts))best={ts:l.ts,wt:m.wt,unit:m.unit,dbl:m.dbl};
+    if(sameMove(m.name,name,eq)&&m.eq===eq&&m.wt!=null&&!isNaN(m.wt)&&(!best||l.ts>best.ts))best={ts:l.ts,wt:m.wt,unit:m.unit,dbl:m.dbl};
   return best;
 }
 function lastTxt(name,eq){const l=lastFor(name,eq);return l?`Last time: ${l.dbl?'2 × ':''}${l.wt} ${l.unit} · ${fmtDate(l.ts)}`:''}
@@ -1960,7 +1961,7 @@ const PATHS={
     {t:'Two-hand side swing',m:['Two-hand side swing'],goal:'20 swings driven by the hips: elbows locked, club to shoulder height, knees staying back as it crosses.'},
     {t:'Two-hand arm cast',m:['Two-hand arm cast'],goal:'10 per side; the club stays close as it passes behind.'},
     {t:'Two-hand shield cast',m:['Two-hand shield cast','Club barbarian squat','Order-position squat'],goal:'10 per side without the hips swaying.'},
-    {t:'Inside & outside circles',m:['Inside circle','Outside circle','Pullover'],goal:'10 each direction per arm, light club, slow and smooth.'},
+    {t:'Inside & outside circles',m:['Inside circle','Outside circle'],goal:'10 each direction per arm, light club, slow and smooth.'},
     {t:'Torch & flag press',m:['Torch press','Flag press'],goal:'8 per side with the club steady at the top.'},
     {t:'One-arm shield cast',m:['One-arm shield cast','Front lever hold'],goal:'8 per side; ribs down, shoulder packed.'},
     {t:'Mill & reverse mill',m:['Mill','Reverse mill','Reverse lunge arm cast'],goal:'8 of each per side, elbow tracing a clean circle.'},
@@ -2017,7 +2018,7 @@ const PROGRAMS=[
   {id:'club-found',name:'Club Foundations',weeks:4,days:3,needs:['club'],level:'Beginner',
    blurb:'Four weeks of two-hand swings, casts and mills that build strong, mobile shoulders.',
    day(w,d){const m=[20,20,25,25][w-1];
-     return [{type:'flow',min:m,flow:['Club Foundations','Club Foundations','Pullover to Press','Three-Club Mini Flow'][w-1],label:'Flow practice'},
+     return [{type:'flow',min:m,flow:['Club Foundations','Club Foundations','Arm Cast to Press','Three-Club Mini Flow'][w-1],label:'Flow practice'},
        {type:'strength',min:m,label:'Club strength'},
        {type:'conditioning',min:m,format:['intervals','emom','ladder','amrap'][w-1],label:'Conditioning'}][d-1]},
    notes:['Two hands only. Learn the arcs with a light club.','Smooth out the shield cast and add a round.','Start one-arm work if two-hand casts feel easy.','Link the three-club mini flow on both sides.']},
