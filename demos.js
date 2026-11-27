@@ -235,7 +235,7 @@ function pendulum(one){
   return one?both(kf):kf;
 }
 const C_STAND_R=()=>[-14,104,22];
-function gravedigger(){
+function gravedigger(reps=2){
   // Gravedigger (Chris), left lead: offset grip in high ready (base hand at the other hip, the lead hand
   // along the shaft, head over the lead shoulder). Hinge with a flat back and bring the head straight down
   // near the lead foot; then bring it up and high over the lead shoulder in a large arc, flat back, the
@@ -253,7 +253,7 @@ function gravedigger(){
   const out=pose([22,86,44],[0.35,-0.3,0.88],{P:[1,80,-10],pitch:32,yaw:16,twist:-18,kneeOut:0.45},[1,-0.6,0.3],[-1,-0.6,0.2],true);
   const up=pose([22,150,30],[0.3,0.9,0.1],{P:[0,92,-2],pitch:6,yaw:10,twist:-14,kneeOut:0.35},[1,-0.4,0.6],[-1,-0.8,0.3],true);
   const one=[[0,STAND],[0.6,high],[0.9,{}]];let t=0.9;
-  for(let r=0;r<2;r++){one.push([t+0.3,sink],[t+0.6,down],[t+0.8,{}],[t+1.2,out],[t+1.55,up],[t+1.9,Object.assign({},high)],[t+2.15,{}]);t+=2.15}
+  for(let r=0;r<reps;r++){one.push([t+0.3,sink],[t+0.6,down],[t+0.8,{}],[t+1.2,out],[t+1.55,up],[t+1.9,Object.assign({},high)],[t+2.15,{}]);t+=2.15}
   one.push([t+0.6,Object.assign({},STAND,{twist:0})],[t+0.8,{}]);
   return one;
 }
@@ -2617,7 +2617,7 @@ Object.assign(FLOW_TL,{
     ['10-to-2','Barbarian squat','Reverse lunge','Prayer switch'],'R'),
   // Gravedigger Flow (Chris): gravedigger left, prayer switch, gravedigger right, one front squat, one offset
   // press; then mirrored, starting with the gravedigger right as the hands have already switched
-  'mace:gravedigger flow':()=>maceFlow([[gravedigger(),0],[prayerOrder(),1],[mirrorKF(gravedigger()),2],[mirrorKF(frontSquat()),3],[mirrorKF(offsetPressKF(1)),4]],
+  'mace:gravedigger flow':()=>maceFlow([[gravedigger(1),0],[prayerOrder(),1],[mirrorKF(gravedigger(1)),2],[mirrorKF(frontSquat()),3],[mirrorKF(offsetPressKF(1)),4]],
     ['Gravedigger left','Prayer switch','Gravedigger right','Mace front squat','Offset press'],'L',[2,1,0,3,4]),
   // Squat · Lunge · 360 (Chris): barbarian squat, lead-leg reverse lunge, 360, prayer switch; then mirrored
   'mace:squat · lunge · 360':()=>maceFlow([[barbarianSquat(),0],[reverseLunge('L'),1],[threeSixty(),2],[prayerOrder(),3]],
