@@ -846,6 +846,22 @@ function lungeArmCast(two){
   const at=(f,k,pass)=>{const src=Object.assign({},base,H[k],{W:[1,0,0]});const o=carry(lungeBody(leg,f),src);delete o.W;if(pass)o.pass=true;else delete o.pass;return o};
   return [[0,base],[0.3,{}],[0.7,at(0.45,'tip',true)],[1.1,at(1,'back')],[1.4,{}],[1.85,at(0.55,'pull',true)],[2.3,at(0,'order')],[2.55,{}]];
 }
+// Forward lunge flag press (Chris): the mace front lunge with a club. Step forward into the lunge with the lead
+// side leg as the club is pressed straight out in front (one hand or two); come back to order as you step back
+// to the starting stance.
+function fwdLungeBody(leg,f){                      // f: 0 standing, 1 bottom of the front lunge (as the mace demo)
+  const back=leg==='L'?'R':'L',x=leg==='L'?12:-12;
+  const feet={};feet[leg]=[x,8,72*f];feet[back]=[-x,8+7*f,-18*f];
+  const o={P:[0,94-40*f,26*f],pitch:4*f,yaw:0,hipYaw:0,roll:0,feet,turn:8,fyL:0,fyR:0,tL:0,tR:0};
+  o['t'+back]=f>0.5?1:0;return o;
+}
+function lungeFlagPress(two){
+  const leg=two?'L':'R',base=two?C_TWO:C_ONE;
+  const H=two?{order:C_ORDER2,out:{G:[6,136,50],D:norm([0,1,0.05]),eL:[1,-0.3,0],eR:[-1,-0.3,0]}}
+             :{order:C_ORDER1,out:{G:[-16,136,56],D:norm([0,1,0.05]),eR:[-1,-0.3,0]}};
+  const at=(f,k)=>{const o=carry(fwdLungeBody(leg,f),Object.assign({},base,H[k],{W:[1,0,0]}));delete o.W;delete o.pass;return o};
+  return [[0,base],[0.3,{}],[1.1,at(1,'out')],[1.45,{}],[2.25,at(0,'order')],[2.5,{}]];
+}
 function clubBarbarian(){
   // Start with the two-hand arm cast over the lead (left) shoulder. As the club is pulled back to the front,
   // sink into the squat and lock the arms out, club upright in front. Arm cast again as you stand, and
@@ -1296,6 +1312,10 @@ Object.assign(MOVES,{
     cue:'One hand, club in order at the shoulder. Arm cast up and over the shoulder (elbow in, bent to 90 degrees) as you step back into a reverse lunge with the same side leg; the club hangs behind at the bottom. Pull it back over the shoulder to order as you stand and step back to your starting stance. Front shin near vertical. Both sides.'},
   'club:two-hand reverse lunge arm cast':{kf:both(lungeArmCast(true)),label:'Two hands',alt:'club:reverse lunge arm cast',
     cue:'Two hands, club in order on the lead side. Two-hand arm cast over that shoulder as you step back into a reverse lunge with the lead side leg; the club hangs behind at the bottom. Pull it back over the shoulder to order as you stand and step back to your starting stance. Front shin near vertical. Both sides.'},
+  'club:forward lunge flag press':{kf:both(lungeFlagPress(false)),label:'One hand',alt:'club:two-hand forward lunge flag press',
+    cue:'One hand, club in order at the shoulder. Step forward into a lunge with the same side leg as you press the club straight out in front at shoulder height, club upright. Come back to order as you step back to your starting stance. Front shin near vertical. Both sides.'},
+  'club:two-hand forward lunge flag press':{kf:both(lungeFlagPress(true)),label:'Two hands',alt:'club:forward lunge flag press',
+    cue:'Two hands, club in order on the lead side. Step forward into a lunge with the lead side leg as you press the club straight out in front at shoulder height, club upright. Come back to order as you step back to your starting stance. Front shin near vertical. Both sides.'},
   'club:one-arm shield cast':{kf:both(oneArmShield()),
     cue:'One hand, club in order at the shoulder. Cast it over the opposite ear, let it swing down behind your head and shoulders, then pull it over your lead shoulder back to the front and into order. Both arms.'},
   'club:two-hand clean':{kf:twoClean(),
