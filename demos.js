@@ -986,6 +986,49 @@ function h2hClean(){
   const order=Object.assign({},UPRIGHT,{G:[7,124,22],D:[0,1,0],gR:0,gL:7,offL:0,offR:0,eL:[1,-1,-0.25],eR:[-1,-1,-0.25]});
   return [[0,start],[0.25,{}],[0.6,cast],[0.95,low],[1.15,back],[1.3,{}],[1.65,fwd],[1.9,slide],[2.15,regrip],[2.45,order],[2.65,{}]];
 }
+// ---- two clubs: the right club is G/D, the left club G2/D2 (left hand on its pommel) ----
+// the same club position in both hands, mirrored, on a square body
+function dblClub(p){
+  if(!Object.keys(p).length)return {};
+  const m=mirror(p),o=Object.assign({},p,{offL:0,offR:0});
+  if('yaw' in p||'P' in p){o.yaw=0;o.hipYaw=0}
+  if(p.P)o.P=[0,p.P[1],p.P[2]];
+  if(p.G){o.G2=m.G;o.D2=m.D}
+  if(p.eR)o.eL=m.eL;
+  return o;
+}
+// Double swipe (Chris): a club in each hand, both sides swipe at the same time
+function doubleSwipe(){return swipe().map(([t,p])=>[t,dblClub(p)])}
+// Double mill (Chris): a club in each hand. Each hand on its own does a full mill over and over (inside
+// circle, then the half mill behind the head, then straight into the next inside circle); the two hands are
+// half a cycle apart, so one does the inside circle while the other does the half mill, then they swap.
+function doubleMill(){
+  const B=Object.assign({},CB_BODY);
+  const at=(u,D,eR)=>({G:add(shoulderOf(B,'R'),mul(norm(u),50)),D:norm(D),eR:eR||[-0.4,-0.6,0.6]});
+  const C=[at([0.55,0.05,0.83],[0.8,0.35,0.45]),at([0.35,-0.5,0.8],[0.4,-0.82,0.42]),at([-0.1,-0.78,0.62],[-0.1,-0.95,0.3]),
+    at([-0.72,-0.42,0.55],[-0.9,-0.3,0.3]),at([-0.95,0,0.32],[-0.6,0.76,0.25]),           // inside circle
+    {G:[-36,160,8],D:norm([-0.1,1,-0.05]),eR:[-1,-0.3,-0.2]},{G:[-26,166,-2],D:norm([0.55,0.1,-0.83]),eR:[-1,0.2,0.3]},
+    {G:[-15,160,-2],D:norm([0.15,-0.9,-0.4]),eR:[-0.3,0.6,1]},{G:[-16,158,6],D:norm([-0.92,-0.2,-0.3]),eR:[-0.3,0.6,1]},
+    {G:[-15,146,26],D:norm([-0.3,0.65,0.7]),eR:[-1,-0.6,0.2]}];                        // half mill
+  const N=C.length,both=i=>{const r=C[i%N],l=mirror(C[(i+N/2)%N]);
+    return Object.assign({},B,{G:r.G,D:r.D,eR:r.eR,G2:l.G,D2:l.D,eL:l.eL,pass:true})};
+  const order=Object.assign({},STAND,CB2,{G:C_ORDER1.G,D:[0,1,0],eR:C_ORDER1.eR,G2:mx(C_ORDER1.G),D2:[0,1,0],eL:mx(C_ORDER1.eR),offL:0,offR:0,gR:0,gL:0});
+  const kf=[[0,order],[0.3,{}]];let t=0.75;
+  for(let i=0;i<2*N;i++){kf.push([t,both(i)]);t+=0.28}
+  kf.push([t+0.2,Object.assign({},UPRIGHT,{G:C_ORDER1.G,D:[0,1,0],eR:C_ORDER1.eR,G2:mx(C_ORDER1.G),D2:[0,1,0],eL:mx(C_ORDER1.eR)})],[t+0.45,{}]);
+  return kf;
+}
+// Front lever hold (Chris): a single flag press with a pause at extension. One hand.
+function frontLever(){
+  const out={G:[-16,136,56],D:norm([0,1,0.05]),eR:[-1,-0.3,0]};
+  return [[0,C_ONE],[0.3,{}],[0.8,out],[2.6,{}],[3.1,Object.assign({},C_ORDER1)],[3.3,{}]];
+}
+// Side lever hold (Chris): a single side press, the flag press straight out to the side with a straight arm,
+// club upright, with a pause at extension. One hand.
+function sideLever(){
+  const out={G:add(shoulderOf(STAND,'R'),[-54,-3,3]),D:norm([-0.05,1,0]),eR:[0,-1,0.4],freeL:[21,87,3]};
+  return [[0,C_ONE],[0.3,{}],[0.85,out],[2.65,{}],[3.2,Object.assign({},C_ORDER1)],[3.4,{}]];
+}
 function clubBarbarian(){
   // Start with the two-hand arm cast over the lead (left) shoulder. As the club is pulled back to the front,
   // sink into the squat and lock the arms out, club upright in front. Arm cast again as you stand, and
@@ -1464,6 +1507,14 @@ Object.assign(MOVES,{
     cue:'One hand only. From order, cast out into an outside circle and rotate your torso to the far side as you bring the club across. Turn the wrist so the hand comes up that far side with the club hanging down, bring it past the far-side ear and half mill it behind your head (the small circle), pull it over your lead shoulder and cast out into an inside circle. To repeat, let the circle swing the club out to a straight arm at shoulder height and swing straight back into the outside circle. Both arms.'},
   'club:h2h clean':{kf:both(h2hClean()),label:'Two hands',
     cue:'Two hands, from order on the lead side. Two-hand front swing: cast forward, down and back between the legs, then drive the hips. On the way back up let go with the bottom hand and let the club slide out until the top hand rests against the pommel. Take hold again with the loose hand above it: that hand is now on top and leads, and the club comes to order on its side. Each rep switches the lead.'},
+  'club:double swipe':{kf:doubleSwipe(),label:'Two clubs',
+    cue:'A club in each hand, in order at each shoulder. Both sides swipe at the same time: hinge and swing both clubs down past the outside of the knees, elbows tight to your body, back up into an arm cast over each shoulder, and back to order.'},
+  'club:double mill':{kf:doubleMill(),label:'Two clubs',
+    cue:'A club in each hand. Each hand does its own full mill over and over: the inside circle, then the half mill behind the head, then straight into the next inside circle. The hands stay half a cycle apart for balance: one does the inside circle while the other does the half mill, then they swap. Keep it smooth.'},
+  'club:front lever hold':{kf:both(frontLever()),label:'One hand',
+    cue:'One hand. A single flag press: press the club straight out in front at shoulder height, club upright, and pause there at full extension. Back to order. Both arms.'},
+  'club:side lever hold':{kf:both(sideLever()),label:'One hand',
+    cue:'One hand. A side press: press the club straight out to the side at shoulder height with a straight arm, club upright, and pause there at full extension. Back to order. Both arms.'},
   'club:one-arm shield cast':{kf:both(oneArmShield()),
     cue:'One hand, club in order at the shoulder. Cast it over the opposite ear, let it swing down behind your head and shoulders, then pull it over your lead shoulder back to the front and into order. Both arms.'},
   'club:two-hand clean':{kf:twoClean(),
@@ -1589,6 +1640,7 @@ function poseAt(kf,t){
     for(const k of ['P','G','eL','eR','freeL','freeR'])o[k]=vl(a[k],b[k],u);
     for(const k of ['pitch','yaw','roll','hipYaw','turn','fyL','fyR','tL','tR','gR','gL','choke','offL','offR','kneeOut','len','kb','hR','hL','hD'])o[k]=lerp(a[k],b[k],u);
     o.W=norm(vl(a.W,b.W,u));
+    if(a.G2&&b.G2){o.G2=vl(a.G2,b.G2,u);o.D2=norm(vl(a.D2,b.D2,u))}   // a club in the left hand too (two clubs)
     return o;
   }
   return kf[kf.length-1][1];
@@ -1628,9 +1680,11 @@ function skeleton(p){
   if(p.kb>0.5){const g=add(p.G,mul(p.D,p.hD));
     sk.hand={R:vl(add(g,mul(p.W,p.hR)),p.freeR,p.offR),L:vl(add(g,mul(p.W,p.hL)),p.freeL,p.offL)};}
   else sk.hand={R:vl(add(p.G,mul(p.D,p.gR)),p.freeR,p.offR),L:vl(add(p.G,mul(p.D,p.gL)),p.freeL,p.offL)};
+  if(p.G2)sk.hand.L=add(p.G2,mul(p.D2,p.gR||0));
   for(const s of ['L','R']){const [elb,wr]=ik(sk.sh[s],sk.hand[s],UARM,FARM,norm(s==='L'?p.eL:p.eR));sk['elb'+s]=elb;sk['wr'+s]=wr}
   sk.len=p.len;sk.butt=sub(p.G,mul(p.D,p.choke));sk.tip=add(sk.butt,mul(p.D,p.len));
   sk.gripTop=add(sk.butt,mul(p.D,p.len<80?16:22));
+  if(p.G2){sk.butt2=sub(p.G2,mul(p.D2,p.choke));sk.tip2=add(sk.butt2,mul(p.D2,p.len));sk.gripTop2=add(sk.butt2,mul(p.D2,16))}
   if(p.kb>0.5){sk.kb=true;sk.bell=bellOf(p);sk.tip=sk.bell.C}
   return sk;
 }
@@ -1677,13 +1731,15 @@ function scene(cam,sk,trail){
     seg(B.a,B.b,4,'dm-kbh'+hid(B.a,B.b));seg(B.a,B.ha,4,'dm-kbh'+hid(B.a,B.ha));seg(B.b,B.hb,4,'dm-kbh'+hid(B.b,B.hb));
     const C=pr(B.C);items.push({z:dz(B.C),s:`<circle cx="${f1(C[0])}" cy="${f1(C[1])}" r="${f1(BELL_R*S)}" class="dm-bell${hid(B.C,B.C)||' dm-ring'}"/>`});
   }else if(sk.len<80){
-    // club: knob, handle, then a body that swells toward a rounded end
-    const N=7,neck=sk.gripTop;
-    seg(sk.butt,neck,4.5,'dm-grip'+hid(sk.butt,neck));
-    const K=pr(sk.butt);items.push({z:dz(sk.butt),s:`<circle cx="${f1(K[0])}" cy="${f1(K[1])}" r="3.6" class="dm-ball${hid(sk.butt,sk.butt)}"/>`});
-    for(let i=0;i<N;i++){const a=vl(neck,sk.tip,i/N),b=vl(neck,sk.tip,(i+1)/N),w=5+8*Math.sqrt((i+0.5)/N);
-      seg(a,b,w,'dm-shaft'+hid(a,b))}
-    const T=pr(sk.tip);items.push({z:dz(sk.tip),s:`<circle cx="${f1(T[0])}" cy="${f1(T[1])}" r="6.5" class="dm-ball${hid(sk.tip,sk.tip)||' dm-ring'}"/>`});
+    // club: knob, handle, then a body that swells toward a rounded end (two clubs: one in each hand)
+    const club=(butt,neck,tip)=>{const N=7;
+      seg(butt,neck,4.5,'dm-grip'+hid(butt,neck));
+      const K=pr(butt);items.push({z:dz(butt),s:`<circle cx="${f1(K[0])}" cy="${f1(K[1])}" r="3.6" class="dm-ball${hid(butt,butt)}"/>`});
+      for(let i=0;i<N;i++){const a=vl(neck,tip,i/N),b=vl(neck,tip,(i+1)/N),w=5+8*Math.sqrt((i+0.5)/N);
+        seg(a,b,w,'dm-shaft'+hid(a,b))}
+      const T=pr(tip);items.push({z:dz(tip),s:`<circle cx="${f1(T[0])}" cy="${f1(T[1])}" r="6.5" class="dm-ball${hid(tip,tip)||' dm-ring'}"/>`});};
+    club(sk.butt,sk.gripTop,sk.tip);
+    if(sk.tip2)club(sk.butt2,sk.gripTop2,sk.tip2);
   }else{
     const N=8;
     for(let i=0;i<N;i++){const a=vl(sk.butt,sk.tip,i/N),b=vl(sk.butt,sk.tip,(i+1)/N);

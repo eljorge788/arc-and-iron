@@ -922,8 +922,8 @@ const X=[
 ['Reverse mill','club',2,'light','swing','u1','One hand, big circle to small circle: from order, turn toward your lead side and push out; outside circle with the arm long, and carry it straight on over your lead shoulder, down behind and round behind the head, then pull it back over the shoulder to order.'],
 ['Switch reverse mill','club',3,'light','swing','1a','One hand, changing hands every rep: a reverse mill, then an extra outside circle carries the club across to the other side, where the free hand catches it and starts its own reverse mill.'],
 ['Gamma cast','club',2,'med','swing','b','Two hands: arm cast over your lead shoulder, then with the club still hanging behind, carry it over your head to the other shoulder (no swing) and pull it over that shoulder to order.'],
-['Double swipe','club',2,'light','swing','d2','Both clubs swing across the body together.'],
-['Double mill','club',3,'light','swing','d2','Alternating mills, one club in each hand.'],
+['Double swipe','club',2,'light','swing','d2','A club in each hand: both sides swipe at the same time, down past the outside of the knees and back up into an arm cast, then order.'],
+['Double mill','club',3,'light','swing','d2','A club in each hand, each doing full mills half a cycle apart: one does the inside circle while the other does the half mill, then they swap.'],
 ['Torch press','club',2,'med','press','u1','One hand: club upright like a torch in order at the shoulder; press it up and a little out in front, then lower.'],
 ['Two-hand torch press','club',1,'med','press','','Two hands: club upright like a torch in order on the lead side; press it up and a little out in front, then lower.'],
 ['Rotational torch press','club',2,'med','press','u1','One hand, cross-body only: turn the torso a full 90 degrees in toward the other side, pivoting the back foot, pressing the club up to a forearm lock as you turn; turn back and bring it in to order.'],
@@ -946,7 +946,8 @@ const X=[
 ['Bullwhip','club',3,'light','swing','ub1','One hand only: outside circle, turn to the far side and bring the club up that side hanging down, past the ear into a half mill behind the head, over the lead shoulder and out into an inside circle; swing back into the outside circle to repeat.'],
 ['Clock squat','club',3,'med','squat','u1','One hand: from order, outside circle onto the opposite shoulder (club across, behind the head) and squat; stand, circle it onto the lead shoulder and squat again.'],
 ['Two-hand clock squat','club',2,'med','squat','','Two hands: from order, outside circle onto the opposite shoulder (club across, behind the head) and squat; stand, circle it onto the lead shoulder and squat again.'],
-['Front lever hold','club',2,'light','core','u1','Arm straight, club level; hold 15–20 s.']
+['Front lever hold','club',2,'light','core','u1','One hand: a single flag press, club upright straight out in front at shoulder height; pause at full extension, then back to order.'],
+['Side lever hold','club',2,'light','core','u1','One hand: press the club straight out to the side at shoulder height with a straight arm, club upright; pause at full extension, then back to order.']
 ].map(a=>({name:a[0],eq:a[1],lvl:a[2],load:a[3],pat:a[4],u:a[5].includes('u'),d:a[5].includes('d'),b:a[5].includes('b'),one:a[5].includes('1'),dbl:a[5].includes('2'),alt:a[5].includes('a'),cue:a[6]}));
 // Every club and mace move has a lead side, as does every one-sided move. The lead side is the top hand
 // (a two-hand club is held on the top hand's side of the body); on a one-handed move it is the working hand. Workouts call out a lead side switch for all of them:
