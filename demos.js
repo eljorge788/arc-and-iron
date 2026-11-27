@@ -395,20 +395,17 @@ function curl(sw){
 }
 
 function offsetRow(){
-  // Offset bent-over row (Chris): start standing in an offset hold, the mace level and low in front of the
-  // body (base hand on the base, lead hand along the shaft, head out to the lead side). Hinge into the row
-  // position: split hold, the mace level and held to the lead side, head behind and the shaft pointing to
-  // the front. Row both hands to the ribs. Back to the low offset hold to finish. Left leads here; both().
+  // Offset bent-over row (Chris): offset grip (base hand on the base, lead hand along the shaft), the mace
+  // level and low in front of the body with the head out to the lead side. Hinge with a flat back and row
+  // it to the ribs, keeping it level in front the whole time. Left leads here; both().
   const base={P:[0,86,-18],pitch:55,yaw:0,feet:{L:[16,8,4],R:[-16,8,4]},turn:12};
-  const at=(y,z0,el,er,pass)=>Object.assign({},base,{G:[14,y,z0],D:[0,0,-1],choke:6,gR:0,gL:46,eL:el,eR:er,pass:!!pass});
-  const hang=at(74,42,[1,-0.2,-0.2],[-1,-0.2,0.3]),row=at(100,40,[0.5,1,-0.3],[-0.4,1,0.4]);
-  const stand={P:STAND.P,pitch:0,yaw:0,feet:base.feet,turn:12};
-  const low=Object.assign({},stand,{G:[-17,90,20],D:[1,0,0.03],choke:6,gR:0,gL:32,eL:[1,-0.4,-0.3],eR:[-1,-0.4,-0.3]});
+  const grip={D:[1,0,0.03],choke:6,gR:0,gL:32};
+  const low=Object.assign({},STAND,grip,{feet:base.feet,turn:12,G:[-17,90,20],eL:[1,-0.4,-0.3],eR:[-1,-0.4,-0.3]});
+  const hang=Object.assign({},base,grip,{G:onBody(base,-16,44,52),eL:[1,-0.3,-0.4],eR:[-1,-0.3,-0.4]});
+  const row=Object.assign({},base,grip,{G:onBody(base,-16,24,16),eL:[0.6,0.6,-0.6],eR:[-0.6,0.6,-0.6]});
   const lift=Object.assign({},STAND,{G:[-8,100,26],D:norm([0.7,0.6,0.1]),gR:0,gL:20,pass:true});
-  const turn=Object.assign({},base,{P:[0,90,-10],pitch:30,G:[0,82,36],D:norm([0.75,0,-0.65]),choke:6,gR:0,gL:40,eL:[1,-0.3,-0.2],eR:[-1,-0.3,0.2],pass:true});
-  const one=[[0,STAND],[0.35,lift],[0.75,low],[1.15,{}],[1.55,turn],[1.95,hang],[2.15,{}],
-    [2.65,row],[2.85,{}],[3.35,hang],[3.5,{}],[4.0,row],[4.2,{}],[4.7,hang],[4.85,{}],
-    [5.25,Object.assign({},turn)],[5.65,Object.assign({},low)],[5.95,{}],[6.3,Object.assign({},lift)],[6.65,Object.assign({},STAND)],[6.85,{}]];
+  const one=[[0,STAND],[0.35,lift],[0.75,low],[1.1,{}],[1.7,hang],[1.9,{}],[2.4,row],[2.6,{}],[3.1,hang],[3.25,{}],[3.75,row],[3.95,{}],[4.45,hang],
+    [5.05,Object.assign({},low)],[5.3,{}],[5.65,Object.assign({},lift)],[6.0,Object.assign({},STAND)],[6.2,{}]];
   return both(one);
 }
 function offsetMarch(){
@@ -1891,7 +1888,7 @@ const MOVES={
   'mace:switch curl':{kf:curl(true),
     cue:'Wide grip with the curling hand on the head. Curl up, keep the mace arcing over the top, meet the hands at the head mid-arc and catch it with the other hand in the low curl position.'},
   'mace:offset bent-over row':{kf:offsetRow(),
-    cue:'Start standing in an offset hold, the mace level and low in front of you with the head out to the lead side. Hinge with a flat back into the row position: split hold, the mace level and held to the lead side, head behind you and the shaft pointing forward. Row both hands to the ribs, then come back up to the low offset hold. Both sides.'},
+    cue:'Offset grip: one hand on the base, the lead hand along the shaft. Hold the mace level and low in front of you with the head out to the lead side. Hinge with a flat back and row it to the ribs, keeping it level in front the whole time. Both sides.'},
   'mace:offset march':{kf:offsetMarch(),
     cue:'Offset hold: one hand on the base, the lead hand along the shaft. Hold the mace level at chest height with the head out to the lead side. March slowly without leaning. Both sides.'},
   'mace:shouldered reverse lunge':{kf:shoulderedLunge(),
