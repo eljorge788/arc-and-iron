@@ -832,9 +832,10 @@ function cleanPress(){
 // behind at the bottom; pull it back over the shoulder to order as you stand and step back to the start.
 function lungeBody(leg,f){                         // f: 0 standing, 1 bottom of the reverse lunge (as the mace demo)
   const back=leg==='L'?'L':'R',front=back==='L'?'R':'L',x=back==='L'?12:-12;
-  const feet={};feet[back]=[x,8+7*f,-94*f];feet[front]=[-x,8,6*f];
-  const o={P:[0,94-40*f,-36*f],pitch:5*f,yaw:0,hipYaw:0,roll:0,feet,turn:8,fyL:0,fyR:0,tL:0,tR:0};
-  o['t'+back]=f>0.5?1:0;return o;
+  const lift=f>0&&f<0.8?20*Math.sin(Math.PI*f/0.8):0;   // the stepping foot leaves the floor, travels, lands; then the body lowers
+  const feet={};feet[back]=[x,8+7*f+lift,-94*f];feet[front]=[-x,8,6*f];
+  const o={P:[0,94-40*f*f,-36*f],pitch:5*f,yaw:0,hipYaw:0,roll:0,feet,turn:8,fyL:0,fyR:0,tL:0,tR:0};
+  o['t'+back]=f>0.9?1:0;return o;
 }
 function lungeArmCast(two){
   const leg=two?'L':'R',base=two?C_TWO:C_ONE;
@@ -844,23 +845,28 @@ function lungeArmCast(two){
     pull:{G:[-15,154,10],D:norm([0,0.8,-0.6]),eR:[-0.3,0.6,1]},
     order:C_ORDER1};
   const at=(f,k,pass)=>{const src=Object.assign({},base,H[k],{W:[1,0,0]});const o=carry(lungeBody(leg,f),src);delete o.W;if(pass)o.pass=true;else delete o.pass;return o};
-  return [[0,base],[0.3,{}],[0.7,at(0.45,'tip',true)],[1.1,at(1,'back')],[1.4,{}],[1.85,at(0.55,'pull',true)],[2.3,at(0,'order')],[2.55,{}]];
+  const mix=(f,k1,k2,w)=>{const a=at(f,k1,true),b=at(f,k2,true);a.G=add(mul(a.G,1-w),mul(b.G,w));a.D=norm(add(mul(a.D,1-w),mul(b.D,w)));return a};
+  return [[0,base],[0.3,{}],[0.6,mix(0.3,'order','tip',0.6)],[0.85,at(0.6,'tip',true)],[1.2,at(1,'back')],[1.45,{}],
+    [1.75,at(0.6,'pull',true)],[2.0,mix(0.3,'pull','order',0.6)],[2.3,at(0,'order')],[2.55,{}]];
 }
 // Forward lunge flag press (Chris): the mace front lunge with a club. Step forward into the lunge with the lead
 // side leg as the club is pressed straight out in front (one hand or two); come back to order as you step back
 // to the starting stance.
 function fwdLungeBody(leg,f){                      // f: 0 standing, 1 bottom of the front lunge (as the mace demo)
   const back=leg==='L'?'R':'L',x=leg==='L'?12:-12;
-  const feet={};feet[leg]=[x,8,72*f];feet[back]=[-x,8+7*f,-18*f];
-  const o={P:[0,94-40*f,26*f],pitch:4*f,yaw:0,hipYaw:0,roll:0,feet,turn:8,fyL:0,fyR:0,tL:0,tR:0};
-  o['t'+back]=f>0.5?1:0;return o;
+  const lift=f>0&&f<0.8?20*Math.sin(Math.PI*f/0.8):0;   // the stepping foot leaves the floor, travels, lands; then the body lowers
+  const feet={};feet[leg]=[x,8+lift,72*f];feet[back]=[-x,8+7*f,-18*f];
+  const o={P:[0,94-40*f*f,26*f],pitch:4*f,yaw:0,hipYaw:0,roll:0,feet,turn:8,fyL:0,fyR:0,tL:0,tR:0};
+  o['t'+back]=f>0.6?1:0;return o;
 }
 function lungeFlagPress(two){
   const leg=two?'L':'R',base=two?C_TWO:C_ONE;
   const H=two?{order:C_ORDER2,out:{G:[6,136,50],D:norm([0,1,0.05]),eL:[1,-0.3,0],eR:[-1,-0.3,0]}}
              :{order:C_ORDER1,out:{G:[-16,136,56],D:norm([0,1,0.05]),eR:[-1,-0.3,0]}};
   const at=(f,k)=>{const o=carry(fwdLungeBody(leg,f),Object.assign({},base,H[k],{W:[1,0,0]}));delete o.W;delete o.pass;return o};
-  return [[0,base],[0.3,{}],[1.1,at(1,'out')],[1.45,{}],[2.25,at(0,'order')],[2.5,{}]];
+  const half=f=>{const o=carry(fwdLungeBody(leg,f),Object.assign({},base,H.order,{W:[1,0,0]}));const q=carry(fwdLungeBody(leg,f),Object.assign({},base,H.out,{W:[1,0,0]}));
+    o.G=mul(add(o.G,q.G),0.5);o.D=norm(add(o.D,q.D));delete o.W;o.pass=true;return o};
+  return [[0,base],[0.3,{}],[0.6,half(0.3)],[0.85,half(0.6)],[1.2,at(1,'out')],[1.5,{}],[1.8,half(0.6)],[2.05,half(0.3)],[2.35,at(0,'order')],[2.6,{}]];
 }
 // Clock squat (Chris), one hand or two. Built for a right lead (two hands: mirrored to a left lead, top hand
 // on the lead side). From order, cast out into an outside circle and bring the club to rest across the
