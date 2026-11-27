@@ -1641,6 +1641,54 @@ function kbHighPull(){
   kf.push([t+0.45,setup],[t+0.65,{}],[t+0.85,reach],[t+1.65,standF],[t+1.95,{}]);
   return kf;
 }
+
+// the bell held straight up over the lead (right) shoulder whatever the body is doing: arm vertical, bell
+// resting behind the wrist (on the back of the forearm), as at the top of the snatch
+function bellUp(pose,extra){
+  const F=torsoFrame(pose.P,pose.pitch||0,pose.yaw||0,pose.roll||0),sR=shoulderOf(pose,'R');
+  const D=norm(add(mul(F.f,-0.75),[0,-0.6,0]));
+  return Object.assign({},pose,{kb:1,G:add(sR,[0,54,0]),D,W:perpTo(D,F.l),hR:0,hL:0,hD:0,offR:0,eR:[-1,0,0]},extra||{});
+}
+function kbWindmill(){
+  // Windmill (Chris): from the overhead hold, feet pivot 45 degrees toward the non-lead side. Hinge at the
+  // waist with the weight on the lead leg, kept straight; the support hand glides down the inside of the
+  // other leg. The bell stays straight up as the torso turns toward the lead side and hinges down, until the
+  // support hand touches the floor (or as low as you can), then everything comes back up.
+  const feet={L:[14,8,6],R:[-16,8,-6]};
+  const B=(P,pitch,yaw,roll,kneeL,extra)=>Object.assign({},UP_KB,{P,pitch,yaw,roll,hipYaw:40,feet,turn:4,fyL:40,fyR:40,kneeOut:kneeL},extra||{});
+  const stand=B([0,94,0],0,40,0,0.3),mid=B([-6,89,-5],45,28,12,0.5),low=B([-10,84,-8],88,20,22,0.7);
+  // the support hand slides down the inside of the other leg, as low as the arm reaches (to the floor if it can)
+  const glide=(b,f)=>{const F=torsoFrame(b.P,b.pitch,b.yaw,b.roll),target=add(vl(add(b.P,mul(F.l,9)),b.feet.L,f),[-5,f>0.9?-3:2,0]);
+    const sL=shoulderOf(b,'L'),d=sub(target,sL),r=Math.hypot(...d);return add(sL,mul(d,Math.min(1,54/r)))};
+  const held=(b,f,pass)=>bellUp(b,{offL:1,freeL:f===null?add(shoulderOf(b,'L'),[4,-52,6]):glide(b,f),eL:[1,-0.3,0.2],pass:!!pass});
+  const start=held(Object.assign({},UP_KB,{feet:{L:[14,8,0],R:[-14,8,0]}}),null);
+  const kf=[[0,start],[0.4,{}],[0.9,held(stand,null)],[1.15,{}]];let t=1.15;
+  for(let i=0;i<2;i++){kf.push([t+0.7,held(mid,0.55,true)],[t+1.4,held(low,1.0)],[t+1.7,{}],[t+2.4,held(mid,0.55,true)],[t+3.1,held(stand,null)],[t+3.35,{}]);t+=3.35}
+  kf.push([t+0.5,Object.assign({},start)],[t+0.75,{}]);
+  return both(kf);
+}
+function kbTurkishGetUp(){
+  // Turkish get-up (Chris): lying on the back, bell straight up over the lead (right) shoulder, lead knee
+  // bent with the foot flat. The bell always stays straight up. Roll to the support (left) elbow, straighten
+  // the support arm, push the hips up with both legs, sweep the support leg under to the support knee, then
+  // stand up tall. Reverse to get down: to the support knee, leg back out straight, from the hand to the
+  // elbow to the shoulder and all the way down. both() mirrors it.
+  const LEGS_FLAT={L:[14,8,84],R:[-12,8,44]};
+  const handF=[40,4,-14];
+  const B=(P,pitch,roll,feet,extra)=>Object.assign({},UP_KB,{P,pitch,yaw:0,roll,hipYaw:0,feet,turn:10,kneeOut:0.3,tL:0,tR:0,fyL:0,fyR:0},extra||{});
+  const lie=bellUp(B([0,11,0],-88,0,LEGS_FLAT,{kneeOut:0.2}),{offL:1,freeL:[44,4,-22],eL:[1,-0.2,0]});
+  const elbow=bellUp(B([0,13,0],-58,18,LEGS_FLAT),{offL:1,freeL:[34,4,-18],eL:[0.4,-1,-0.3]});
+  const hand=bellUp(B([2,16,2],-32,28,LEGS_FLAT),{offL:1,freeL:handF,eL:[1,0,0]});
+  const bridge=bellUp(B([0,40,8],-50,32,{L:[14,8,80],R:[-12,8,44]},{kneeOut:0.4}),{offL:1,freeL:handF,eL:[1,0,0],pass:true});
+  const knee=bellUp(B([4,48,8],-8,58,{L:[12,10,-26],R:[-12,8,44]},{kneeOut:0.3,tL:1}),{offL:1,freeL:[36,4,4],eL:[1,0,0]});
+  const tall=bellUp(B([0,58,10],0,0,{L:[12,10,-28],R:[-12,8,44]},{kneeOut:0.3,tL:1}),{offL:1,freeL:add([0,58,10],[24,4,6]),eL:[1,-0.5,0]});
+  const up=bellUp(B([0,94,10],0,0,{L:[12,8,20],R:[-12,8,20]},{kneeOut:0.3}),{offL:1,freeL:[20,88,14],eL:[1,-0.5,0]});
+  const seq=[lie,elbow,hand,bridge,knee,tall,up],dur=[0,1.0,0.9,0.9,1.0,0.9,1.2];
+  const kf=[[0,lie],[0.6,{}]];let t=0.6;
+  for(let i=1;i<seq.length;i++){t+=dur[i];kf.push([t,seq[i]],[t+0.25,{}]);t+=0.25}
+  for(let i=seq.length-2;i>=0;i--){t+=dur[i+1];kf.push([t,Object.assign({},seq[i],{pass:false})],[t+0.25,{}]);t+=0.25}
+  return both(kf);
+}
 function kbFrontSquat(){
   // Two-hand pickup to the rack, free arm straight out to the side, feet straight ahead. Squat with the
   // racked elbow inside the knee, leaning back against the bell, head up; roll the shoulder back and drive
@@ -1724,6 +1772,12 @@ const MOVES={
     cue:'Two bells on the floor, feet wide, a deep hinge forward with no pivot and a straight back. Rest on one bell and row the other to the chest like the bent-over row, then lower it under control. Set it down and row the other side.'},
   'kb:high pull':{kf:kbHighPull(),
     cue:'A two-hand swing that brings the handle up under the chin with the elbows as high as they go, then swings back down under control.'},
+  'kb:overhead hold':{kf:both([[0,Object.assign({},LOCK_R)],[1.6,{}]]),
+    cue:'Bell straight up overhead, arm locked, biceps by the ear, the bell resting behind the wrist. Hold it steady.'},
+  'kb:windmill':{kf:kbWindmill(),
+    cue:'From the overhead hold, bell straight up, pivot your feet 45 degrees toward the non-lead side. Hinge at the waist with the weight on the lead leg, kept straight, and glide the support hand down the inside of the other leg. Keep the bell straight up as your torso turns toward the lead side and hinges down. Go until the support hand touches the floor, or as low as you can, then bring everything back up. Both sides.'},
+  'kb:turkish get-up':{kf:kbTurkishGetUp(),
+    cue:'Lie on your back, bell straight up over the lead shoulder, lead knee bent with the foot flat. Keep the bell straight up the whole time. Roll to the support elbow, straighten the support arm, push the hips up with both legs, sweep the support leg under you onto that knee, then stand up tall. Reverse to get down: to the support knee, the leg back out straight, then from the hand to the elbow to the shoulder and all the way down. Both sides.'},
   'kb:front squat':{kf:kbFrontSquat(),
     cue:'Bell in the rack, free arm straight out to the side, feet straight ahead. Squat with the racked elbow inside the knee, lean back against the bell, head up. Roll the shoulder back and drive all the way up. Both sides.'},
   'kb:halo':{kf:kbHalo(),
