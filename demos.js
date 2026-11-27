@@ -123,10 +123,31 @@ function barbarianSquat(){
     [3.75,front],[3.9,{}],[4.2,Object.assign({},STAND)],[4.4,{}]];
 }
 
+// A step for the lunges: in-between poses from a to b in which the stepping foot (leg 'L' or 'R') leaves the
+// floor, travels and lands, so the step reads as a step and not a slide. down: the foot lands before the body
+// lowers; otherwise (coming back up) the body rises as the foot comes back. Returns keyframes between t0 and t1.
+function stepKF(a,b,t0,t1,leg,down,lift=20){
+  const L=(x,y,u)=>x+(y-x)*u,V=(x,y,u)=>[L(x[0],y[0],u),L(x[1],y[1],u),L(x[2],y[2],u)];
+  const mid=f=>{
+    const fb=down?f*f:1-(1-f)*(1-f),o={pass:true};
+    for(const k of new Set(Object.keys(a).concat(Object.keys(b)))){
+      if(k==='pass'||k==='feet')continue;
+      const x=k in a?a[k]:b[k],y=k in b?b[k]:a[k];
+      if(Array.isArray(x)&&x.length===3)o[k]=(k==='D'||k==='W'||k[0]==='e')?norm(V(x,y,fb)):V(x,y,fb);
+      else if(typeof x==='number'&&typeof y==='number')o[k]=L(x,y,fb);
+      else o[k]=y;
+    }
+    const fa=a.feet||STAND.feet,fz=b.feet||STAND.feet;
+    o.feet={L:V(fa.L,fz.L,f),R:V(fa.R,fz.R,f)};o.feet[leg]=add(o.feet[leg],[0,lift*Math.sin(Math.PI*f),0]);
+    o['t'+leg]=0;
+    return o;
+  };
+  return [0.3,0.65].map(f=>[L(t0,t1,f),mid(f)]);
+}
 function reverseLunge(side){            // side = the leg that steps back
   const feet=side==='L'?{L:[12,15,-88],R:[-12,8,6]}:{L:[12,8,6],R:[-12,15,-88]};
-  const bottom={P:[0,54,-36],pitch:5,feet,G:[0,64,-15],tL:side==='L'?1:0,tR:side==='R'?1:0};
-  return [[0,STAND],[0.8,bottom],[1.1,{}],[1.9,STAND],[2.2,{}]];
+  const bottom=Object.assign({},STAND,{P:[0,54,-36],pitch:5,feet,G:[0,64,-15],tL:side==='L'?1:0,tR:side==='R'?1:0});
+  return [[0,STAND]].concat(stepKF(STAND,bottom,0,0.8,side,true),[[0.8,bottom],[1.1,{}]],stepKF(bottom,STAND,1.1,1.9,side,false),[[1.9,STAND],[2.2,{}]]);
 }
 
 function frontSquat(){
@@ -154,15 +175,20 @@ function lateralLunge(){
   const full=p=>Object.assign({},STAND,p);
   const pR=full(punchR),pL=full(punchL),ctr=full(center);
   const leg=(a,b,t0,dt)=>viaHead(a,b,3,dt).map(([t,p])=>[t0+t,p]);
-  return [[0,STAND],[0.6,wideHold],[0.8,{}],[1.6,punchR],[1.85,{}]]
-    .concat(leg(pR,ctr,1.85,0.6),[[2.45,center]],leg(ctr,pL,2.45,0.6),[[3.05,punchL],[3.3,{}]])
-    .concat(leg(pL,ctr,3.3,0.6),[[3.9,center]],leg(ctr,pR,3.9,0.6),[[4.5,punchR],[4.75,{}]])
-    .concat([[5.4,wideHold],[5.6,{}],[6.1,Object.assign({},STAND)],[6.3,{}]]);
+  const wideHoldF=Object.assign({},STAND,wideHold),halfOut=Object.assign({},STAND,{feet:{L:[48,8,0],R:[-12,8,0]},P:[10,93,0]});
+  const halfIn=Object.assign({},wideHoldF,{feet:{L:[12,8,0],R:[-48,8,0]},P:[-10,88,0]});
+  return [[0,STAND]].concat(stepKF(STAND,halfOut,0,0.35,'L',true,16),[[0.35,Object.assign({},halfOut,{pass:true})]],
+    stepKF(halfOut,wideHoldF,0.35,0.7,'R',true,16),[[0.7,wideHold],[0.9,{}],[1.7,punchR],[1.95,{}]])
+    .concat(leg(pR,ctr,1.95,0.6),[[2.55,center]],leg(ctr,pL,2.55,0.6),[[3.15,punchL],[3.4,{}]])
+    .concat(leg(pL,ctr,3.4,0.6),[[4.0,center]],leg(ctr,pR,4.0,0.6),[[4.6,punchR],[4.85,{}]])
+    .concat([[5.5,wideHold],[5.7,{}]],stepKF(wideHoldF,halfIn,5.7,6.05,'L',false,16),[[6.05,Object.assign({},halfIn,{pass:true})]],
+      stepKF(halfIn,STAND,6.05,6.4,'R',false,16),[[6.4,Object.assign({},STAND)],[6.6,{}]]);
 }
 function frontLunge(){
   // left foot steps forward; front shin near vertical; then the right
   const bottom=hold({P:[0,54,26],pitch:4,yaw:0,feet:{L:[12,8,72],R:[-12,15,-18]},tR:1});
-  const L=[[0,STAND],[0.8,bottom],[1.1,{}],[1.9,Object.assign({},STAND,{tR:0})]];
+  const top=Object.assign({},STAND,{tR:0}),low=Object.assign({},STAND,bottom);
+  const L=[[0,STAND]].concat(stepKF(STAND,low,0,0.8,'L',true),[[0.8,bottom],[1.1,{}]],stepKF(low,top,1.1,1.9,'L',false),[[1.9,top]]);
   return both(L.concat([[2.0,{}]]),false);
 }
 
@@ -340,8 +366,10 @@ function shoulderedLunge(){
     const pose={P:[0,54,-36],pitch:5,yaw:0,feet,tL:side==='L'?1:0,tR:side==='R'?1:0};
     return Object.assign(pose,{G:onBody(pose,-8,30,18),D:sh.D})};
   const up=Object.assign({},sh,{P:STAND.P,pitch:0,feet:STAND.feet,tL:0,tR:0});
-  return [[0,STAND],[0.4,set],[0.8,sh],[1.0,{}],[1.8,bottom('L')],[2.1,{}],[2.9,up],[3.1,{}],[3.9,bottom('R')],[4.2,{}],[5.0,up],
-    [5.2,{}],[5.55,set],[5.9,{G:STAND.G,D:STAND.D,eL:STAND.eL,eR:STAND.eR}],[6.1,{}]];
+  const upF=Object.assign({},STAND,up),bL=Object.assign({},upF,bottom('L')),bR=Object.assign({},upF,bottom('R'));
+  return [[0,STAND],[0.4,set],[0.8,sh],[1.0,{}]].concat(stepKF(upF,bL,1.0,1.8,'L',true),[[1.8,bottom('L')],[2.1,{}]],stepKF(bL,upF,2.1,2.9,'L',false),
+    [[2.9,up],[3.1,{}]],stepKF(upF,bR,3.1,3.9,'R',true),[[3.9,bottom('R')],[4.2,{}]],stepKF(bR,upF,4.2,5.0,'R',false),[[5.0,up],
+    [5.2,{}],[5.55,set],[5.9,{G:STAND.G,D:STAND.D,eL:STAND.eL,eR:STAND.eR}],[6.1,{}]]);
 }
 function lungeTo360(){
   const lunge=reverseLunge('L'),turn=threeSixty();
