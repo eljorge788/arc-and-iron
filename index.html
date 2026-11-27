@@ -892,20 +892,21 @@ const X=[
 
 ['10-to-2','mace',1,'med','swing','b','Stack the hands and swing behind the back to each side, head centered.'],
 ['360','mace',2,'med','swing','ub','The mace circles behind the back and over the shoulder; switch top hand halfway.'],
-['Pendulum swing','mace',1,'light','swing','','Small arcs side to side in front, arms long.'],
+['Pendulum swing','mace',1,'light','swing','','Choked up, head hanging in line with the arms; shoulders and torso swing it side to side together.'],
 ['Gravedigger','mace',1,'med','rotate','u','Shovel the head down and across; pivot the back foot.'],
 ['Barbarian squat','mace',1,'med','squat','','Mace drops behind the head as you squat and returns as you stand.'],
 ['Mace front squat','mace',1,'med','squat','','Hold the shaft vertical at the chest and sit tall.'],
 ['Shouldered reverse lunge','mace',1,'med','lunge','u','Mace on one shoulder; resist the lean.'],
-['Lateral lunge','mace',1,'med','lunge','u','Sit back into one hip with the other leg straight.'],
-['Mace overhead press','mace',1,'light','press','','Choke up for less load; press the shaft straight up.'],
-['Offset press','mace',2,'med','press','u','Head off-center; fight the rotation.'],
+['Lateral lunge','mace',1,'med','lunge','u','Big step out, weight onto that leg, punch the head down along the straight leg; prayer switch; close with a high knee and the head lifted overhead.'],
+['Offset press','mace',1,'med','press','u','Also called the mace overhead press. Lead hand along the shaft (closer to the head is easier); press level and fight the rotation.'],
+['Shield press','mace',1,'med','press','u','Lead hand at the head, other at the base; press straight out to full extension with the shaft vertical.'],
 ['Uppercut','mace',2,'med','rotate','ub','Drive from the back hip so the head swings up across the body.'],
 ['Ballistic curl','mace',2,'med','pull','b','Flick from the hips and catch at the chest.'],
 ['Switch curl','mace',2,'light','pull','u','Curl to center and swap the top hand in one motion.'],
-['Offset bent-over row','mace',1,'heavy','pull','u','Head toward the floor; pull the shaft to the ribs.'],
+['Offset bent-over row','mace',1,'heavy','pull','u','Row position: split hold, mace level at your side, head behind you; row both hands to the ribs.'],
 ['Paddle','mace',1,'light','rotate','u','Row the head side to side like a canoe paddle.'],
-['Hand switches','mace',1,'light','core','','Pass the mace hand to hand at chest height.'],
+['Prayer switch','mace',1,'light','core','','Pass the mace hand to hand at chest height, meeting at the head.'],
+['Archer hold','mace',1,'light','core','u','Mace in line with the shoulders, lead hand just below the head, arm straight out; prayer switch to the other side.'],
 ['Offset march','mace',2,'heavy','core','u','Mace upright at the shoulder; march slowly without leaning.'],
 ['Lunge to 360','mace',3,'med','lunge','ub','Reverse lunge, stand, and drive straight into a 360.'],
 ['Plank pull-through','mace',1,'light','core','','From a high plank, drag the mace across beneath you.'],
@@ -973,12 +974,12 @@ const halfR=r=>String(r).replace(/\d+/g,n=>Math.max(1,Math.ceil(+n/2))).replace(
 const perSide=(m,reps)=>m.u?reps:halfR(reps);
 
 const FLOWS=[
-{name:'Foundation Flow',eq:'mace',lvl:1,sw:'mid',steps:['10-to-2','Barbarian squat','Reverse lunge, left','Hand switch','10-to-2','Barbarian squat','Reverse lunge, right','Hand switch'],note:'Every piece is a week-one skill. One cycle covers both lead sides: switch your top hand after each lunge.'},
-{name:'Gravedigger Flow',eq:'mace',lvl:1,sw:'end',steps:['Gravedigger left','Gravedigger right','Mace front squat','Overhead press','Hand switch'],note:'Loads the trunk in rotation, then stacks it for the squat and press.'},
-{name:'Squat · Lunge · 360',eq:'mace',lvl:2,sw:'mid',steps:['Barbarian squat','Reverse lunge','360, left hand on top','Hand switch','Barbarian squat','Reverse lunge','360, right hand on top','Hand switch'],note:'The classic teaching structure: one squat, one lunge, one 360, then mirror.'},
-{name:'360 Uppercut Flow',eq:'mace',lvl:2,sw:'mid',steps:['360 over the right shoulder','Squat','Hand switch','Rotational uppercut','Mirror to the left'],note:'Continuous: repeat the whole sequence to the other side and keep alternating.',video:'LKoISjc5sAQ'},
+{name:'Foundation Flow',eq:'mace',lvl:1,sw:'mid',steps:['10-to-2','Barbarian squat','Reverse lunge, left','Prayer switch','10-to-2','Barbarian squat','Reverse lunge, right','Prayer switch'],note:'Every piece is a week-one skill. One cycle covers both lead sides: switch your top hand after each lunge.'},
+{name:'Gravedigger Flow',eq:'mace',lvl:1,sw:'end',steps:['Gravedigger left','Gravedigger right','Mace front squat','Offset press','Prayer switch'],note:'Loads the trunk in rotation, then stacks it for the squat and press.'},
+{name:'Squat · Lunge · 360',eq:'mace',lvl:2,sw:'mid',steps:['Barbarian squat','Reverse lunge','360, left hand on top','Prayer switch','Barbarian squat','Reverse lunge','360, right hand on top','Prayer switch'],note:'The classic teaching structure: one squat, one lunge, one 360, then mirror.'},
+{name:'360 Uppercut Flow',eq:'mace',lvl:2,sw:'mid',steps:['360 over the right shoulder','Squat','Prayer switch','Rotational uppercut','Mirror to the left'],note:'Continuous: repeat the whole sequence to the other side and keep alternating.',video:'LKoISjc5sAQ'},
 {name:'Curl & Step Flow',eq:'mace',lvl:2,sw:'mid',steps:['Ballistic curl','Front lunge','Switch curl','Lateral lunge','Mirror'],note:'Built on curls and two stepping patterns, the core of many beginner flow courses.'},
-{name:'Warrior Flow',eq:'mace',lvl:3,sw:'mid',steps:['360','Lunge to 360','Uppercut','Offset march, 4 steps','Hand switches ×2','Mirror'],note:'Long cycle; keep breathing on every swing.'},
+{name:'Warrior Flow',eq:'mace',lvl:3,sw:'mid',steps:['360','Lunge to 360','Uppercut','Offset march, 4 steps','Prayer switch ×2','Mirror'],note:'Long cycle; keep breathing on every swing.'},
 {name:'Three-Club Mini Flow',eq:'club',lvl:2,sw:'end',steps:['Arm cast','Mill','Switch shield cast'],note:'One continuous flow: arm cast, push straight into a mill, then a switch shield cast hands the club to the other hand. Repeat with the new lead side.'},
 {name:'Club Foundations',eq:'club',lvl:1,sw:'end',steps:['Two-hand side swing','Two-hand arm cast','Two-hand shield cast','Two-hand torch press','H2H clean'],note:'One rep of each on the same lead side, then the H2H clean switches the lead and you go again on the other side.'},
 {name:'Single-Arm Foundations',eq:'club',lvl:2,sw:'end',steps:['Single-arm side swing','Arm cast','One-arm shield cast','Torch press','Switch 180'],note:'The one-hand version of Club Foundations: one rep of each with the working hand, then a switch 180 hands the club over and you go again on the other side.'},
@@ -1280,7 +1281,7 @@ const MACE_VIDEOS=[
   [/barbarian squat/,'T2c1CR0Qxe8'],[/front squat|^squat$/,'Gx7jk9kxRaQ'],[/reverse lunge/,'DxOoiXHIrTk'],
   [/lateral lunge/,'Eaari22yWWo'],[/front lunge/,'udh6oh92Q9U'],[/offset press/,'RNFKy57MRus'],
   [/overhead press/,'XSw1QH36-bs'],[/uppercut/,'DB3KcsdURyc'],[/ballistic curl/,'TVf2QvqWK4E'],
-  [/switch curl/,'LKoISjc5sAQ'],[/\brow\b/,'Cd2DD4B0sag'],[/paddle/,'_ayYN3a_z8s'],[/hand switch/,'SEvFGeyQ84Y'],
+  [/switch curl/,'LKoISjc5sAQ'],[/\brow\b/,'Cd2DD4B0sag'],[/paddle/,'_ayYN3a_z8s'],[/hand switch|prayer switch/,'SEvFGeyQ84Y'],
   [/pull-?through/,'m6HrkOTG8QA']
 ];
 function videoFor(name,eq){
@@ -1481,7 +1482,7 @@ function eqBanner(eq,wt,opts={}){
 /* ---------- render output ---------- */
 function eqLabel(eqs){return eqs.map(k=>EQ[k].name).join(' + ')}
 // moves and flows that were renamed: old log name -> current name, so history and weights carry over
-const RENAMED={'kb|Bottoms-up press':'Crush press','club|Two-hand 180':'One-hand 180','club|Half Mill to Torch Press':'Rotational Torch Press to Half Reverse Mill','club|Half Mill to Rotational Torch Press':'Rotational Torch Press to Half Reverse Mill','club|Two-hand swipe':'Swipe','club|Pullover':'Two-hand arm cast','club|One-hand pullover':'Arm cast'};
+const RENAMED={'mace|Hand switches':'Prayer switch','mace|Mace overhead press':'Offset press','kb|Bottoms-up press':'Crush press','club|Two-hand 180':'One-hand 180','club|Half Mill to Torch Press':'Rotational Torch Press to Half Reverse Mill','club|Half Mill to Rotational Torch Press':'Rotational Torch Press to Half Reverse Mill','club|Two-hand swipe':'Swipe','club|Pullover':'Two-hand arm cast','club|One-hand pullover':'Arm cast'};
 const sameMove=(logName,name,eq)=>logName===name||RENAMED[eq+'|'+logName]===name;
 function lastFor(name,eq){
   let best=null;
@@ -1965,7 +1966,7 @@ document.addEventListener('keydown',e=>{if(!G)return;if(e.key==='Escape'){$('gEn
 /* ---------- skill paths ---------- */
 const PATHS={
   mace:{name:'Steel mace',steps:[
-    {t:'Grip & hand switches',m:['Hand switches'],goal:'20 smooth switches at chest height with the head staying still.'},
+    {t:'Grip & prayer switches',m:['Prayer switch'],goal:'20 smooth switches at chest height with the head staying still.'},
     {t:'Pendulum swing',m:['Pendulum swing'],goal:'30 seconds of even arcs: arms long, no shoulder shrug.'},
     {t:'Gravedigger',m:['Gravedigger'],goal:'10 per side; back foot pivots and the spine stays long.'},
     {t:'10-to-2',m:['10-to-2'],goal:'10 clean reps per side; the mace stays close behind your back.'},
