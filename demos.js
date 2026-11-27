@@ -39,14 +39,16 @@ const STAND={P:[0,94,0],pitch:0,yaw:0,roll:0,hipYaw:0,feet:{L:[12,8,0],R:[-12,8,
 // MACE or CLUB; a club is drawn as a short handle that swells toward the end).
 
 /* helpers for writing moves */
-function torsoFrame(P,pitch,yaw,roll=0){
+function torsoFrame(P,pitch,yaw,roll=0,twist=0){
   let l=rotY([1,0,0],yaw);const f0=rotY([0,0,1],yaw),r=pitch*Math.PI/180;
-  let u=add(mul([0,1,0],Math.cos(r)),mul(f0,Math.sin(r)));const f=sub(mul(f0,Math.cos(r)),mul([0,1,0],Math.sin(r)));
+  let u=add(mul([0,1,0],Math.cos(r)),mul(f0,Math.sin(r)));let f=sub(mul(f0,Math.cos(r)),mul([0,1,0],Math.sin(r)));
   if(roll){const q=roll*Math.PI/180,c=Math.cos(q),s=Math.sin(q);const u2=add(mul(u,c),mul(l,s));l=sub(mul(l,c),mul(u,s));u=u2}
+  // twist: the chest turns about the spine (positive drops the left shoulder toward the chest side)
+  if(twist){const q=twist*Math.PI/180,c=Math.cos(q),s=Math.sin(q);const l2=add(mul(l,c),mul(f,s));f=sub(mul(f,c),mul(l,s));l=l2}
   return {l,u,f,f0};
 }
 // a point fixed to the torso: lat toward the figure's left, h up the spine from the pelvis, fw forward
-function onBody(pose,lat,h,fw){const F=torsoFrame(pose.P,pose.pitch||0,pose.yaw||0,pose.roll||0);
+function onBody(pose,lat,h,fw){const F=torsoFrame(pose.P,pose.pitch||0,pose.yaw||0,pose.roll||0,pose.twist||0);
   return add(add(add(pose.P,mul(F.l,lat)),mul(F.u,h)),mul(F.f,fw))}
 // upright hold placed on the body (belly button) for whatever the hips and torso are doing
 const hold=pose=>Object.assign({G:onBody(pose,0,10,22),D:[0,1,0],eL:STAND.eL,eR:STAND.eR},pose);
@@ -55,7 +57,7 @@ function mirror(p,grip=true){
   const o=Object.assign({},p),sw=(a,b,f)=>{if(a in p||b in p){const A=p[a],B=p[b];if(B!==undefined)o[a]=f(B);else delete o[a];if(A!==undefined)o[b]=f(A);else delete o[b]}};
   const id=v=>v,neg=v=>-v;
   for(const k of ['P','G','D'])if(p[k])o[k]=mx(p[k]);
-  if('yaw' in p)o.yaw=-p.yaw;if('hipYaw' in p)o.hipYaw=-p.hipYaw;if('roll' in p)o.roll=-p.roll;
+  if('yaw' in p)o.yaw=-p.yaw;if('hipYaw' in p)o.hipYaw=-p.hipYaw;if('roll' in p)o.roll=-p.roll;if('twist' in p)o.twist=-p.twist;
   if(p.feet)o.feet={L:mx(p.feet.R),R:mx(p.feet.L)};
   sw('eL','eR',mx);sw('freeL','freeR',mx);if(grip){sw('gL','gR',id);sw('offL','offR',id)}sw('tL','tR',id);sw('fyL','fyR',neg);
   if(p.W)o.W=mx(p.W);sw('hL','hR',id);
@@ -84,7 +86,7 @@ function viaHead(a,b,n,dt){
   const headOf=p=>add(p.G,mul(p.D,Math.max(p.gL,p.gR)));
   const ha=headOf(a),hb=headOf(b),out=[];
   for(let i=1;i<n;i++){const u=i/n,o={};
-    for(const k of ['pitch','yaw','roll','hipYaw','turn','kneeOut','gL','gR','choke','tL','tR','fyL','fyR'])if(k in a&&k in b)o[k]=lerp(a[k],b[k],u);
+    for(const k of ['pitch','yaw','roll','twist','hipYaw','turn','kneeOut','gL','gR','choke','tL','tR','fyL','fyR'])if(k in a&&k in b)o[k]=lerp(a[k],b[k],u);
     o.P=vl(a.P,b.P,u);o.feet={L:vl(a.feet.L,b.feet.L,u),R:vl(a.feet.R,b.feet.R,u)};o.eL=vl(a.eL,b.eL,u);o.eR=vl(a.eR,b.eR,u);
     o.D=norm(vl(a.D,b.D,u));const h=vl(ha,hb,u);o.G=sub(h,mul(o.D,Math.max(o.gL,o.gR)));o.pass=true;
     out.push([dt*u,o]);}
@@ -536,7 +538,7 @@ const body=(yaw,px)=>Object.assign({},CB_BODY,{yaw,hipYaw:yaw*0.45,P:[px,93,0]})
 // order held on a turned body: elbow tight to the side, club upright at the right shoulder
 const orderOn=b=>Object.assign({},b,{G:onBody(b,-16,24,22),D:[0,1,0],eR:[-0.6,-1,0.1],freeL:[22,92,6]});
 // arm extended straight out from the turned torso at shoulder height, club still upright
-const pushOn=b=>{const F=torsoFrame(b.P,b.pitch||0,b.yaw||0,b.roll||0);
+const pushOn=b=>{const F=torsoFrame(b.P,b.pitch||0,b.yaw||0,b.roll||0,b.twist||0);
   return Object.assign({},b,{G:add(shoulderOf(b,'R'),add(mul(F.f,48),[0,-5,0])),D:[0,1,0],eR:[-1,-0.4,0],freeL:[22,92,6]})};
 const PUSH=()=>pushOn(CB_BODY);
 // the swing comes back to a 90-degree elbow with the elbow tucked to the side of the body, club upright
@@ -670,7 +672,7 @@ const tb=(dir,deg=35)=>Object.assign({},CB_BODY,{yaw:deg*dir,hipYaw:deg*0.55*dir
 // direction you've turned, finishing in a forearm lock with the club upright like a torch; the free arm
 // reaches forward and out; pull it back down to order with the lat.
 function rtpTop(b){
-  const F=torsoFrame(b.P,b.pitch||0,b.yaw||0,b.roll||0),sR=shoulderOf(b,'R'),sL=shoulderOf(b,'L');
+  const F=torsoFrame(b.P,b.pitch||0,b.yaw||0,b.roll||0,b.twist||0),sR=shoulderOf(b,'R'),sL=shoulderOf(b,'L');
   const u=norm(add(mul(F.f,0.55),[0,0.84,0]));
   return Object.assign({},b,{G:add(sR,mul(u,54)),D:[0,1,0],eR:[-1,-0.2,0.2],freeL:add(sL,mul(norm(add(mul(F.f,0.8),mul(F.l,0.55))),50))});
 }
@@ -1064,7 +1066,7 @@ const KFEET={L:[16,8,0],R:[-16,8,0]};
 const KB=Object.assign({},STAND,{kb:1,feet:KFEET,turn:0,kneeOut:0.35,W:[1,0,0],hR:-4.5,hL:4.5,hD:0,offL:0,offR:0,
   eL:[1,0,-0.6],eR:[-1,0,-0.6]});
 // middle of the shoulders for a pose, and the handle point reached with straight arms in a direction
-function shoulderMid(p){const F=torsoFrame(p.P,p.pitch||0,p.yaw||0,p.roll||0);return add(add(p.P,mul(F.u,TORSO)),mul(F.u,-4))}
+function shoulderMid(p){const F=torsoFrame(p.P,p.pitch||0,p.yaw||0,p.roll||0,p.twist||0);return add(add(p.P,mul(F.u,TORSO)),mul(F.u,-4))}
 const armsTo=(p,dir,reach=53)=>add(shoulderMid(p),mul(norm(dir),reach));
 const kbArms=(pose,dir,reach)=>Object.assign({},pose,{G:armsTo(pose,dir,reach),D:norm(dir)});
 
@@ -1130,7 +1132,7 @@ function haloAt(deg){{const r=deg*Math.PI/180,c=Math.cos(r),sn=Math.sin(r),k=(1-
 }
 
 /* one-hand kettlebell work (lessons 5-16). Positions are for the right hand; mirror() gives the left. */
-function shoulderOf(p,side){const F=torsoFrame(p.P,p.pitch||0,p.yaw||0,p.roll||0);
+function shoulderOf(p,side){const F=torsoFrame(p.P,p.pitch||0,p.yaw||0,p.roll||0,p.twist||0);
   return add(add(add(p.P,mul(F.u,TORSO)),mul(F.l,side==='L'?17:-17)),mul(F.u,-4))}
 const UP_KB=Object.assign({},KB,{P:[0,94,0],pitch:0,yaw:0,roll:0,hipYaw:0});
 const ONE_R={hR:0,hL:0,offL:1,offR:0,freeL:[20,86,2]};                 // right hand only, left arm down
@@ -1347,11 +1349,11 @@ function kbStartStop(){
 /* goblet squats and the single kettlebell front squat (Chris's notes on Mark Wildman's "3 Types of Goblet Squats") */
 // carry a hold written for standing tall (UP_KB) onto a pose whose torso has moved (squat depth, lean)
 function carry(pose,src){
-  const F=torsoFrame(pose.P,pose.pitch||0,pose.yaw||0,pose.roll||0);
+  const F=torsoFrame(pose.P,pose.pitch||0,pose.yaw||0,pose.roll||0,pose.twist||0);
   const pt=v=>add(add(add(pose.P,mul(F.l,v[0])),mul(F.u,v[1]-94)),mul(F.f,v[2]));
   const dir=v=>norm(add(add(mul(F.l,v[0]),mul(F.u,v[1])),mul(F.f,v[2])));
   const o=Object.assign({},src);
-  for(const k of ['P','pitch','yaw','roll','hipYaw','feet','turn','kneeOut','tL','tR','fyL','fyR'])if(k in pose)o[k]=pose[k];   // body from pose, hands from src
+  for(const k of ['P','pitch','yaw','roll','twist','hipYaw','feet','turn','kneeOut','tL','tR','fyL','fyR'])if(k in pose)o[k]=pose[k];   // body from pose, hands from src
   o.G=pt(src.G);o.D=dir(src.D);o.W=dir(src.W);o.eL=dir(src.eL);o.eR=dir(src.eR);
   if(src.freeL)o.freeL=pt(src.freeL);if(src.freeR)o.freeR=pt(src.freeR);
   return o;
@@ -1645,7 +1647,7 @@ function kbHighPull(){
 // the bell held straight up over the lead (right) shoulder whatever the body is doing: arm vertical, bell
 // resting behind the wrist (on the back of the forearm), as at the top of the snatch
 function bellUp(pose,extra){
-  const F=torsoFrame(pose.P,pose.pitch||0,pose.yaw||0,pose.roll||0),sR=shoulderOf(pose,'R');
+  const F=torsoFrame(pose.P,pose.pitch||0,pose.yaw||0,pose.roll||0,pose.twist||0),sR=shoulderOf(pose,'R');
   const D=norm(add(mul(F.f,-0.75),[0,-0.6,0]));
   return Object.assign({},pose,{kb:1,G:add(sR,[0,54,0]),D,W:perpTo(D,F.l),hR:0,hL:0,hD:0,offR:0,eR:[-1,0,0]},extra||{});
 }
@@ -1653,17 +1655,22 @@ function kbWindmill(){
   // Windmill (Chris): from the overhead hold, feet pivot 45 degrees toward the non-lead side. Hinge at the
   // waist with the weight on the lead leg, kept straight; the support hand glides down the inside of the
   // other leg. The bell stays straight up as the torso turns toward the lead side and hinges down, until the
-  // support hand touches the floor (or as low as you can), then everything comes back up.
+  // support hand touches the floor (or as low as you can), then everything comes back up. At the bottom the
+  // chest has turned on the spine so the bell, both shoulders and the support hand make one vertical line.
   const feet={L:[14,8,6],R:[-16,8,-6]};
-  const B=(P,pitch,yaw,roll,kneeL,extra)=>Object.assign({},UP_KB,{P,pitch,yaw,roll,hipYaw:40,feet,turn:4,fyL:40,fyR:40,kneeOut:kneeL},extra||{});
-  const stand=B([0,94,0],0,40,0,0.3),mid=B([-6,89,-5],45,28,12,0.5),low=B([-10,84,-8],88,20,22,0.7);
+  // twist turns the chest about the spine toward the lead side, so at the bottom the spine is level and the
+  // shoulders stack one over the other: bell, both shoulders and the support hand on one vertical line
+  const B=(P,pitch,yaw,roll,kneeL,twist)=>Object.assign({},UP_KB,{P,pitch,yaw,roll,twist,hipYaw:40,feet,turn:4,fyL:40,fyR:40,kneeOut:kneeL});
+  const stand=B([0,94,0],0,40,0,0.3,0),mid=B([-10,92,-2],48,46,0,0.4,45),low=B([-21,88,-3],93,52,0,0.5,90);
   // the support hand slides down the inside of the other leg, as low as the arm reaches (to the floor if it can)
-  const glide=(b,f)=>{const F=torsoFrame(b.P,b.pitch,b.yaw,b.roll),target=add(vl(add(b.P,mul(F.l,9)),b.feet.L,f),[-5,f>0.9?-3:2,0]);
+  const glide=(b,f)=>{const F=torsoFrame(b.P,b.pitch,b.yaw,b.roll,b.twist||0),target=add(vl(add(b.P,mul(F.l,9)),b.feet.L,f),[-5,f>0.9?-3:2,0]);
     const sL=shoulderOf(b,'L'),d=sub(target,sL),r=Math.hypot(...d);return add(sL,mul(d,Math.min(1,54/r)))};
-  const held=(b,f,pass)=>bellUp(b,{offL:1,freeL:f===null?add(shoulderOf(b,'L'),[4,-52,6]):glide(b,f),eL:[1,-0.3,0.2],pass:!!pass});
+  // at the bottom the support arm hangs straight down from its shoulder, fingertips to the floor
+  const down=b=>{const sL=shoulderOf(b,'L');return [sL[0],Math.max(12,sL[1]-56),sL[2]]};
+  const held=(b,f,pass)=>bellUp(b,{G:add(shoulderOf(b,'R'),[0,56,0]),offL:1,freeL:f===null?add(shoulderOf(b,'L'),[4,-52,6]):f==='down'?down(b):glide(b,f),eL:[1,-0.3,0.2],pass:!!pass});
   const start=held(Object.assign({},UP_KB,{feet:{L:[14,8,0],R:[-14,8,0]}}),null);
   const kf=[[0,start],[0.4,{}],[0.9,held(stand,null)],[1.15,{}]];let t=1.15;
-  for(let i=0;i<2;i++){kf.push([t+0.7,held(mid,0.55,true)],[t+1.4,held(low,1.0)],[t+1.7,{}],[t+2.4,held(mid,0.55,true)],[t+3.1,held(stand,null)],[t+3.35,{}]);t+=3.35}
+  for(let i=0;i<2;i++){kf.push([t+0.7,held(mid,0.55,true)],[t+1.4,held(low,'down')],[t+1.7,{}],[t+2.4,held(mid,0.55,true)],[t+3.1,held(stand,null)],[t+3.35,{}]);t+=3.35}
   kf.push([t+0.5,Object.assign({},start)],[t+0.75,{}]);
   return both(kf);
 }
@@ -1775,7 +1782,7 @@ const MOVES={
   'kb:overhead hold':{kf:both([[0,Object.assign({},LOCK_R)],[1.6,{}]]),
     cue:'Bell straight up overhead, arm locked, biceps by the ear, the bell resting behind the wrist. Hold it steady.'},
   'kb:windmill':{kf:kbWindmill(),
-    cue:'From the overhead hold, bell straight up, pivot your feet 45 degrees toward the non-lead side. Hinge at the waist with the weight on the lead leg, kept straight, and glide the support hand down the inside of the other leg. Keep the bell straight up as your torso turns toward the lead side and hinges down. Go until the support hand touches the floor, or as low as you can, then bring everything back up. Both sides.'},
+    cue:'From the overhead hold, bell straight up, pivot your feet 45 degrees toward the non-lead side. Hinge at the waist with the weight on the lead leg, kept straight, and glide the support hand down the inside of the other leg. Keep the bell straight up as your torso turns toward the lead side and hinges down: rotate your chest open so the bell, both shoulders and the support hand stay on one straight vertical line. Go until the support hand touches the floor, or as low as you can, then bring everything back up. Both sides.'},
   'kb:turkish get-up':{kf:kbTurkishGetUp(),
     cue:'Lie on your back, bell straight up over the lead shoulder, lead knee bent with the foot flat. Keep the bell straight up the whole time. Roll to the support elbow, straighten the support arm, push the hips up with both legs, sweep the support leg under you onto that knee, then stand up tall. Reverse to get down: to the support knee, the leg back out straight, then from the hand to the elbow to the shoulder and all the way down. Both sides.'},
   'kb:front squat':{kf:kbFrontSquat(),
@@ -2034,7 +2041,7 @@ function poseAt(kf,t){
     const o={feet:{L:vl(a.feet.L,b.feet.L,u),R:vl(a.feet.R,b.feet.R,u)},D:norm(vl(a.D,b.D,u))};
     for(const k of ['P','G','eL','eR','freeL','freeR'])o[k]=vl(a[k],b[k],u);
     for(const k of ['pitch','yaw','roll','hipYaw','turn','fyL','fyR','tL','tR','gR','gL','choke','offL','offR','kneeOut','len','kb','hR','hL','hD'])o[k]=lerp(a[k],b[k],u);
-    o.W=norm(vl(a.W,b.W,u));
+    o.W=norm(vl(a.W,b.W,u));o.twist=lerp(a.twist||0,b.twist||0,u);
     if(a.G2&&b.G2){o.G2=vl(a.G2,b.G2,u);o.D2=norm(vl(a.D2,b.D2,u))}
     if(a.W2&&b.W2)o.W2=norm(vl(a.W2,b.W2,u));   // a club in the left hand too (two clubs)
     if(a.lock&&a.lock===b.lock)armArc(a,b,o,u);
@@ -2058,7 +2065,7 @@ function ik(A,T,a,b,pole){
   return [add(add(A,mul(u,x)),mul(norm(bend),h)),T];
 }
 function skeleton(p){
-  const {l,u,f,f0}=torsoFrame(p.P,p.pitch,p.yaw,p.roll),lh=rotY([1,0,0],p.hipYaw),fh=rotY([0,0,1],p.hipYaw);
+  const {l,u,f,f0}=torsoFrame(p.P,p.pitch,p.yaw,p.roll,p.twist||0),lh=rotY([1,0,0],p.hipYaw),fh=rotY([0,0,1],p.hipYaw);
   const P=p.P,neck=add(P,mul(u,TORSO)),head=add(add(neck,mul(u,15)),mul(f,2));
   const sk={P,neck,head,u,f,l,f0};
   sk.sh={L:add(add(neck,mul(l,17)),mul(u,-4)),R:add(add(neck,mul(l,-17)),mul(u,-4))};
