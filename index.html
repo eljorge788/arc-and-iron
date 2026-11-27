@@ -251,6 +251,17 @@ ol.moves li{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:9px
 .wadj button,.lwb{font:inherit;width:30px;height:28px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;line-height:1}
 .wadj button:disabled{opacity:.4}
 .wadj small{font-family:var(--mono);font-size:.7rem;color:var(--muted)}
+.hseg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;vertical-align:middle}
+.hseg button{font:inherit;font-size:.74rem;padding:4px 8px;min-height:28px;border:0;border-right:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;white-space:nowrap}
+.hseg button:last-child{border-right:0}
+.hseg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink);font-weight:700;box-shadow:inset 0 -2px 0 var(--accent)}
+.hseg button:disabled{opacity:.4;cursor:default}
+.wline .hseg{margin-left:6px}
+.gctl{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}
+.g-wtrow .gctl .wadj button,.g-wtrow .gctl .hseg button{min-height:36px;min-width:36px}
+.g-mctl{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px}
+.g-list li>.gctl{grid-column:1/-1}
+.wtrow .hseg{grid-column:1/-1;justify-self:start}
 .lwin{display:inline-flex;align-items:center;gap:4px}
 .lwin input{width:72px}
 .wtrow .lwplan{grid-column:1/-1;font-size:.72rem}
@@ -483,8 +494,11 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .row2{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
 input[type=date],input[type=number],textarea,select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;min-width:0}
 textarea{min-height:70px;resize:vertical}
-.wtrow{display:grid;grid-template-columns:1fr auto 30px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.wtrow{display:grid;grid-template-columns:auto auto 1fr;gap:6px 10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
 .wtrow span{min-width:0}
+.wtrow>span:first-child{grid-column:1/-1;font-weight:700}
+.wtrow .lwin input{width:84px;text-align:center}
+.wtrow .lwb{width:36px;height:36px}
 .wtrow small{font-family:var(--mono);color:var(--muted)}
 .loglist{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
 .loglist li{display:grid;grid-template-columns:auto 1fr auto;gap:4px 14px;padding:10px 0;border-bottom:1px solid var(--line);align-items:start}
@@ -1496,6 +1510,28 @@ const SWAPPABLE=b=>b.kind!=='Warm-up'&&b.kind!=='Cool-down'&&!b.flow;
 // − / + beside a weight steps through the weights in your rack; the original is kept so you can see what changed
 function wtAdj(wi,bi,mi,eq,o){if(!o||!o.wt||!eq||rackList(eq).length<2)return '';
   return `<span class="wadj"><button type="button" data-wa="${wi}:${bi}:${mi}:-1" aria-label="Lighter">−</button><button type="button" data-wa="${wi}:${bi}:${mi}:1" aria-label="Heavier">+</button>${o.orig?`<small>was ${esc(String(o.orig).replace(/^2 ×\s*/,''))}</small>`:''}</span>`}
+/* one hand / two hands / two implements: each set is the same exercise done those ways. Switching swaps in the
+   real move from X, so its cue, demo, weight history and per-side dose follow. */
+const HAND_SETS=[['Two-hand swing','One-arm swing','Double swing'],['Two-hand deadlift','Suitcase deadlift'],['Goblet squat','Front squat','Double front squat'],['Bent-over row','Gorilla row'],
+  ['Two-hand side swing','Single-arm side swing'],['Two-hand arm cast','Arm cast'],['Two-hand shield cast','One-arm shield cast'],['Two-hand torch press','Torch press'],['Two-hand flag press','Flag press'],
+  ['Two-hand reverse lunge arm cast','Reverse lunge arm cast'],['Two-hand forward lunge flag press','Forward lunge flag press'],['Two-hand clock squat','Clock squat'],['Swipe','Double swipe'],['Mill','Double mill']];
+const xOf=(name,eq)=>X.find(x=>x.name===name&&x.eq===eq);
+const handRank=x=>x.d?2:(x.u||x.one)?0:1;
+const handLabel=x=>x.d?(x.eq==='kb'?'Two bells':'Two clubs'):(x.u||x.one)?'One hand':'Two hands';
+function handOpts(name,eq,anyPair){const set=HAND_SETS.find(z=>z.includes(name));if(!set)return null;
+  const xs=set.map(n=>xOf(n,eq)).filter(Boolean).sort((a,b)=>handRank(a)-handRank(b));if(xs.length<2)return null;
+  return xs.map(x=>({name:x.name,label:handLabel(x),ok:anyPair||!x.d||!!(effEq(eq)||{}).pair}))}
+function handSeg(attr,key,name,eq,anyPair){const o=handOpts(name,eq,anyPair);if(!o)return '';
+  return `<span class="hseg" role="group" aria-label="One or two hands">${o.map(h=>`<button type="button" data-${attr}="${key}:${esc(h.name)}" aria-pressed="${h.name===name}"${h.ok?'':' disabled title="Turn on matching pairs in your setup"'} aria-label="${esc(h.label)}: ${esc(h.name)}">${h.label}</button>`).join('')}</span>`}
+function switchHands(bl,mi,name){const m=bl.moves[mi],x=m&&xOf(name,m.eq);if(!x||x.name===m.name)return false;
+  let dose=m.dose;
+  if(bl.kind==='Strength')dose=`${bl.sets}×${sided(x)?perSide(x,bl.reps)+'/side':bl.reps}`;
+  else if(bl.repBase)dose=sideDose(x,bl.repBase);
+  const nm=Object.assign(mv(x,dose),m.tag?{tag:m.tag}:{});
+  // a weight you picked by hand stays with you (it's the bell or club you have set up); otherwise use the new move's own planned weight
+  if(m.orig!=null&&m.wt){const v=String(m.wt).replace(/^2 ×\s*/,'');nm.orig=nm.wt;nm.wt=(x.d?'2 × ':'')+v;delete nm.up;delete nm.need;if(nm.wt===nm.orig)delete nm.orig}
+  bl.moves[mi]=nm;
+  if(bl.kind==='Tabata'&&bl.timer)bl.timer.phases=tabataPhases(bl.moves);return true}
 function stepWt(o,eq,dir){const pair=/^2 ×/.test(String(o.wt)),cur=parseFloat(String(o.wt).replace(/^2 ×\s*/,'')),list=rackList(eq);
   const nv=dir>0?list.find(x=>x>cur):list.slice().reverse().find(x=>x<cur);if(nv==null)return false;
   if(o.orig==null)o.orig=o.wt;o.wt=(pair?'2 × ':'')+nv+' '+unitOf(eq);delete o.up;delete o.need;if(o.wt===o.orig)delete o.orig;return true}
@@ -1507,7 +1543,7 @@ function blockHTML(b,bi,wi){
       <div class="go">${hasFlowAnim(b.flow)?flowDemoBtn(b.flow):b.flow.video?`<a class="demo vid" href="https://www.youtube.com/watch?v=${b.flow.video}" target="_blank" rel="noopener">▶ Watch a similar sequence</a>`:''}<button class="link" data-sf="${wi}:${bi}">⇄ Different flow</button></div>`;
   }else{
     body=`<ol class="moves">${b.moves.map((m,mi)=>{const lt=m.eq?lastTxt(m.name,m.eq):'';
-      return `<li class="${m.eq?'has-eq eq-'+m.eq:''}">${m.eq?`<div class="wline">${eqBanner(m.eq,m.wt,{light:!m.wt})}${b.kind==='Warm-up'||b.kind==='Cool-down'?'':wtAdj(wi,bi,mi,m.eq,m)}</div>`:''}<span class="mv-name">${m.tag?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}${handsTag(m)}</span><span class="mv-dose">${esc(m.dose)}</span>${m.eq?upTag(m,m.eq):''}${lt?`<span class="last">${esc(lt)}</span>`:''}<span class="mv-cue">${m.cue?esc(m.cue)+' ':''}${demo(m.name,m.eq)}${SWAPPABLE(b)&&m.eq?` <button class="link swap" data-sw="${wi}:${bi}:${mi}" aria-label="Swap ${esc(m.name)} for a similar move">⇄ Swap</button>`:''}</span></li>`}).join('')}</ol>`;
+      return `<li class="${m.eq?'has-eq eq-'+m.eq:''}">${m.eq?`<div class="wline">${eqBanner(m.eq,m.wt,{light:!m.wt})}${b.kind==='Warm-up'||b.kind==='Cool-down'?'':wtAdj(wi,bi,mi,m.eq,m)+handSeg('wh',wi+':'+bi+':'+mi,m.name,m.eq)}</div>`:''}<span class="mv-name">${m.tag?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}${handsTag(m)}</span><span class="mv-dose">${esc(m.dose)}</span>${m.eq?upTag(m,m.eq):''}${lt?`<span class="last">${esc(lt)}</span>`:''}<span class="mv-cue">${m.cue?esc(m.cue)+' ':''}${demo(m.name,m.eq)}${SWAPPABLE(b)&&m.eq?` <button class="link swap" data-sw="${wi}:${bi}:${mi}" aria-label="Swap ${esc(m.name)} for a similar move">⇄ Swap</button>`:''}</span></li>`}).join('')}</ol>`;
   }
   const prep=b.kind==='Warm-up'||b.kind==='Cool-down';
   const peek=b.flow?b.flow.steps.slice(0,3).join(' → ')+(b.flow.steps.length>3?' …':''):(b.moves||[]).map(m=>m.name).slice(0,3).join(', ')+((b.moves||[]).length>3?` +${b.moves.length-3} more`:'');
@@ -1611,6 +1647,7 @@ function render(){
   out.querySelectorAll('[data-sf]').forEach(b=>b.onclick=()=>{const[wi,bi]=b.dataset.sf.split(':').map(Number);const w=wkAt(wi),old=w.blocks[bi];
     const nb=flowBlock([old.flow.eq],old.min,new Set([old.flow.name]));if(nb&&nb.flow.name!==old.flow.name){w.blocks[bi]=nb;if(current.single)keepBuilt();render()}else{b.textContent='No other flows at your level';b.disabled=true}});
   const after=()=>{if(current.single)keepBuilt();render()};
+  out.querySelectorAll('[data-wh]').forEach(b=>b.onclick=()=>{const[wi,bi,mi,name]=b.dataset.wh.split(':'),bl=wkAt(+wi).blocks[+bi];if(switchHands(bl,+mi,name))after()});
   out.querySelectorAll('[data-wa]').forEach(b=>b.onclick=()=>{const[wi,bi,mi,d]=b.dataset.wa.split(':').map(Number),bl=wkAt(wi).blocks[bi],o=mi<0?bl:bl.moves[mi],eq=mi<0?bl.flow.eq:o.eq;
     if(stepWt(o,eq,d)){if(bl.kind==='Tabata'&&bl.timer)bl.timer.phases=tabataPhases(bl.moves);after()}else{b.disabled=true;b.title=d>0?'Heaviest in your rack':'Lightest in your rack'}});
   out.querySelectorAll('[data-skip]').forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();const[wi,bi]=b.dataset.skip.split(':').map(Number);skipPrep(wkAt(wi),bi);after()});
@@ -1885,6 +1922,16 @@ function gNotes(){
   Object.keys(G.deck).forEach(bi=>{const b=G.w.blocks[bi];const used=52-G.deck[bi].length;n.push(`${b.title}: ${used} card${used===1?'':'s'}`)});
   return n.join('. ');
 }
+function gMoveCtl(bi,mi){const bl=G.w.blocks[bi];if(!bl||bl.kind==='Warm-up'||bl.kind==='Cool-down')return '';
+  const o=mi<0?bl:bl.moves[mi],eq=mi<0?(bl.flow&&bl.flow.eq):o&&o.eq;if(!o||!eq)return '';
+  const wa=o.wt&&rackList(eq).length>1?`<span class="wadj"><button type="button" data-gw="${bi}:${mi}:-1" aria-label="Lighter">−</button><button type="button" data-gw="${bi}:${mi}:1" aria-label="Heavier">+</button>${o.orig?`<small>was ${esc(String(o.orig).replace(/^2 ×\s*/,''))}</small>`:''}</span>`:'';
+  const hs=mi<0?'':handSeg('gh',bi+':'+mi,o.name,eq);return wa||hs?`<span class="gctl">${wa}${hs}</span>`:''}
+function gStepMi(s){const bl=G.w.blocks[s.bi];if(!bl)return null;if(s.flow)return -1;const i=(bl.moves||[]).findIndex(m=>m.name===s.name&&m.eq===s.eq);return i<0?null:i}
+/* rebuild the steps after a change and stay on the same step within the section */
+function gRegen(){const cur=G.steps[G.i],k=G.steps.filter((x,j)=>j<=G.i&&x.bi===cur.bi&&!!x.prep===!!cur.prep).length-1;
+  const steps=guidedSteps(G.w),idx=steps.map((x,j)=>x.bi===cur.bi&&!!x.prep===!!cur.prep?j:-1).filter(j=>j>=0);
+  const ni=idx.length?idx[Math.min(k,idx.length-1)]:Math.min(G.i,steps.length-1);
+  if(steps[ni].secs!==cur.secs)G.left=steps[ni].secs||0;G.steps=steps;G.i=ni;snapGuided();gDraw()}
 function gDraw(){
   const g=$('guide');g.classList.toggle('rest',!!(!G.done&&G.steps[G.i].rest));g.classList.toggle('fin',G.done);
   const n=G.steps.length;
@@ -1901,7 +1948,8 @@ function gDraw(){
   $('gBlock').textContent=s.block;$('gCount').textContent=`Step ${G.i+1} of ${n}`;$('gSets').innerHTML=gSetsHTML();
   $('gPhase').textContent=s.prep?'Next section':s.rest?'Rest':(s.tag?s.tag+' · ':'')+s.kind;
   $('gName').textContent=s.name;const hd=!s.rest&&!s.flow&&!s.list?handsOf({name:s.name,eq:s.eq}):'';$('gDetail').textContent=(hd?hd+' · ':'')+(s.detail||'');
-  $('gWt').innerHTML=(!s.rest&&s.eq&&!s.list)?eqBanner(s.eq,s.wt,{big:true,flow:!!s.flow,light:!s.wt}):'';
+  const gmi=(!s.rest&&s.eq&&!s.list)?gStepMi(s):null;
+  $('gWt').innerHTML=(!s.rest&&s.eq&&!s.list)?eqBanner(s.eq,s.wt,{big:true,flow:!!s.flow,light:!s.wt})+(gmi!=null?gMoveCtl(s.bi,gmi):''):'';
   $('gLast').textContent=s.lastKey?lastTxt(s.lastKey[0],s.lastKey[1]):'';
   $('gCue').textContent=s.cue||'';
   $('gDemo').innerHTML=(!s.rest&&s.eq&&!s.list)?(s.flow&&hasFlowAnim(s.flow)?flowDemoBtn(s.flow):demo(s.flow?s.flow.steps[0]:s.name,s.eq)):'';
@@ -1911,10 +1959,11 @@ function gDraw(){
   if(s.prep){const b=G.w.blocks[s.bi],gear=prepGear(b);
     ex=`${gear.length?`<div class="eyebrow">Grab</div><div class="prepgear">${gear.map(g=>eqBanner(g.eq,g.wt,{light:!g.wt})).join('')}</div>`:''}`+
       (b.flow?`<div class="eyebrow">${esc(b.flow.name)}</div><ol class="flowsteps">${b.flow.steps.map(t=>`<li>${esc(t)}</li>`).join('')}</ol>`
-        :`<div class="eyebrow">Moves</div><ol class="moves g-list">${(b.moves||[]).map(m=>`<li><span class="mv-name">${m.tag?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}${handsTag(m)}</span><span class="mv-dose">${esc(b.counter==='deck'?'':m.dose||'')}</span></li>`).join('')}</ol>`)+
+        :`<div class="eyebrow">Moves</div><ol class="moves g-list">${(b.moves||[]).map((m,mi)=>`<li><span class="mv-name">${m.tag?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}${handsTag(m)}</span><span class="mv-dose">${esc(b.counter==='deck'?'':m.dose||'')}</span>${m.eq?`<span class="g-mctl">${eqBanner(m.eq,m.wt,{light:!m.wt})}${gMoveCtl(s.bi,mi)}</span>`:''}</li>`).join('')}</ol>`)+
+      (b.flow?`<div class="g-mctl">${gMoveCtl(s.bi,-1)}</div>`:'')+
       `<p class="hint">${esc(b.fmt||'')}</p>`}
   if(s.list){
-    ex+=`<ol class="moves g-list">${s.list.map(m=>`<li>${eqBanner(m.eq,m.wt)}<span class="mv-name">${m.tag&&s.counter==='deck'?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}${handsTag(m)}</span><span class="mv-dose">${esc(s.counter==='deck'?'':m.dose)}</span><span class="mv-cue">${demo(m.name,m.eq)}</span></li>`).join('')}</ol>`;
+    ex+=`<ol class="moves g-list">${s.list.map((m,mi)=>`<li>${eqBanner(m.eq,m.wt)}${gMoveCtl(s.bi,mi)}<span class="mv-name">${m.tag&&s.counter==='deck'?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}${handsTag(m)}</span><span class="mv-dose">${esc(s.counter==='deck'?'':m.dose)}</span><span class="mv-cue">${demo(m.name,m.eq)}</span></li>`).join('')}</ol>`;
     if(s.counter==='rounds'){const c=G.counts[s.bi]||0;ex+=`<div class="ctr"><button class="btn ghost" data-g="r-">−</button><div><b>${c}</b><span>rounds</span></div><button class="btn" data-g="r+">+1 round</button></div>${G.w.blocks[s.bi]&&G.w.blocks[s.bi].target?`<p class="hint">Target: ${G.w.blocks[s.bi].target} rounds</p>`:''}`}
     if(s.counter==='rungs'){const r=G.rung[s.bi]||0;const at=s.rungs[r%s.rungs.length];ex+=`<div class="ctr"><div><b>${at}</b><span>reps on this rung</span></div><button class="btn" data-g="rung">Rung done</button></div><p class="hint">${r} rung${r===1?'':'s'} climbed. ${s.rungs.map((x,j)=>j===r%s.rungs.length?`[${x}]`:x).join(' · ')}</p>`}
     if(s.counter==='deck'){const c=G.card[s.bi];const left=(G.deck[s.bi]||[]).length;
@@ -1933,6 +1982,9 @@ function gDraw(){
     if(k==='rung'){const r=G.rung[s.bi],at=s.rungs[r%s.rungs.length];say(`${at} reps.`,{interrupt:true})}
     gDraw();
   });
+  g.querySelectorAll('[data-gw]').forEach(b=>b.onclick=()=>{const[bi,mi,d]=b.dataset.gw.split(':').map(Number),bl=G.w.blocks[bi],o=mi<0?bl:bl.moves[mi],eq=mi<0?bl.flow.eq:o.eq;
+    if(stepWt(o,eq,d)){if(bl.kind==='Tabata'&&bl.timer)bl.timer.phases=tabataPhases(bl.moves);gRegen()}else{b.disabled=true;b.title=d>0?'Heaviest in your rack':'Lightest in your rack'}});
+  g.querySelectorAll('[data-gh]').forEach(b=>b.onclick=()=>{const[bi,mi,name]=b.dataset.gh.split(':');if(switchHands(G.w.blocks[+bi],+mi,name))gRegen()});
   g.querySelectorAll('#gDemo a,#gExtra a').forEach(a=>a.addEventListener('click',()=>{hush();if(G&&G.run&&G.steps[G.i].secs){G.run=false;gDraw()}}));
   let nx='';for(let j=G.i+1;j<n;j++){if(!G.steps[j].rest){nx=G.steps[j].name;break}}
   $('gNext').textContent=nx?'Up next: '+nx:'Last step';
@@ -2232,14 +2284,17 @@ function renderLogForm(){
     $('logSource').textContent='Logging: '+pendingLog.title+'. Adjust anything that changed.'+(pendingLog.counts.length?' Saved with it: '+pendingLog.counts.map(c=>`${c.title} ${c.n} ${COUNT_WORD[c.kind]||'rounds'}`).join(', ')+'.':'');
     $('lgMin').value=pendingLog.minutes;$('lgType').value=pendingLog.type;
     $('lgWtField').hidden=!pendingLog.moves.length;$('lgEqField').hidden=true;
-    $('lgWts').innerHTML=`<p class="hint">Optional: tap how each move felt. Easy and Right move the weight up after a couple of sessions; Hard holds it.</p>`+pendingLog.moves.map((m,i)=>`<div class="wtrow"><span>${esc(m.name)}${m.flow?' <small>flow</small>':''}${m.dbl?' <small>pair</small>':''}</span><span class="lwin"><button type="button" class="lwb" data-lw="${i}:-1" aria-label="Lighter ${esc(m.name)}">−</button><input type="number" id="lgw-${i}" min="0" step="0.5" value="${isNaN(m.wt)?'':m.wt}" aria-label="Weight for ${esc(m.name)}"><button type="button" class="lwb" data-lw="${i}:1" aria-label="Heavier ${esc(m.name)}">+</button></span><small>${m.unit}</small><small class="lwplan" id="lgp-${i}"></small>
-      <div class="feel" role="group" aria-label="How ${esc(m.name)} felt">${[['e','Easy'],['r','Right'],['h','Hard']].map(([v,l])=>`<button type="button" data-feel="${i}:${v}" aria-pressed="${lgFeel[i]===v}">${l}</button>`).join('')}</div></div>`).join('');
+    $('lgWts').innerHTML=`<p class="hint">Optional: tap how each move felt. Easy and Right move the weight up after a couple of sessions; Hard holds it.</p>`+pendingLog.moves.map((m,i)=>`<div class="wtrow"><span id="lgn-${i}">${esc(m.name)}${m.flow?' <small>flow</small>':''}${m.dbl?' <small>pair</small>':''}</span><span class="lwin"><button type="button" class="lwb" data-lw="${i}:-1" aria-label="Lighter ${esc(m.name)}">−</button><input type="number" id="lgw-${i}" min="0" step="0.5" value="${isNaN(m.wt)?'':m.wt}" aria-label="Weight for ${esc(m.name)}"><button type="button" class="lwb" data-lw="${i}:1" aria-label="Heavier ${esc(m.name)}">+</button></span><small>${m.unit}</small><small class="lwplan" id="lgp-${i}"></small>
+      ${m.flow?'':handSeg('lh',i,m.name,m.eq,true)}<div class="feel" role="group" aria-label="How ${esc(m.name)} felt">${[['e','Easy'],['r','Right'],['h','Hard']].map(([v,l])=>`<button type="button" data-feel="${i}:${v}" aria-pressed="${lgFeel[i]===v}">${l}</button>`).join('')}</div></div>`).join('');
     const planNote=i=>{const m=pendingLog.moves[i],v=parseFloat($('lgw-'+i).value),el=$('lgp-'+i);if(el)el.textContent=!isNaN(m.wt)&&v!==m.wt?`Planned ${m.wt} ${m.unit}`:''};
     pendingLog.moves.forEach((m,i)=>{$('lgw-'+i).oninput=()=>planNote(i);planNote(i)});
     $('lgWts').querySelectorAll('[data-lw]').forEach(b=>b.onclick=()=>{const[i,d]=b.dataset.lw.split(':').map(Number),m=pendingLog.moves[i],inp=$('lgw-'+i),cur=parseFloat(inp.value);
       const list=rackList(m.eq),stp=m.unit==='kg'?2:5;let nv;
       if(isNaN(cur))nv=isNaN(m.wt)?(list[0]||stp):m.wt;else nv=d>0?(list.find(x=>x>cur)??cur+stp):(list.slice().reverse().find(x=>x<cur)??Math.max(0,cur-stp));
       inp.value=nv;planNote(i)});
+    $('lgWts').querySelectorAll('[data-lh]').forEach(b=>b.onclick=()=>{const[i,name]=b.dataset.lh.split(':'),m=pendingLog.moves[+i],x=xOf(name,m.eq);if(!x)return;
+      m.name=x.name;m.dbl=!!x.d;$('lgn-'+i).innerHTML=esc(m.name)+(m.dbl?' <small>pair</small>':'');
+      b.parentNode.querySelectorAll('button').forEach(z=>z.setAttribute('aria-pressed',String(z===b)))});
     $('lgWts').querySelectorAll('[data-feel]').forEach(b=>b.onclick=()=>{const[i,v]=b.dataset.feel.split(':');lgFeel[i]=lgFeel[i]===v?undefined:v;
       b.parentNode.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(lgFeel[i]===x.dataset.feel.split(':')[1])))});
   }else{
