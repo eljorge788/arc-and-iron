@@ -898,6 +898,29 @@ function clockSquat(two){
     [6.35,onSquat(restR)],[6.6,{}],[7.4,onTall(restR)],[7.55,{}],[7.8,onTall({G:[-13,136,12],D:norm([0.45,0.75,-0.45]),eR:[-0.8,-0.7,0.5],pass:true})],[8.05,Object.assign({},start)],[8.25,{}]];
   return two?mirrorKF(kf,false):kf;
 }
+// Bullwhip (Chris), one hand only (right; both() gives the left). Cast out into an outside circle and rotate
+// the torso to the far side as the club comes across; the wrist turns so the hand rises up that far side with
+// the club hanging down. The hand passes the far-side ear and the club half mills behind the head (the small
+// circle), is pulled over the lead shoulder and cast out into an inside circle. The inside circle swings the
+// club out to a straight arm at shoulder height on the lead side and straight back into the outside circle
+// for the next rep; after the last rep it comes back to order.
+function bullwhip(){
+  const os=outsideSwing(),is=insideSwing(),P=x=>Object.assign({},x,{pass:true});
+  const farLow=armAt(body(30,-4),[0.75,-0.35,0.55],[0.35,-0.92,0.15],{eR:[0.3,-0.8,0.6],pass:true});
+  const farHigh=Object.assign({},body(28,-4),{G:[20,156,10],D:norm([0.12,-0.97,0.15]),eR:[0.2,0.1,1],freeL:[22,92,6],pass:true});
+  const pastEar=Object.assign({},body(18,-3),{G:[2,172,-2],D:norm([0.3,-0.85,-0.45]),eR:[0.1,0.7,0.7],freeL:[22,92,6],pass:true});
+  const left=Object.assign({},body(6,0),{G:[-11,166,-3],D:norm([0.9,-0.1,-0.42]),eR:[-0.3,0.7,0.8],freeL:[22,92,6],pass:true});
+  const up=Object.assign({},body(-4,0),{G:[-18,166,0],D:norm([-0.25,0.88,-0.4]),eR:[-0.4,0.6,0.8],freeL:[22,92,6],pass:true});
+  const over=Object.assign({},body(-6,1),{G:[-18,152,20],D:norm([-0.25,0.7,0.66]),eR:[-1,-0.6,0.2],freeL:[22,92,6],pass:true});
+  const whip=[farLow,farHigh,pastEar,left,up,over];
+  const kf=circleStart(-1);let t=kf[kf.length-1][0]+0.25;
+  const add_=(poses,dt)=>{for(const p of poses){kf.push([t,P(p)]);t+=dt}};
+  add_(os.slice(0,4),0.26);add_(whip,0.28);          // rep 1: outside circle, far side, half mill, over the lead shoulder
+  add_(is,0.26);                                     // inside circle out to a straight arm at shoulder height
+  add_(os.slice(1,4),0.26);add_(whip,0.28);          // straight back into the outside circle: rep 2
+  kf.push([t+0.15,Object.assign({},UPRIGHT,C_ONE)],[t+0.35,{}]);
+  return kf;
+}
 function clubBarbarian(){
   // Start with the two-hand arm cast over the lead (left) shoulder. As the club is pulled back to the front,
   // sink into the squat and lock the arms out, club upright in front. Arm cast again as you stand, and
@@ -1356,6 +1379,8 @@ Object.assign(MOVES,{
     cue:'One hand, from order. Cast out into an outside circle and bring the club to rest across the opposite shoulder, as close to horizontal as you can and behind your head so the weight is centred. Squat. As you stand, cast it out from that side into another circle and rest it across your lead shoulder, then squat again. Stand and return to order. Both sides.'},
   'club:two-hand clock squat':{kf:both(clockSquat(true)),label:'Two hands',alt:'club:clock squat',
     cue:'Two hands, from order on the lead side. Cast out into an outside circle and bring the club to rest across the opposite shoulder, as close to horizontal as you can and behind your head so the weight is centred. Squat. As you stand, cast it out from that side into another circle and rest it across your lead shoulder, then squat again. Stand and return to order. Both sides.'},
+  'club:bullwhip':{kf:both(bullwhip()),label:'One hand',
+    cue:'One hand only. From order, cast out into an outside circle and rotate your torso to the far side as you bring the club across. Turn the wrist so the hand comes up that far side with the club hanging down, bring it past the far-side ear and half mill it behind your head (the small circle), pull it over your lead shoulder and cast out into an inside circle. To repeat, let the circle swing the club out to a straight arm at shoulder height and swing straight back into the outside circle. Both arms.'},
   'club:one-arm shield cast':{kf:both(oneArmShield()),
     cue:'One hand, club in order at the shoulder. Cast it over the opposite ear, let it swing down behind your head and shoulders, then pull it over your lead shoulder back to the front and into order. Both arms.'},
   'club:two-hand clean':{kf:twoClean(),
