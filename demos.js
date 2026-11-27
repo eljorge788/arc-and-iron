@@ -1854,6 +1854,10 @@ Object.assign(FLOW_TL2,{
     ['Single-arm side swing','Arm cast','One-arm shield cast','Torch press','Switch 180']),
   // Rotational Torch Press to Half Reverse Mill (Chris): lead side rotational torch press, half reverse mill,
   // then a switch 180 hands the club over; mirrored.
+  // Lunge Cast & Flag (Chris): reverse lunge arm cast, forward lunge flag press, then a switch shield cast hands
+  // the club over; mirrored. One hand.
+  'club:lunge cast & flag':()=>flowTL([[lungeArmCast(false),0],[lungeFlagPress(false),1],[switchShield(),2]],
+    ['Reverse lunge arm cast','Forward lunge flag press','Switch shield cast']),
   'club:rotational torch press to half reverse mill':()=>flowTL([[rotTorchPress(),0],[halfRevMillFront(),1],[switch180(),2]],
     ['Rotational torch press','Half reverse mill','Switch 180'])
 });
