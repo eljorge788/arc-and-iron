@@ -563,6 +563,7 @@ textarea{min-height:70px;resize:vertical}
 .link.swap{margin-left:4px}
 .startbtn{width:100%;font-size:1.05rem;padding:14px}
 .tip.good{border-left-color:var(--good)}
+.planend{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;border-top:1px solid var(--line);padding-top:10px;margin-top:6px}
 /* programs */
 .progs,.paths{display:grid;gap:12px}
 .progcard,.progactive,.pathcard{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--surface);display:grid;gap:8px}
@@ -706,7 +707,7 @@ html.guiding,html.guiding body{overflow:hidden}
       <div class="field" id="daysField"><span>Time you have each day</span><span class="hint">Pick minutes for each day you can train. Leave the rest as Rest.</span><div class="daylist" id="days"></div><span class="hint" id="daySum"></span></div>
       <div class="field" id="lenField"><span>Plan length</span><div class="seg" id="planLen"></div><span class="hint">Longer plans repeat your week so the moves get familiar, step up as you log, and end with a lighter week.</span></div>
       <div class="go">
-        <button class="btn" id="gen">Build workout</button>
+        <button class="btn" id="gen">Build workout</button><p class="tip" id="planMsg" hidden></p>
         <button class="btn ghost" id="copy">Copy as text</button>
       </div>
       <p class="msg" id="msg" hidden></p>
@@ -1504,7 +1505,7 @@ function generate(jump){
       const full=S.week[d],light=ph==='light';
       return Object.assign({day:d,type:t,eqs:focus,minutes:light?Math.min(full,Math.max(10,Math.round(full*.7/5)*5)):full,weekRef:ref,stub:1,fullMin:full},light?{light:1}:{});
     })}));
-    Store.state.week={id:planId,created:Date.now(),goal:S.goal,setup:activeSetup().name,weeks:phases.length,phases,plan,done:{},skip:{}};
+    archivePlan();Store.state.week={id:planId,created:Date.now(),goal:S.goal,setup:activeSetup().name,weeks:phases.length,phases,plan,done:{},skip:{}};
     current={week:plan[0].days};selWk=0;selDay=0;
   }
   render();
@@ -1660,8 +1661,11 @@ function render(){
         return `<button class="wktab${all?' dn':''}" data-wk="${k}" aria-pressed="${k===selWk}"><b>Week ${k+1}${all?' ✓':''}</b><span>${(PHASE[(p.phases||[])[k]]||PHASE.learn)[0]}${cur?' · now':''}</span></button>`}).join('')}</div>`:''}
       <div class="days">${WEEK.map(d=>byName[d]!=null?dayBtn(wk[byName[d]],byName[d]):`<div class="day rest"><b>${d}</b><span>Rest or walk</span></div>`).join('')}</div>
       <p class="prog">${n>1?`<b>Week ${selWk+1} · ${ph[0]}.</b> ${ph[1]}`:`<b>One-week plan.</b> Log each day as you finish it. When the week is done, build the next one, or pick a 4- or 6-week plan so it steps up for you.`}</p>
-      <div class="planact">${dn[sKey]?`<span class="hint">${esc(sel.day)} done ${fmtDate(dn[sKey])}.</span><button class="link" type="button" data-pd="undo">Undo</button>`:sk[sKey]?`<span class="hint">${esc(sel.day)} skipped.</span><button class="link" type="button" data-pd="undo">Undo</button>`:`<button class="link" type="button" data-pd="done">Mark ${esc(sel.day)} done</button><button class="link" type="button" data-pd="skip">Skip ${esc(sel.day)}</button>`}</div></div>
+      <div class="planact">${dn[sKey]?`<span class="hint">${esc(sel.day)} done ${fmtDate(dn[sKey])}.</span><button class="link" type="button" data-pd="undo">Undo</button>`:sk[sKey]?`<span class="hint">${esc(sel.day)} skipped.</span><button class="link" type="button" data-pd="undo">Undo</button>`:`<button class="link" type="button" data-pd="done">Mark ${esc(sel.day)} done</button><button class="link" type="button" data-pd="skip">Skip ${esc(sel.day)}</button>`}</div>
+      <div class="planend"><span class="hint">${nx?'Done with this plan?':'Plan complete.'}</span><button class="btn ghost small" type="button" data-pe="new">${nx?'Replace with a new plan':'Build a new plan'}</button><button class="link" type="button" data-pe="end">${nx?'End this plan':'Close this plan'}</button></div></div>
       ${workoutHTML(sel,selDay,n>1?`Week ${selWk+1} · ${sel.day}`:sel.day)}`;
+    out.querySelectorAll('[data-pe]').forEach(b=>b.onclick=()=>{if(b.dataset.pe==='new'){newPlan();return}
+      if(!nx||armTap(b,'Tap again to end it (your logged workouts stay)'))endPlan()});
     out.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{selDay=+b.dataset.day;render()});
     out.querySelectorAll('[data-wk]').forEach(b=>b.onclick=()=>{selWk=+b.dataset.wk;const x=p.plan[selWk].days.findIndex(w=>!dn[key(selWk,w)]&&!sk[key(selWk,w)]);selDay=x<0?0:x;render()});
     out.querySelectorAll('[data-pd]').forEach(b=>b.onclick=()=>{const a=b.dataset.pd;
@@ -2563,6 +2567,18 @@ function evalAch(){
   if(first){achRetro=fresh.length;return []}
   return fresh;
 }
+/* Ending a plan clears Store.state.week, so its days leave the schedule and the Continue tab. Logged workouts, finished
+   weeks (plansDone) and achievements stay. Store.state.plansEnded keeps a short history {id,created,ended,weeks,done,total}. */
+function archivePlan(){const p=planNorm();if(!p)return;const st=Store.state,dn=p.done||{};
+  const l=st.plansEnded||(st.plansEnded=[]);l.unshift({id:p.id,created:p.created||null,ended:Date.now(),weeks:p.plan.length,done:Object.keys(dn).length,total:p.plan.reduce((a,x)=>a+x.days.length,0)});if(l.length>20)l.length=20}
+function endPlan(){if(!planNorm())return;const st=Store.state;archivePlan();
+  st.week=null;if(current&&current.week){const s0=savedList()[0];current=s0?{single:s0,sid:s0.id}:null}
+  Store.saveState();render();renderContinue();try{renderRec();renderTrack()}catch(e){}}
+// set the builder up for a new weekly plan; Build plan then asks before replacing the current one
+function newPlan(){S.mode='week';save();renderSettings();go('build');
+  const g=$('gen');setTimeout(()=>{try{$('mode').scrollIntoView({block:'start',behavior:'smooth'})}catch(e){}},30);
+  const m=$('planMsg');if(m){m.textContent=planNorm()&&planNext(planNorm())?'Pick your days and plan length, then tap Build plan. It will ask before replacing your current plan.':'Pick your days and plan length, then tap Build plan.';m.hidden=false;setTimeout(()=>m.hidden=true,9000)}}
+const armTap=(b,txt,ms)=>{if(b.classList.contains('armed'))return true;const old=b.textContent;b.classList.add('armed');b.textContent=txt;setTimeout(()=>{b.classList.remove('armed');b.textContent=old},ms||4000);return false};
 // each week of a plan finished in full counts once (week 1 keeps the plan id so older saves are not counted twice)
 function notePlanDone(){const p=planNorm();if(!p)return;const dn=p.done||{};
   p.plan.forEach((x,k)=>{if(x.days.length&&x.days.every(w=>dn[(k+1)+':'+w.day])){const l=Store.state.plansDone||(Store.state.plansDone=[]),id=k?p.id+':'+(k+1):p.id;if(!l.includes(id))l.push(id)}})}
@@ -3024,7 +3040,8 @@ function renderContinue(){
       <div class="cdays">${WEEK.map(d=>{const i=days.findIndex(x=>x.day===d);if(i<0)return`<span class="cday rest">${d}</span>`;const t=dn[kk(nx.k,days[i])];
         return `<button class="cday${t?' dn':''}${i===nx.i?' nx':''}" data-c="wday:${nx.k}:${i}" aria-label="${d}${t?', done '+fmtDate(t):''}">${d}${t?'<i>✓</i>':''}</button>`}).join('')}</div>
       <p class="hint">Next: <b>${n>1?'Week '+(nx.k+1)+' · ':''}${w.day}</b> · ${GOALS[w.type]} · ${w.minutes} min · ${esc(eqLabel(w.eqs))}${last?` · last done ${fmtDate(last)}`:''}</p>
-      <div class="go"><button class="btn" data-c="wday:${nx.k}:${nx.i}">Open ${w.day}'s workout</button><button class="btn ghost small" data-c="wdone:${nx.k}:${nx.i}">Mark ${w.day} done</button></div></article>`}
+      <div class="go"><button class="btn" data-c="wday:${nx.k}:${nx.i}">Open ${w.day}'s workout</button><button class="btn ghost small" data-c="wdone:${nx.k}:${nx.i}">Mark ${w.day} done</button></div>
+      <div class="go"><button class="link" data-c="wnew">Replace with a new plan</button><button class="link" data-c="wend">End plan</button></div></article>`}
   if(items.includes('today')){const due=upcoming(1).filter(u=>u.date===todayStr());
     h=`<article class="ccard ccard-hot"><div class="eyebrow">Scheduled today · ${dowName(todayStr())}</div>${due.map((u,i)=>`<div class="trow"><span>${eqDots(u.eqs)}<b>${esc(u.label)}</b></span><button class="btn small" data-c="due:${i}">Open</button></div>`).join('')}
       <p class="hint">Want more? <button class="link" data-c="extra">Add another workout</button> built around these.</p></article>`}
@@ -3055,6 +3072,8 @@ function renderContinue(){
     if(k==='restart'&&r){clearResume();startGuided(r.w,0)}
     if(k==='drop'){if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Tap again to discard';return}clearResume();renderContinue()}
     if(k==='wday')openWeek(+a,+c);
+    if(k==='wnew'){newPlan();return}
+    if(k==='wend'){if(armTap(b,'Tap again to end it (logged workouts stay)'))endPlan();return}
     if(k==='wdone'){const p=planNorm(),w=p&&p.plan[+a].days[+c];if(w)finishedWorkout(null,w.weekRef)}
     if(k==='prog'){const prog=PROGRAMS.find(x=>x.id===a),ps=progState(a);if(prog&&ps){const nx=progNext(prog,ps);if(nx)openProgramDay(prog,nx.w,nx.d)}}
     if(k==='due'){openDue(upcoming(1).filter(u=>u.date===todayStr())[+a])}
@@ -3083,7 +3102,7 @@ document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>go(b.dataset.
 window.addEventListener('hashchange',()=>go(location.hash.slice(1),true));
 
 $('gen').onclick=()=>{const b=$('gen'),p=S.mode==='week'&&planNorm();
-  if(p&&planNext(p)&&Object.keys(p.done||{}).length&&!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Tap again: this replaces your current plan';
+  if(p&&planNext(p)&&!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Tap again to replace your current plan (logged workouts stay)';
     setTimeout(()=>{if(b.classList.contains('armed')){b.classList.remove('armed');b.textContent='Build plan'}},4000);return}
   b.classList.remove('armed');if(S.mode==='week')b.textContent='Build plan';generate(true)};
 $('useSkills').onchange=e=>{S.useSkills=e.target.checked;save()};
