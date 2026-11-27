@@ -665,15 +665,26 @@ function rtpTop(b){
   const u=norm(add(mul(F.f,0.55),[0,0.84,0]));
   return Object.assign({},b,{G:add(sR,mul(u,54)),D:[0,1,0],eR:[-1,-0.2,0.2],freeL:add(sL,mul(norm(add(mul(F.f,0.8),mul(F.l,0.55))),50))});
 }
-function rotPress(dir,fromFront){
-  const b=tb(dir);
-  const start=fromFront?[[0,C_ONE],[0.25,{}],[0.65,orderOn(b)],[0.8,{}]]:[[0,Object.assign({},C_ONE,orderOn(b))],[0.25,{}]];
-  const t=start[start.length-1][0];
-  return start.concat([[t+0.5,rtpTop(b)],[t+0.75,{}],[t+1.3,orderOn(b)],[t+1.5,{}]]);
+// Rotational torch press (Chris): cross-body only. The lead (right) hand turns in toward the other side: a
+// full 90 degree turn of the torso, pivoting on the back (right) foot, pressing the club up to a forearm lock
+// as you turn. Then turn back to the front, bringing the club back in to order on the way.
+function rotTorchPress(){
+  const b90=Object.assign({},tb(1,90),{fyR:70,tR:0.6}),b45=Object.assign({},tb(1,45),{fyR:38,tR:0.35});
+  const top=rtpTop(b90);
+  const mid=b=>{const o=orderOn(b),t=rtpTop(b);return Object.assign({},t,{G:mul(add(o.G,t.G),0.5),D:[0,1,0],eR:[-0.8,-0.6,0.3],pass:true})};
+  return [[0,C_ONE],[0.25,{}],[0.75,mid(b45)],[1.25,top],[1.5,{}],[2.0,mid(b45)],[2.5,Object.assign({},UPRIGHT,C_ONE)],[2.7,{}]];
 }
-function rotTorchPress(){   // the move on its own: turn, press, lower, turn back to the front
-  const k=rotPress(1,true),t=k[k.length-1][0];
-  return k.concat([[t+0.4,Object.assign({},UPRIGHT,C_ONE)],[t+0.6,{}]]);
+// the half reverse mill done facing front, for flows: over the lead shoulder, down behind, round behind the
+// head and up, and back to order in front
+function halfRevMillFront(){
+  const step=(deg,extra)=>Object.assign({},tb(deg>=0?1:-1,Math.abs(deg)),extra);
+  return [[0,C_ONE],[0.2,{}],
+    [0.5,step(-14,{G:[-20,163,0],D:norm([-0.85,0.1,-0.5]),eR:[-0.5,0.5,0.8],pass:true})],
+    [0.8,step(-8,{G:[-15,160,-2],D:norm([0.15,-0.9,-0.4]),eR:[-0.3,0.6,1],pass:true})],
+    [1.1,step(6,{G:[-13,164,-2],D:norm([0.9,-0.05,-0.42]),eR:[-0.3,0.7,0.8],pass:true})],
+    [1.35,step(4,{G:[-18,166,0],D:norm([-0.25,0.88,-0.4]),eR:[-0.4,0.6,0.8],pass:true})],
+    [1.65,Object.assign({},UPRIGHT,{G:[-17,150,22],D:norm([-0.2,0.7,0.68]),eR:[-1,-0.6,0.2],pass:true})],
+    [1.95,Object.assign({},UPRIGHT,C_ONE)],[2.15,{}]];
 }
 // half reverse mill: from order turned left, the small outside circle behind the head (over the right
 // shoulder, down behind, round behind the head and up), and the club whips the body round to face right
@@ -1488,10 +1499,8 @@ Object.assign(MOVES,{
   'club:reverse mill':{kf:both(reverseMill()),
     cue:'One hand. From order, elbow at your side, turn toward your lead side and push the club straight out, club upright. Outside circle with the arm long, then carry it straight on over your lead shoulder, down behind and round behind your head, and pull it back over the shoulder to order. Both arms.'},
   'club:rotational torch press':{kf:both(rotTorchPress()),
-    cue:'One hand, club in order. Rotate through your hip and pivot on the back foot (heel up) to turn away from the club. Thumb on the back of the handle. Drive the club forward and up in the direction you have turned to a forearm lock, club upright like a torch, free arm reaching forward. Pull it back down to order with the lat. Both arms.'},
-  'club:rotational torch press:left':{kf:rotPress(1,true),cue:'Turn left, pivoting on the right foot, and press the club forward and up to a forearm lock. Pull it down to order with the lat.'},
-  'club:rotational torch press:right':{kf:rotPress(-1,false),cue:'Now turned the other way, pivoting on the left foot: press forward and up again, and pull it down to order.'},
-  'club:half reverse mill':{kf:halfReverseMill(),cue:'From order, the small outside circle: over the lead shoulder, down behind and round behind the head. Let the club whip your body round to the other side, pivoting the feet.'},
+    cue:'One hand, cross-body only. From order, turn the torso a full 90 degrees in toward the other side, pivoting on the back foot, and press the club up to a forearm lock as you turn, club upright, free arm reaching forward. Turn back to the front and bring the club back in to order on the way. Both arms.'},
+  'club:half reverse mill':{kf:both(halfRevMillFront()),cue:'From order, the small outside circle: over the lead shoulder, down behind and round behind the head. Let the club whip your body round to the other side, pivoting the feet.'},
   'club:half mill':{kf:halfMill(),cue:'From order, the small inside circle: elbow out to the side, cast behind the head, down behind the shoulder and round to the front. Let the momentum turn your hips back.'},
   'club:switch shield cast':{kf:both(switchShield()),
     cue:'One-arm shield cast that changes hands every rep. Cast over the opposite ear, swing down behind and pull it over your lead shoulder, then bring the club down toward the navel. The other hand catches it there and starts its own shield cast.'},
@@ -1824,15 +1833,30 @@ const FLOW_TL2={
   // Club Foundations (Chris): one rep of each move on the same lead side, then the H2H clean switches the lead
   // and the whole sequence is mirrored. Built from a right lead (right hand on top, club on the right).
   'club:club foundations':()=>{
-    const ss=sideSwingKF(false);                               // one side swing rep: cast, low, up to the top
-    const orderR=Object.assign({},STAND,CB2,{gL:0,gR:7,G:[-7,124,22],D:[0,1,0],eL:[1,-1,-0.25],eR:[-1,-1,-0.25]});
-    const dip={G:[-3,110,34],D:norm([0,-0.25,1]),eL:[1,-0.5,0],eR:[-1,-0.5,0],pass:true};   // from order, lower it in front
-    const one=[[0,orderR],[0.25,{}],[0.6,dip],[0.95,Object.assign({},ss[0][1],{pass:true})]].concat(ss.slice(2,9).map(([t,p])=>[t+0.65,p]));
-    one.push([2.95,Object.assign({},UPRIGHT,{G:[-7,124,22],D:[0,1,0],eL:[1,-1,-0.25],eR:[-1,-1,-0.25],pass:true})],[3.15,{}]);
+    const one=ssFlowRep(false);                                // one side swing rep
     const tp=mirrorKF(torchPressTwo()).slice(0,6);            // one torch press
     return flowTL([[one,0],[mirrorKF(twoArmCast()),1],[topSwap(shieldCast()),2],[tp,3],[h2hClean(),4]],
       ['Two-hand side swing','Two-hand arm cast','Two-hand shield cast','Two-hand torch press','H2H clean']);}
 };
+// one side swing rep for a flow, from order: lower the club in front, cast, low, up to the top, then to order
+function ssFlowRep(one){
+  const ss=sideSwingKF(one);
+  const order=one?Object.assign({},C_ONE):Object.assign({},STAND,CB2,{gL:0,gR:7,G:[-7,124,22],D:[0,1,0],eL:[1,-1,-0.25],eR:[-1,-1,-0.25]});
+  const dip=one?{G:[-12,108,32],D:norm([0,-0.25,1]),eR:[-1,-0.5,0],freeL:[21,87,3],pass:true}:{G:[-3,110,34],D:norm([0,-0.25,1]),eL:[1,-0.5,0],eR:[-1,-0.5,0],pass:true};
+  const k=[[0,order],[0.25,{}],[0.6,dip],[0.95,Object.assign({},ss[0][1],{pass:true})]].concat(ss.slice(2,9).map(([t,p])=>[t+0.65,p]));
+  const fin=one?Object.assign({},UPRIGHT,C_ORDER1,{pass:true}):Object.assign({},UPRIGHT,{G:[-7,124,22],D:[0,1,0],eL:[1,-1,-0.25],eR:[-1,-1,-0.25],pass:true});
+  return k.concat([[2.95,fin],[3.15,{}]]);
+}
+Object.assign(FLOW_TL2,{
+  // Single-Arm Foundations (Chris): the one-hand version of Club Foundations, one rep of each on the lead
+  // (working) hand, then a switch 180 hands the club over and it is mirrored.
+  'club:single-arm foundations':()=>flowTL([[ssFlowRep(true),0],[armCast(),1],[oneArmShield(),2],[torchPress(),3],[switch180(),4]],
+    ['Single-arm side swing','Arm cast','One-arm shield cast','Torch press','Switch 180']),
+  // Rotational Torch Press to Half Reverse Mill (Chris): lead side rotational torch press, half reverse mill,
+  // then a switch 180 hands the club over; mirrored.
+  'club:rotational torch press to half reverse mill':()=>flowTL([[rotTorchPress(),0],[halfRevMillFront(),1],[switch180(),2]],
+    ['Rotational torch press','Half reverse mill','Switch 180'])
+});
 Object.assign(FLOW_TL,FLOW_TL2);
 const flowTLFor=flow=>{const f=FLOW_TL[(flow.eq||'club')+':'+String(flow.name).toLowerCase()];return f?f():null};
 
