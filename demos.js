@@ -256,9 +256,14 @@ function gravedigger(){
 const ROW_L=(extra)=>{
   const body=Object.assign({},STAND,{P:[0,93,0],pitch:4,yaw:14,hipYaw:6,feet:{L:[16,8,0],R:[-16,8,0]},turn:12,tL:0,tR:0,fyL:0,fyR:0},extra||{});
   const sL=shoulderOf(body,'L'),sR=shoulderOf(body,'R'),R=REACH1-0.5;
-  const L=add(sL,mul(norm([0.06,-1,-0.36]),R)),fwd=norm([-0.22,0.12,1]);
-  let d=40;while(d<90&&len(sub(add(L,mul(fwd,d)),sR))<R)d+=0.5;   // slide forward along the shaft to the base hand's reach
-  const B=add(L,mul(fwd,d));
+  // the lead hand hangs back toward the head (it sits about a hand's width from the head), the base hand
+  // reaches forward to the end of the shaft; lean the lead arm back until the hands are that far apart
+  let L,B,d;
+  for(let back=0.36;back<1.2;back+=0.04){
+    L=add(sL,mul(norm([0.06,-1,-back]),R));const fwd=norm([-0.22,0.2,1]);
+    d=40;while(d<90&&len(sub(add(L,mul(fwd,d)),sR))<R)d+=0.5;   // slide forward along the shaft to the base hand's reach
+    B=add(L,mul(fwd,d));if(d>=74)break;
+  }
   return Object.assign(body,{G:B,D:norm(sub(L,B)),choke:6,gR:0,gL:len(sub(L,B)),offL:0,offR:0,eL:[1,-0.2,-0.4],eR:[-1,-0.2,0.3]})};
 const ROW_R=(extra)=>mirror(ROW_L(extra&&Object.assign({},extra,'twist' in extra?{twist:-extra.twist}:{},'hipYaw' in extra?{hipYaw:-extra.hipYaw}:{})));
 // Sword switch (Chris): from the row position the base hand lets go; the lead hand drives the mace forward
@@ -315,13 +320,14 @@ function paddle(){
   // blade in the water). The head is drawn down and back in a paddling arc as the support hand pushes the
   // base down; the arc finishes with the lead hand bringing the head back up behind and the support hand
   // settling the mace back into the row position. Three strokes, a sword switch, the other side.
-  const at=(B,D,pitch,yaw,pass)=>Object.assign({},ROW_L(),{G:B,D:norm(D),pitch,yaw,P:[0,93-pitch*0.15,-pitch*0.2],pass:!!pass});
-  const row=ROW_L();
-  // the forward push is level: the head travels straight forward past the hip as the base rises overhead
-  const reach=at([15,181,22],[0.05,-0.97,-0.25],6,10,true);    // head beside the hip, shaft near vertical
-  const catch_=at([10,166,8],[0.1,-0.9,0.42],10,8);            // head out in front at the same height, base up
-  const pull=at([9,144,30],[0.12,-1,-0.05],20,12,true);        // head down beside the leg
-  const back=at([8,128,42],[0.12,-0.6,-0.8],10,16,true);       // head coming back up behind
+  // poses placed by the lead hand (near the head, as in the row position); the base hand is up the shaft
+  const row=ROW_L(),gl=row.gL;
+  const at=(lead,D,pitch,yaw,pass)=>{const d=norm(D);return Object.assign({},row,{G:sub(lead,mul(d,gl)),D:d,pitch,yaw,P:[0,93-pitch*0.15,-pitch*0.2],pass:!!pass})};
+  // the forward push is level: the head travels straight forward past the hip as the base rises
+  const reach=at([18,108,6],[0.05,-0.97,-0.25],8,10,true);     // head beside the hip, shaft near vertical
+  const catch_=at([17,100,38],[0.1,-0.9,0.42],12,8);           // head out in front at the same height, base up
+  const pull=at([16,82,20],[0.12,-1,-0.05],26,12,true);        // head down beside the leg
+  const back=at([15,98,-12],[0.12,-0.6,-0.8],10,16,true);      // head coming back up behind
   const stroke=t=>[[t+0.45,reach],[t+0.75,catch_],[t+0.95,{}],[t+1.4,pull],[t+1.75,back],[t+2.05,Object.assign({},row)],[t+2.25,{}]];
   let left=[[0,row],[0.3,{}]];for(let i=0;i<3;i++)left=left.concat(stroke(0.3+2.25*i));
   const right=mirrorKF(left);
