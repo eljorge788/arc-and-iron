@@ -379,7 +379,7 @@ button.steplink{font:inherit;font-weight:700;background:none;border:0;padding:0;
 .badge{width:48px;height:48px;flex:none;display:block}
 .badge .b-rim{fill:var(--tier)}.badge .b-core{fill:#1B2328}.badge .b-dash{fill:none;stroke:var(--tier);stroke-width:1.2;stroke-dasharray:2 2.5}
 .badge .b-ico{fill:none;stroke:#ECEFEE;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.badge.t1{--tier:#8C979E}.badge.t2{--tier:#5C8DB8}.badge.t3{--tier:#D46A2C}
+.badge.t0{--tier:#8A7E6E}.badge.t1{--tier:#8C979E}.badge.t2{--tier:#5C8DB8}.badge.t3{--tier:#D46A2C}
 .badge.locked .b-rim{fill:var(--line)}.badge.locked .b-core{fill:var(--surface)}.badge.locked .b-dash{stroke:var(--line)}.badge.locked .b-ico{stroke:var(--muted);opacity:.6}
 .ach{display:grid;gap:8px}
 .ach-recent{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:6px 0 12px}
@@ -583,6 +583,14 @@ textarea{min-height:70px;resize:vertical}
 .pday.dn{background:var(--good-soft);color:var(--good);border-color:transparent}
 .pday.cur{border:2px solid var(--accent);font-weight:700}
 .pathcard>summary{list-style:none;cursor:pointer;display:grid;gap:8px}
+.plvl{border-top:1px solid var(--line);padding:8px 0}
+.plvl>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.plvl>summary::-webkit-details-marker{display:none}
+.plvl>summary b{font-family:var(--display);text-transform:uppercase;font-size:1.05rem}
+.plvl>summary small{color:var(--muted);font-size:.85rem}
+.plvl.pl-done>summary small{color:var(--good)}
+.badge-mini{font-family:var(--mono);font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;border-radius:10px;padding:2px 7px;color:#fff;background:#8A7E6E}
+.badge-mini.t1{background:#8C979E}.badge-mini.t2{background:#5C8DB8}.badge-mini.t3{background:#D46A2C}
 .pathcard>summary::-webkit-details-marker{display:none}
 .pathcard>summary b{font-family:var(--display);font-size:1.25rem;text-transform:uppercase;display:block}
 .pathcard>summary small{color:var(--muted);font-size:.85rem}
@@ -765,8 +773,9 @@ html.guiding,html.guiding body{overflow:hidden}
     </section>
     <section aria-labelledby="sk-h">
       <h2 id="sk-h">Skill paths</h2>
-      <p class="note">Learn each implement one step at a time. Mark a step mastered when you hit its goal with clean form, and the next one unlocks.</p>
-      <label class="pairrow check"><input type="checkbox" id="useSkills"> Only use moves I have unlocked when building workouts (applies once you start a path)</label>
+      <p class="note">Learn each implement level by level: Basics, Beginner, Intermediate and Advanced. Every move and flow is its own step. Mark a step mastered when you hit its goal with clean form, and the next one opens. Each level you finish earns a badge.</p>
+      <label class="pairrow check"><input type="checkbox" id="useSkills"> Build workouts from the moves and flows I have mastered, plus the next few I'm learning (this also sets my workout level)</label>
+      <label class="pairrow check"><input type="checkbox" id="pathLock"> Require each implement's Basics before starting a weekly plan or program with it</label>
       <div id="paths" class="paths"></div>
     </section>
   </div>
@@ -1163,7 +1172,10 @@ function seg(id,opts,key,after){
     b.onclick=()=>{S[key]=v;save();seg(id,opts,key,after);after&&after()};el.appendChild(b)});
 }
 function renderSettings(){
-  seg('level',LEVELS.map((l,i)=>[i+1,l]),'level',()=>{S.levelAt=Date.now();save()});
+  syncPathLevel();
+  seg('level',LEVELS.map((l,i)=>[i+1,l]),'level',()=>{S.levelAt=Date.now();save();if(followPaths()&&syncPathLevel())renderSettings()});
+  {const f=$('level').parentNode;let h=f.querySelector('.lvlnote');if(!h){h=document.createElement('span');h.className='hint lvlnote';f.appendChild(h)}
+    h.textContent=followPaths()?'Set by your skill paths: it moves up as you master each level. Turn that off under Programs › Skill paths.':''}
   seg('goal',Object.entries(GOALS),'goal');
   const fmtHints={auto:'A different style each time.',intervals:'Timed work and rest through a circuit.',emom:'A set of reps at the top of every minute.',tabata:'20 s hard, 10 s easy, 8 rounds.',amrap:'As many rounds as you can in the time.',ladder:'Climb 2, 4, 6, 8 reps and start again.',deck:'Draw cards: suit picks the move, number sets the reps.'};
   if(!S.format)S.format='auto';
@@ -1296,8 +1308,11 @@ function undoProg(w){
 let BUILD_CTX=null;
 function pool(eqs,maxLvl,noGate){
   const base=x=>eqs.includes(x.eq)&&(x.lvl<=maxLvl||masteredMove(x.name,x.eq))&&(!x.d||effEq(x.eq).pair);
-  let p=X.filter(x=>base(x)&&(noGate||!skillLocked(x)));
-  if(p.length<3)p=X.filter(base);
+  let p;
+  if(!noGate&&followPaths()){const ok=x=>eqs.includes(x.eq)&&(!x.d||effEq(x.eq).pair);
+    // mastered moves plus the next few you are learning; open a few more steps if that is too few to build from
+    for(const n of [PATH_WIN,6,10,16]){p=X.filter(x=>ok(x)&&!skillLocked(x,n));if(p.length>=3)break}}
+  if(!p||p.length<3)p=X.filter(base);
   const ctx=BUILD_CTX;
   if(ctx&&ctx.rest.length){const q=p.filter(x=>!ctx.rest.some(g=>(PAT_MUSCLES[x.pat]||{})[g]===2));if(q.length>=5&&q.length<p.length){ctx.avoided=true;p=q}}
   return p;
@@ -1366,7 +1381,10 @@ function flowBlock(eqs,min,used,pref){
   if(!f){
     let fe=eqs;const ctx=BUILD_CTX;
     if(ctx&&ctx.rest.length){const safe=eqs.filter(k=>!ctx.rest.some(g=>(FLOW_MUSCLES[k]||{})[g]===2));if(safe.length){if(safe.length<eqs.length)ctx.avoided=true;fe=safe}}
-    let opts=FLOWS.filter(x=>fe.includes(x.eq)&&x.lvl<=S.level&&!used.has(x.name));
+    let opts=[];
+    if(followPaths()){for(const n of [PATH_WIN,6,10,40]){opts=FLOWS.filter(x=>fe.includes(x.eq)&&!skillLocked(x,n)&&!used.has(x.name));if(opts.length)break}
+      if(!opts.length)opts=FLOWS.filter(x=>fe.includes(x.eq)&&!skillLocked(x,40))}
+    if(!opts.length)opts=FLOWS.filter(x=>fe.includes(x.eq)&&x.lvl<=S.level&&!used.has(x.name));
     if(!opts.length)opts=FLOWS.filter(x=>fe.includes(x.eq)&&x.lvl<=S.level);
     if(!opts.length)return null;
     const top=opts.filter(x=>x.lvl===S.level);f=(top.length&&Math.random()<.6)?rnd(top):rnd(opts);
@@ -1486,9 +1504,12 @@ let current=null,selDay=0,selWk=0;
 function generate(jump){
   const eqs=activeEq();const m=$('msg');
   if(!eqs.length){m.textContent='Turn on at least one implement and pick a weight you own.';m.hidden=false;return}
-  m.hidden=true;fromStore=true;$('gearnote').hidden=true;
+  m.hidden=true;m.textContent='';fromStore=true;$('gearnote').hidden=true;
   if(S.mode==='single'){const ar=schedAround();current={single:buildWorkout(S.goal,eqs,S.minutes,ar?{around:ar}:{})};if(jump===true)keepBuilt()}
   else{
+    const nb=needBasics(eqs);
+    if(nb.length===eqs.length){m.innerHTML=`Weekly plans open once you finish the Basics on a skill path. Your ${esc(eqNames(nb))} ${nb.length>1?'paths start':'path starts'} with how to pick it up, set it down and hold it. <button class="link" type="button" onclick="goPaths('${nb[0]}')">Go to Basics</button> · Single workouts are open now.`;m.hidden=false;return}
+    if(nb.length){nb.forEach(k=>eqs.splice(eqs.indexOf(k),1));m.innerHTML=`This plan leaves out your ${esc(eqNames(nb))} until ${nb.length>1?'their':'its'} Basics are done. <button class="link" type="button" onclick="goPaths('${nb[0]}')">Go to Basics</button>`;m.hidden=false}
     const names=WEEK.filter(d=>S.week[d]>0);
     if(!names.length){m.textContent='Pick minutes for at least one day of the week.';m.hidden=false;return}
     const types=[];for(let i=0;i<names.length;i++)types.push(DAYTYPES[S.goal][i%DAYTYPES[S.goal].length]);
@@ -2058,40 +2079,127 @@ $('gLater').onclick=()=>{if(!G)return;snapGuided();say('Saved. Pick it up from t
 document.addEventListener('keydown',e=>{if(!G)return;if(e.key==='Escape'){$('gEnd').click()}});
 
 /* ---------- skill paths ---------- */
-const PATHS={
-  mace:{name:'Steel mace',steps:[
-    {t:'Grip & prayer switches',m:['Prayer switch'],goal:'20 smooth switches at chest height with the head staying still.'},
-    {t:'Pendulum swing',m:['Pendulum swing'],goal:'30 seconds of even arcs: arms long, no shoulder shrug.'},
-    {t:'Gravedigger',m:['Gravedigger'],goal:'10 per side; back foot pivots and the spine stays long.'},
-    {t:'10-to-2',m:['10-to-2'],goal:'10 clean reps per side; the mace stays close behind your back.'},
-    {t:'Squats & lunges with the mace',m:['Barbarian squat','Shouldered reverse lunge','Lateral lunge','Mace front squat'],goal:'8 barbarian squats and 6 lunges per side, smooth and controlled.'},
-    {t:'The 360',m:['360'],goal:'10 per side with your lightest mace: head centered, elbows tight.'},
-    {t:'Uppercuts & curls',m:['Uppercut','Ballistic curl 360','Switch curl','Offset press'],goal:'8 per side, catching the mace softly every time.'},
-    {t:'Linking flows',m:['Lunge to 360','Offset march'],goal:'Squat · Lunge · 360 for 2 minutes without stopping.'}]},
-  club:{name:'Steel club',steps:[
-    {t:'Two-hand side swing',m:['Two-hand side swing'],goal:'20 swings driven by the hips: elbows locked, club to shoulder height, knees staying back as it crosses.'},
-    {t:'Two-hand arm cast',m:['Two-hand arm cast'],goal:'10 per side; the club stays close as it passes behind.'},
-    {t:'Two-hand shield cast',m:['Two-hand shield cast','Club barbarian squat','Order-position squat'],goal:'10 per side without the hips swaying.'},
-    {t:'Inside & outside circles',m:['Inside circle','Outside circle'],goal:'10 each direction per arm, light club, slow and smooth.'},
-    {t:'Torch & flag press',m:['Torch press','Flag press'],goal:'8 per side with the club steady at the top.'},
-    {t:'One-arm shield cast',m:['One-arm shield cast','Front lever hold'],goal:'8 per side; ribs down, shoulder packed.'},
-    {t:'Mill & reverse mill',m:['Mill','Reverse mill','Reverse lunge arm cast'],goal:'8 of each per side, elbow tracing a clean circle.'},
-    {t:'Gamma cast & side clean',m:['Gamma cast','Side clean'],goal:'10 alternating gamma casts with no pause.'},
-    {t:'Advanced swings',m:['Bullwhip','Clock squat','Double mill','Double swipe'],goal:'Your own call: clean, relaxed reps at speed.'}]},
-  // Kettlebell steps follow the learning order in Chris's lesson notes (Mark Wildman, lessons 1-16).
-  // Saved progress is keyed by step number: migrateKbPath() moved older saves onto these steps.
-  kb:{name:'Kettlebell',steps:[
-    {t:'Deadlift',m:['Two-hand deadlift','Suitcase deadlift','Farmer carry'],goal:'2–3 sets of 10 two-hand deadlifts: stand all the way up, tailbone tucked, touch down. 8 suitcase deadlifts per side without leaning.'},
-    {t:'Two-hand swing',m:['Two-hand swing'],goal:'15 crisp swings: hips snap, bell floats, no squatting.'},
-    {t:'Around the world & halo',m:['Around-the-world','Halo','Goblet squat'],goal:'20 around the world each way with straight arms, 5 halos each way with the head still, and 10 deep goblet squats by the horns (hands under the bell if you need it).'},
-    {t:'Figure 8s & alternating halo',m:['Figure-8','Figure 8 back to front','Alternating halo'],goal:'10 passes under each leg front to back and back to front, standing tall each lap; 5 alternating halos each way.'},
-    {t:'One-arm swing',m:['One-arm swing','Hand-to-hand swing'],goal:'10 per side with the forearm meeting the inner thigh, then 3 hand-to-hand switches each side at the top.'},
-    {t:'Rack position',m:['Rack pickup','Push-back drill','Front squat','Rack reverse lunge'],goal:'5 rack pickups per side: fingers to the sky, wrist flat, elbow by the hip. Then 3–5 slow push-backs and 5 front squats per side.'},
-    {t:'Clean',m:['Clean','Clean with transitions','High pull','Single-leg deadlift'],goal:'3 swing cleans per side, pausing to check the rack each time; then one set with hand-to-hand transitions.'},
-    {t:'Press',m:['Overhead press','Clean & press','Start-stop','Push press','Bent-over row'],goal:'Build to 4 sets of 3 strict presses per side, adding a set each session. Start and stop every set the same way.'},
-    {t:'Turkish get-up',m:['Turkish get-up'],goal:'1 slow get-up per side with the arm locked the whole way.'},
-    {t:'Snatch & windmill',m:['Snatch','Windmill','Crush press'],goal:'10 per side with no bell flip onto the forearm.'}]}
+/* ---------- skill paths ----------
+   Four levels per implement: Basics (picking the gear up and setting it down, holds and positions), then Beginner,
+   Intermediate and Advanced, where every move and every flow is its own step, in learning order. A flow sits at its
+   own level; any move it needs from a higher level is learned just before it. Steps have permanent ids, so steps can be
+   added or reordered later without moving anyone's progress. Progress is Store.state.path {stepId: time}. The old
+   numbered paths (Store.state.skills) are left untouched; the new paths start fresh. */
+const PATH_LVLS=['Basics','Beginner','Intermediate','Advanced'];
+const PATH_WIN=3;   // how many unlearned steps are open to practice (and used in workouts) at a time
+const PATH_DEF={
+  kb:{name:'Kettlebell',basics:[
+    {k:'pickup',t:'Pick up and set down',demo:'Two-hand deadlift',goal:'Feet outside the bell, bell in line with your insteps. Hips back, back long, both hands on the handle, then stand up by driving through your heels. Set it down the same way: hips back, never round over to reach it. 5 clean pickups.'},
+    {k:'park',t:'Hike and park',demo:'Two-hand swing',goal:'Set the bell a foot in front of you, tilt it toward you and hike it back high between your thighs, then stand. To finish a set, let it swing back once and park it on the floor in front of you. 5 hikes and 5 parks with a flat back.'},
+    {k:'horn',t:'Horn hold and goblet hold',demo:'Goblet squat',goal:'Horn hold: hands on the sides of the handle (the horns), bell turned upside down. Goblet hold: the same grip with the bell facing down at your chest, elbows in. Hold each for 20 seconds, standing tall with ribs down.'},
+    {k:'crush',t:'Crush grip',demo:'Crush press',goal:'Press your palms together with the ball of the bell between them and squeeze. Hold 15 seconds at the chest with the bell steady.'},
+    {k:'suitcase',t:'Suitcase hold',demo:'Farmer carry',goal:'Bell by your side on a straight arm, shoulders level, no leaning. Hold 20 seconds each side.'},
+    {k:'rack',t:'Rack position',demo:'Rack pickup',goal:'Two hands up to the rack, one hand down: fingers to the sky, wrist flat, the web of your hand deep in the corner of the handle, thumb at your collarbone, elbow on your hip bone. Lower with a straight arm, thumb back. 5 each side.'},
+    {k:'overhead',t:'Overhead hold',demo:'Overhead hold',goal:'From the rack, press to a locked arm with the bell behind the wrist and the biceps by your ear. Hold 10 seconds each side, then bring it back to the rack with control. Use a light bell.'}],
+   levels:[
+    ['Two-hand deadlift','Suitcase deadlift','Farmer carry','Two-hand swing','Around-the-world','Halo','Goblet squat','Horn curl','Pullover','Tricep press','Bent-over row','Rack reverse lunge','Overhead press','Alternating halo','Thrusters','Halo Flow'],
+    ['Figure-8','Figure 8 back to front','One-arm swing','Hand-to-hand swing','Single-leg deadlift','Front squat','Clean','High pull','Clean & press','Push press','Swing–Clean–Press–Squat','Crush press','Gorilla row','Double swing','Double front squat','Turkish get-up','Windmill','Clean & Press Windmill Chain'],
+    ['Snatch','Snatch–Windmill Chain']]},
+  mace:{name:'Steel mace',basics:[
+    {k:'pickup',t:'Pick up and set down',goal:'Mace on the floor beside you. Hinge with a long back, take the base with one hand and the shaft near the head with the other, and stand it up to order. Set it down the same way, head first, without rounding over. 5 each side.'},
+    {k:'order',t:'Order position',demo:'Prayer switch',goal:'Lead hand on top, hands together in front of your belly button, mace straight up. Hold 20 seconds with your shoulders down, then change the top hand and hold again.'},
+    {k:'grips',t:'Choke-up and offset hold',demo:'Offset press',goal:'Slide your hands up toward the head (choke up) and feel how much easier it is. Then the offset hold: one hand on the base, the lead hand partway up the shaft. Hold each 15 seconds per side.'},
+    {k:'highready',t:'High ready (seatbelt)',demo:'High ready',goal:'Lead hand at the head, the other at the base, mace across your body like a seatbelt: head at the lead shoulder, base at the other hip. Hold 15 seconds each side.'},
+    {k:'row',t:'Row position',demo:'Paddle',goal:'Split hold: base hand at the base, lead hand at or near the head. Let the mace hang level at your side on long, straight arms, head behind you. Hold 15 seconds each side.'},
+    {k:'shoulder',t:'Shouldered position',demo:'Shouldered reverse lunge',goal:'Rest the shaft on one shoulder with the head behind you, hands stacked low on the shaft, standing tall without leaning. Hold 20 seconds each side.'}],
+   levels:[
+    ['Pendulum swing','Prayer switch','Mace front squat','Barbarian squat','Shouldered reverse lunge','10-to-2','Foundation Flow','Offset press','Gravedigger','Gravedigger Flow','Lateral lunge','Shield press','Archer hold','Offset bent-over row','Paddle','Sword switch','Plank pull-through'],
+    ['360','Squat · Lunge · 360','Uppercut','360 Uppercut Flow','Switch curl','Ballistic curl 360','Curl & Step Flow','Offset march'],
+    ['Lunge to 360','Warrior Flow']]},
+  club:{name:'Steel club',basics:[
+    {k:'grips',t:'Parts and grips',goal:'Know the pommel (the knob), handle and barrel. Hammer grip: little finger against the pommel, firm but not crushing. Saber grip: the same hand with the club in line with the forearm. Full choke: hand high, right under the barrel, for easier control. Hold each 10 seconds.'},
+    {k:'pickup',t:'Pick up and set down',goal:'Club on the floor in front of you, handle toward you. Hinge with a long back, take the handle with both hands and stand it up to order. Set it down the same way, barrel first, without rounding over. 5 clean pickups.'},
+    {k:'order',t:'Order and side order',demo:'Order-position squat',goal:'Order: club upright in front of your chest, hands at your sternum, elbows by your ribs, feet shoulder-width. Side order: the same hold upright on one side. Hold each 20 seconds.'},
+    {k:'lead',t:'Lead side and hand switch',goal:'Your lead side is your top hand; a two-hand club is held on that side. From side order, bring the club to the center and change which hand is on top, then settle into side order on the other side. 10 slow switches.'},
+    {k:'rocker',t:'Side rocker',demo:'Side rocker',goal:'Both hands on the handle, club hanging in front, knees soft. Rock it side to side across your shins, shifting your weight toward it. 30 seconds of easy, even rocking.'}],
+   levels:[
+    ['Two-hand side swing','Two-hand clean','Order-position squat','Two-hand arm cast','Club barbarian squat','Two-hand shield cast','Two-hand torch press','Two-hand clean to torch press','Two-hand flag press','Two-hand arm cast to flag press','Two-hand swing squat','H2H clean','Club Foundations','Two-hand reverse lunge arm cast','Two-hand forward lunge flag press','Two-Hand Lunge Cast & Flag','Lateral swing','Arm cast','Swipe','One-hand 180','Inside circle','Outside circle'],
+    ['Single-arm side swing','Side swipe','One-arm shield cast','Switch shield cast','Torch press','Flag press','Front lever hold','Side lever hold','Rotational torch press','Mill','Reverse mill','Three-Club Mini Flow','Switch 180','Single-Arm Foundations','Rotational Torch Press to Half Reverse Mill','Reverse lunge arm cast','Forward lunge flag press','Lunge Cast & Flag','Gamma cast','Side clean','Two-hand clock squat','Double swipe'],
+    ['Switch reverse mill','Bullwhip','Clock squat','Double mill']]}
 };
+// goals for moves and flows; anything not listed gets a goal from how the move is done
+const PATH_GOALS={
+  'kb:Two-hand deadlift':'2–3 sets of 10: stand all the way up, tailbone tucked, and touch the bell down each rep.',
+  'kb:Suitcase deadlift':'8 per side without leaning toward the bell.',
+  'kb:Two-hand swing':'15 crisp swings: the hips snap, the bell floats to chest height, no squatting.',
+  'kb:Around-the-world':'20 each way with straight arms and the hips still.',
+  'kb:Halo':'5 each way with the head still and the elbows close to your face.',
+  'kb:Goblet squat':'10 deep goblet squats, chest up, elbows inside the knees (hands under the bell if you need it).',
+  'kb:Figure-8':'10 passes under the legs front to back, standing tall each lap.',
+  'kb:Figure 8 back to front':'10 passes under the legs back to front, hand finding hand.',
+  'kb:Alternating halo':'5 each way, changing direction every rep.',
+  'kb:One-arm swing':'10 per side, forearm meeting the inner thigh, shoulders square.',
+  'kb:Hand-to-hand swing':'10 switches at the top, never the bottom.',
+  'kb:Front squat':'5 per side from a clean rack: wrist flat, elbow in.',
+  'kb:Clean':'3 per side, pausing to check the rack each time; then a set with hand-to-hand transitions.',
+  'kb:Overhead press':'Build to 4 sets of 3 strict presses per side, adding a set each session.',
+  'kb:Turkish get-up':'1 slow get-up per side with the arm locked the whole way.',
+  'kb:Snatch':'10 per side with no bell flip onto the forearm.',
+  'mace:Prayer switch':'20 smooth switches at chest height with the head staying still.',
+  'mace:Pendulum swing':'30 seconds of even arcs: arms long, no shoulder shrug.',
+  'mace:Gravedigger':'10 per side; the back foot pivots and the spine stays long.',
+  'mace:10-to-2':'10 clean reps per side; the mace stays close behind your back.',
+  'mace:360':'10 per side with your lightest mace: head centered, elbows tight.',
+  'club:Two-hand side swing':'20 swings driven by the hips: elbows locked, club to shoulder height.',
+  'club:Two-hand arm cast':'10 per side; the club stays close as it passes behind.',
+  'club:Two-hand shield cast':'10 per side without the hips swaying.',
+  'club:Inside circle':'10 per arm, light club, slow and smooth.',
+  'club:Outside circle':'10 per arm, light club, slow and smooth.',
+  'club:Mill':'8 per side, the elbow tracing a clean circle.',
+  'club:Reverse mill':'8 per side, the elbow tracing a clean circle.',
+  'club:Gamma cast':'10 alternating gamma casts with no pause.'
+};
+const slugP=s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+function stepGoal(eq,x,f){
+  if(PATH_GOALS[eq+':'+(x||f).name])return PATH_GOALS[eq+':'+(x||f).name];
+  if(f)return `Learn it slowly, pausing at each position. Then 2 minutes of the flow without stopping, ${eq==='kb'&&f.name!=='Halo Flow'?'both hands':'both lead sides'}, every transition smooth.`;
+  const side=x.alt?' (alternating hands)':sided(x)?' per side':'';
+  if(/hold$/i.test(x.name))return `3 holds of 20–30 seconds${side}, ribs down and steady.`;
+  if(x.b)return `3 sets of 8–10 smooth reps${side} with a light ${EQWORD[eq]}: the power comes from the hips, and you're in control at every point.`;
+  if(x.load==='heavy')return `3 sets of 6–8 strong reps${side} with a flat back and no rushing.`;
+  return `3 sets of 6–8 slow, controlled reps${side} with form you'd be happy to film.`;
+}
+const PATHS={};
+for(const eq in PATH_DEF){const D=PATH_DEF[eq],steps=D.basics.map(b=>({id:eq+':basic:'+b.k,lvl:0,kind:'basic',t:b.t,demo:b.demo||null,goal:b.goal}));
+  D.levels.forEach((names,li)=>names.forEach(n=>{const f=FLOWS.find(z=>z.name===n&&z.eq===eq),x=f?null:X.find(z=>z.name===n&&z.eq===eq);if(!f&&!x)return;
+    steps.push({id:eq+':'+slugP(n),lvl:li+1,kind:f?'flow':'move',t:n,m:n,flow:f||null,goal:stepGoal(eq,x,f)})}));
+  PATHS[eq]={name:D.name,steps}}
+const PS=()=>Store.state.path||(Store.state.path={});
+const pDone=id=>!!PS()[id];
+const pSteps=eq=>PATHS[eq]?PATHS[eq].steps:[];
+// the open steps: the first PATH_WIN not yet mastered, in order
+function pOpen(eq,n){const out=[];for(const s of pSteps(eq)){if(!pDone(s.id)){out.push(s);if(out.length>=(n||PATH_WIN))break}}return out}
+// open to practice and mark: the next few steps in order, plus the moves and flows workouts are teaching you right now
+function pOpenAll(eq){const a=pOpen(eq),ids=new Set(a.map(x=>x.id));let n=0;for(const st of pSteps(eq)){if(st.kind==='basic'||pDone(st.id))continue;if(n++>=PATH_WIN)break;if(!ids.has(st.id)){ids.add(st.id);a.push(st)}}return a}
+const lvlSteps=(eq,l)=>pSteps(eq).filter(s=>s.lvl===l);
+const lvlDone=(eq,l)=>{const s=lvlSteps(eq,l);return s.length>0&&s.every(x=>pDone(x.id))};
+const basicsDone=eq=>lvlDone(eq,0);
+function pathStarted(eq){return pSteps(eq).some(s=>pDone(s.id))}
+// the level you are working on (0 basics .. 3 advanced, 4 when the path is complete)
+function pathLevel(eq){for(let l=0;l<4;l++)if(!lvlDone(eq,l))return l;return 4}
+// workout level from a path: Beginner until Beginner is mastered, then Intermediate, then Advanced
+function pathWorkLvl(eq){return lvlDone(eq,1)?(lvlDone(eq,2)?3:2):1}
+const followPaths=()=>S.useSkills!==false;
+const pathLock=()=>S.pathLock!==false;
+// moves and flows a workout may use: everything mastered plus the next n unlearned moves and flows
+function learnSet(eq,n){const s=new Set(),open=[];for(const st of pSteps(eq)){if(st.kind==='basic')continue;if(pDone(st.id))s.add(st.m);else if(open.length<(n||PATH_WIN)){open.push(st);s.add(st.m)}}return s}
+function masteredMove(name,eq){return pSteps(eq).some(s=>s.m===name&&pDone(s.id))}
+function skillLocked(x,n){if(!followPaths()||!PATHS[x.eq])return false;return !learnSet(x.eq,n).has(x.name)}
+// keep the workout level in step with the paths for the gear in use (the lowest of them, to stay safe)
+function syncPathLevel(){if(!followPaths())return false;const eqs=activeEq().filter(k=>PATHS[k]);if(!eqs.length)return false;
+  const l=Math.min(...eqs.map(pathWorkLvl));if(S.level!==l){S.level=l;save();return true}return false}
+// gear whose Basics are not done yet, for the plan and program lock
+const needBasics=eqs=>pathLock()?eqs.filter(k=>PATHS[k]&&!basicsDone(k)):[];
+const eqNames=ks=>listJoin(ks.map(k=>EQ[k].name.toLowerCase()));
+function setStep(id,on){const p=Object.assign({},PS());if(on)p[id]=Date.now();else delete p[id];Store.state.path=p;Store.saveState();syncPathLevel()}
+
+// the old numbered paths, kept only so badges already earned on them still show
+const OLD_PATH_N={mace:8,club:9,kb:10};
 // The kettlebell path gained two steps (figure 8s, rack position) and moved others, and progress is saved by
 // step number, so older saves are moved over once. A new step counts as learned if you had already learned the
 // step just before it or the one after it, so nobody partway through the path loses the moves they were on.
@@ -2110,12 +2218,6 @@ function migrateKbPath(st){
   if(had)try{Store.saveState()}catch(e){}
 }
 const KS=()=>{migrateKbPath(Store.state);return Store.state.skills||{}};
-function mastered(eq,i){return !!KS()[eq+':'+i]}
-function nextStep(eq){const n=PATHS[eq].steps.length;for(let i=0;i<n;i++)if(!mastered(eq,i))return i;return n}
-function pathStarted(eq){return !!PATHS[eq]&&PATHS[eq].steps.some((s,i)=>mastered(eq,i))}
-function stepIndexOf(name,eq){const P=PATHS[eq];return P?P.steps.findIndex(s=>s.m.includes(name)):-1}
-function masteredMove(name,eq){const i=stepIndexOf(name,eq);return i>=0&&mastered(eq,i)}
-function skillLocked(x){if(S.useSkills===false||!pathStarted(x.eq))return false;const i=stepIndexOf(x.name,x.eq);return i>nextStep(x.eq)}
 
 /* ---------- multi-week programs ---------- */
 const PROGRAMS=[
@@ -2163,6 +2265,8 @@ function closeProg(x){const end=Math.max(0,...Object.values(x.done||{}))||Date.n
   savedList().filter(w=>w.program&&w.program.id===x.id).map(w=>w.id).forEach(id=>dropSaved(id))}
 function progState(id){return progList().find(x=>x.id===id)||null}
 function progAvail(p){const a=activeEq();return p.needs==='any2'?a.length>=2:p.needs.every(k=>a.includes(k))}
+function progNeedBasics(p){const a=activeEq();return needBasics(p.needs==='any2'?a:p.needs.filter(k=>a.includes(k)))}
+const progLockHTML=p=>{const nb=progNeedBasics(p);return nb.length?`<span class="hint">Finish the Basics on your ${esc(eqNames(nb))} path to start this. <button class="link" type="button" data-gopath="${nb[0]}">Go to Basics</button></span>`:''};
 function progEqs(p){const a=activeEq();return p.needs==='any2'?a:p.needs.filter(k=>a.includes(k))}
 const progKey=(w,d)=>`w${w}d${d}`;
 function progNext(p,st){for(let w=1;w<=p.weeks;w++)for(let d=1;d<=p.days;d++)if(!(st.done||{})[progKey(w,d)])return{w,d};return null}
@@ -2181,17 +2285,27 @@ function markProgDay(id,key,val){
   Store.saveState();renderPrograms();renderContinue();if(fin){renderRec();renderTrack()}return fin;
 }
 function renderPrograms(){
-  // skill paths
+  // skill paths: one card per implement, a section per level, every step in learning order
   const sp=$('paths');if(!sp)return;
+  syncPathLevel();
   sp.innerHTML=Object.entries(PATHS).map(([eq,P])=>{
-    const nx=nextStep(eq),cnt=P.steps.filter((s,i)=>mastered(eq,i)).length;
-    return `<details class="pathcard" ${openPath===eq?'open':''} data-path="${eq}"><summary>${artHTML(PATH_ART[eq])}<span><b>${P.name} path</b><small>${cnt} of ${P.steps.length} mastered${nx<P.steps.length?' · Next: '+esc(P.steps[nx].t):' · Complete'}</small></span><span class="meter"><i class="s-ready" style="width:${Math.round(cnt/P.steps.length*100)}%"></i></span></summary>
-      <ol class="steps">${P.steps.map((s,i)=>{const st=mastered(eq,i)?'done':i===nx?'now':'locked';
-        return `<li class="st-${st}"><span class="num">${st==='done'?'✓':i+1}</span><div><b>${esc(s.t)}</b><p>${esc(s.goal)}</p><p class="hint">Moves: ${s.m.map(n=>stepLink(n,eq)).join(', ')}</p>
-          <div class="go">${demo(s.m[0],eq)}${st==='done'?`<button class="link" data-sk="${eq}:${i}:0">Undo</button>`:st==='now'?`<button class="btn small" data-sk="${eq}:${i}:1">Mark mastered</button>`:'<span class="hint">Unlocks after the step above</span>'}</div></div></li>`}).join('')}</ol></details>`}).join('');
-  sp.querySelectorAll('details').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)openPath=d.dataset.path;else if(openPath===d.dataset.path)openPath=null}));
-  sp.querySelectorAll('[data-sk]').forEach(b=>b.onclick=()=>{const[eq,i,v]=b.dataset.sk.split(':');const k=Object.assign({},KS());if(v==='1')k[eq+':'+i]=Date.now();else{for(let j=+i;j<PATHS[eq].steps.length;j++)delete k[eq+':'+j]}
-    Store.state.skills=k;Store.saveState();renderPrograms()});
+    const cur=pathLevel(eq),cnt=P.steps.filter(x=>pDone(x.id)).length,open=new Set(pOpenAll(eq).map(x=>x.id)),nx=pOpen(eq,1)[0];
+    const lvls=PATH_LVLS.map((ln,l)=>{const ls=lvlSteps(eq,l),dn=ls.filter(x=>pDone(x.id)).length,all=dn===ls.length;
+      return `<details class="plvl${all?' pl-done':''}" ${(openLvl[eq]!=null?openLvl[eq]===l:l===Math.min(cur,3))?'open':''} data-pl="${eq}:${l}"><summary><span class="badge-mini t${l}">${TIERS[l]}</span><b>${ln}</b><small>${dn} of ${ls.length}${all?' · complete ✓':''}</small></summary>
+        ${l===0?`<p class="hint">How to pick up, set down and hold the ${esc(EQWORD[eq])}. ${pathLock()?'Finish these to unlock weekly plans and programs with it.':''}</p>`:''}
+        <ol class="steps">${ls.map(x=>{const st=pDone(x.id)?'done':open.has(x.id)?'now':'locked',n=P.steps.indexOf(x)+1;
+          const dm=x.kind==='flow'?(hasFlowAnim(x.flow)?flowDemoBtn(x.flow):''):x.kind==='basic'?(x.demo?demo(x.demo,eq):''):demo(x.m,eq);
+          return `<li class="st-${st}"><span class="num">${st==='done'?'✓':n}</span><div><b>${esc(x.t)}</b>${x.kind==='flow'?' <span class="tag">Flow</span>':x.kind==='basic'?' <span class="tag">Basics</span>':''}<p>${esc(x.goal)}</p>
+            ${x.kind==='flow'?`<p class="hint">Moves: ${x.flow.steps.map(n2=>stepLink(n2,eq)).join(', ')}</p>`:''}
+            <div class="go">${dm}${st==='done'?`<button class="link" data-sk="${esc(x.id)}:0">Undo</button>`:st==='now'?`<button class="btn small" data-sk="${esc(x.id)}:1">Mark mastered</button>`:'<span class="hint">Opens as you master the steps before it</span>'}</div></div></li>`}).join('')}</ol></details>`}).join('');
+    return `<details class="pathcard" ${openPath===eq?'open':''} data-path="${eq}"><summary>${artHTML(PATH_ART[eq])}<span><b>${P.name} path</b><small>${cur>3?'Complete':PATH_LVLS[cur]+' · '}${nx?'Next: '+esc(nx.t):''} · ${cnt} of ${P.steps.length} mastered</small></span><span class="meter"><i class="s-ready" style="width:${Math.round(cnt/P.steps.length*100)}%"></i></span></summary>
+      <p class="hint">The next ${PATH_WIN} steps are open at a time, plus the next ${PATH_WIN} moves and flows${followPaths()?', which workouts mix in with what you have mastered':''}. Logging three solid sessions with an open move marks it mastered for you.</p>${lvls}</details>`}).join('');
+  sp.querySelectorAll('details.pathcard').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)openPath=d.dataset.path;else if(openPath===d.dataset.path)openPath=null}));
+  sp.querySelectorAll('details.plvl').forEach(d=>d.addEventListener('toggle',()=>{const[eq,l]=d.dataset.pl.split(':');if(d.open)openLvl[eq]=+l}));
+  sp.querySelectorAll('[data-sk]').forEach(b=>b.onclick=()=>{const v=b.dataset.sk,id=v.slice(0,v.lastIndexOf(':')),on=v.endsWith(':1');
+    const eq=id.split(':')[0],before=pathLevel(eq);setStep(id,on);if(!on){const c=coachState();c.noAuto=Object.assign({},c.noAuto,{[id]:1})}
+    if(on&&pathLevel(eq)>before)openLvl[eq]=Math.min(3,pathLevel(eq));renderPrograms();try{renderTrack();renderContinue();renderRec()}catch(e){}});
+  $('pathLock').checked=pathLock();
   $('useSkills').checked=S.useSkills!==false;
   // programs (several can run at once, each on its own weekdays)
   const pl=$('progs'),acts=progList().map(st=>({st,p:PROGRAMS.find(x=>x.id===st.id)})).filter(a=>a.p);
@@ -2212,13 +2326,13 @@ function renderPrograms(){
   const fin=[];progDoneList().forEach(x=>{if(!fin.some(y=>y.id===x.id)&&PROGRAMS.some(p=>p.id===x.id))fin.push(x)});
   html+=PROGRAMS.filter(p=>!acts.some(a=>a.p.id===p.id)&&!fin.some(x=>x.id===p.id)).map(p=>{const ok=progAvail(p);
     return `<div class="progcard">${artHTML(PROG_ART[p.id])}<div class="block-head"><b>${esc(p.name)}</b><span class="tag">${p.level}</span></div><p>${esc(p.blurb)}</p><p class="hint">${p.weeks} weeks · ${p.days} days a week · ${p.needs==='any2'?'any two implements':p.needs.map(k=>EQ[k].name).join(', ')}</p>
-      ${ok?`<button class="btn ghost small" data-ps="${p.id}">${acts.length?'Add this program':'Start program'}</button>${acts.length?'<span class="hint">Runs alongside your current program and plan. You pick its days next.</span>':''}`:`<span class="hint">Needs ${p.needs==='any2'?'two implements':p.needs.map(k=>EQ[k].name.toLowerCase()).join(', ')} turned on in your gear.</span>`}</div>`}).join('');
+      ${ok&&progNeedBasics(p).length?progLockHTML(p):ok?`<button class="btn ghost small" data-ps="${p.id}">${acts.length?'Add this program':'Start program'}</button>${acts.length?'<span class="hint">Runs alongside your current program and plan. You pick its days next.</span>':''}`:`<span class="hint">Needs ${p.needs==='any2'?'two implements':p.needs.map(k=>EQ[k].name.toLowerCase()).join(', ')} turned on in your gear.</span>`}</div>`}).join('');
   if(fin.length){html+=`<h3 class="progsec">Completed</h3>`+fin.map(x=>{const p=PROGRAMS.find(q=>q.id===x.id),runs=progDoneList().filter(y=>y.id===x.id).length,
       running=acts.some(a=>a.p.id===p.id),fresh=Date.now()-x.end<3*DAY;
     return `<div class="progcard progdone">${artHTML(PROG_ART[p.id])}<div class="block-head"><b>✓ ${esc(p.name)}</b><span class="tag tag-done">Completed</span></div>
       <p class="hint">${fresh?'<b>Just finished.</b> ':''}Finished ${fmtDate(x.end)}${x.start?' · started '+fmtDate(x.start):''} · all ${p.weeks*p.days} sessions${runs>1?' · completed '+runs+' times':''}</p>
       ${fresh?'<p class="hint">Its training days are free on your schedule now. Start another program or a weekly plan to fill them.</p>':''}
-      ${running?'<span class="hint">Running again above.</span>':progAvail(p)?`<button class="btn ghost small" data-ps="${p.id}">Run it again</button>`:''}</div>`}).join('')}
+      ${running?'<span class="hint">Running again above.</span>':progAvail(p)?(progNeedBasics(p).length?progLockHTML(p):`<button class="btn ghost small" data-ps="${p.id}">Run it again</button>`):''}</div>`}).join('')}
   pl.innerHTML=html;
   const byId=id=>PROGRAMS.find(p=>p.id===id);
   pl.querySelectorAll('[data-po]').forEach(b=>b.onclick=()=>{const[id,w,d]=b.dataset.po.split(':');const pr=byId(id);if(pr&&progAvail(pr))openProgramDay(pr,+w,+d)});
@@ -2226,13 +2340,14 @@ function renderPrograms(){
   pl.querySelectorAll('[data-sd]').forEach(b=>b.onclick=()=>{const[id,d]=b.dataset.sd.split(':'),st=progState(id),pr=byId(id);if(!st||!pr)return;
     let days=(st.days||[]).slice();if(days.includes(d))days=days.filter(x=>x!==d);else{if(days.length>=pr.days)days.shift();days.push(d)}
     st.days=WEEK.filter(x=>days.includes(x));st.daysSet=st.days.length===pr.days?Date.now():st.daysSet;Store.saveState();renderPrograms();renderContinue();renderRec();renderTrack()});
-  pl.querySelectorAll('[data-ps]').forEach(b=>b.onclick=()=>{const pr=byId(b.dataset.ps);
+  pl.querySelectorAll('[data-gopath]').forEach(b=>b.onclick=()=>goPaths(b.dataset.gopath));
+  pl.querySelectorAll('[data-ps]').forEach(b=>b.onclick=()=>{const pr=byId(b.dataset.ps);if(progNeedBasics(pr).length){renderPrograms();return}
     const days=suggestDays(pr.days,pr.id);progList().push({id:pr.id,start:Date.now(),done:{},days});Store.saveState();renderPrograms();renderContinue();
     setTimeout(()=>{const c=pl.querySelector(`[data-sched="${pr.id}"]`);if(c)c.scrollIntoView({block:'center'})},30)});
   pl.querySelectorAll('[data-leave]').forEach(lv=>lv.onclick=()=>{if(!lv.classList.contains('armed')){lv.classList.add('armed');lv.textContent='Tap again to leave (progress is cleared)';return}
     Store.state.programs=progList().filter(x=>x.id!==lv.dataset.leave);Store.saveState();renderPrograms();renderContinue()});
 }
-let openPath=null;
+let openPath=null;const openLvl={};
 
 /* ================= TRACKER ================= */
 const GROUPS={shoulders:'Shoulders',back:'Back',arms:'Arms',grip:'Grip & forearms',core:'Core & obliques',quads:'Quads',glutes:'Glutes & hamstrings'};
@@ -2504,8 +2619,8 @@ function renderGoal(){
    Store.state.plansDone lists weekly plan ids that were finished in full. */
 const COUNT_WORD={AMRAP:'rounds',Ladder:'rungs','Deck of cards':'cards'};
 const STYLE_KINDS=['Intervals','EMOM','Tabata','AMRAP','Ladder','Deck of cards'];
-const ACH_GROUPS=[['finish','Finishing things'],['records','Personal records'],['steady','Consistency'],['variety','Variety'],['habits','Smart training habits']];
-const TIERS=['','Iron','Steel','Copper'];
+const ACH_GROUPS=[['paths','Skill paths'],['finish','Finishing things'],['records','Personal records'],['steady','Consistency'],['variety','Variety'],['habits','Smart training habits']];
+const TIERS=['Stone','Iron','Steel','Copper'];
 const lkey=m=>m.name+'|'+m.eq;
 const mKg=m=>wKg(m.wt,m.unit||(EQ[m.eq]?unitOf(m.eq):'kg'));
 function achCtx(){
@@ -2534,7 +2649,10 @@ ACH.push(
   {id:'plan-1',g:'finish',tier:1,icon:'flag',t:'Full week',d:'Finish every day of a weekly plan.',check:c=>hit((c.st.plansDone||[]).length,1)},
   {id:'plan-4',g:'finish',tier:2,icon:'flag',t:'Plan keeper',d:'Finish four weekly plans.',check:c=>hit((c.st.plansDone||[]).length,4)},
   {id:'path-step',g:'finish',tier:1,icon:'path',t:'First step',d:'Mark your first skill path step as learned.',check:c=>hit(Object.keys(c.st.skills||{}).length?1:0,1)});
-Object.entries(PATHS).forEach(([eq,P])=>ACH.push({id:'path-'+eq,g:'finish',tier:2,icon:'path',t:P.name+' path',d:`Learn every step of the ${P.name.toLowerCase()} skill path.`,check:()=>hit(P.steps.filter((s,i)=>mastered(eq,i)).length,P.steps.length)}));
+Object.entries(PATHS).forEach(([eq,P])=>ACH.push({id:'path-'+eq,g:'finish',tier:2,icon:'path',legacy:true,t:P.name+' path (original)',d:`Learned every step of the original ${P.name.toLowerCase()} skill path.`,check:()=>hit(Object.keys(KS()).filter(k=>k.split(':')[0]===eq).length,OLD_PATH_N[eq])}));
+Object.entries(PATHS).forEach(([eq,P])=>PATH_LVLS.forEach((ln,l)=>ACH.push({id:'pl-'+eq+'-'+l,g:'paths',tier:l,icon:'path',t:`${P.name} ${ln}`,
+  d:l?`Master every ${ln.toLowerCase()} step on the ${P.name.toLowerCase()} path.`:`Master the ${P.name.toLowerCase()} basics: picking it up, setting it down, and the holds and positions.`,
+  check:()=>{const ls=lvlSteps(eq,l),ts=ls.map(x=>PS()[x.id]).filter(Boolean);return hit(ts.length,ls.length,ts.length===ls.length?Math.max(...ts):null)}})));
 ACH.push(
   {id:'guided-1',g:'finish',tier:1,icon:'play',t:'Start to finish',d:'Follow a guided workout all the way to the last step and log it.',check:c=>hit(c.guided.length,1,nthTs(c.guided,1))},
   {id:'guided-10',g:'finish',tier:2,icon:'play',t:'Ten guided',d:'Finish and log ten guided workouts.',check:c=>hit(c.guided.length,10,nthTs(c.guided,10))},
@@ -2612,7 +2730,7 @@ function renderAch(){
   $('achSum').innerHTML=`<b>${n} of ${ACH.length}</b> earned.`+(achRetro?` ${achRetro===1?'One was':achRetro+' were'} credited from training you had already logged.`:'')+' Each badge is iron, steel or copper, from easier to harder.';
   const recent=ACH.filter(a=>got[a.id]).sort((a,b)=>got[b.id]-got[a.id]).slice(0,4);
   $('achRecent').innerHTML=recent.length?`<div class="eyebrow">Latest</div><div class="ach-recent">${recent.map(a=>`<div class="ach-mini">${badgeSVG(a,true)}<span><b>${esc(a.t)}</b><small>${fmtDate(got[a.id])}</small></span></div>`).join('')}</div>`:'';
-  box.innerHTML=ACH_GROUPS.map(([g,label])=>{const list=ACH.filter(a=>a.g===g),have=list.filter(a=>got[a.id]).length;
+  box.innerHTML=ACH_GROUPS.map(([g,label])=>{const list=ACH.filter(a=>a.g===g&&(!a.legacy||got[a.id])),have=list.filter(a=>got[a.id]).length;
     const open=(S.achOpen||{})[g];
     return `<details class="ach-g" data-g="${g}"${open?' open':''}><summary><span>${label}</span><span class="ach-ct">${have} of ${list.length}</span></summary><ul class="ach-list">${list.map(a=>{
       const e=got[a.id];let r=null;if(!e){try{r=a.check(c)}catch(x){r={cur:0,max:1}}}
@@ -2656,7 +2774,7 @@ function coachChecks(){
     if(run>=5){c.deload=mon;c.lastDeload=mon;coachNote({kind:'deload',weeks:run});changed=true}
   }
   // level: up after 4 steady weeks at moderate effort, down after a run of very hard sessions; never within 3 weeks of a change
-  if(!(S.levelAt&&now-S.levelAt<21*DAY)&&c.deload!==mon){
+  if(!followPaths()&&!(S.levelAt&&now-S.levelAt<21*DAY)&&c.deload!==mon){
     const recent=Store.logs.filter(l=>now-l.ts<28*DAY&&l.ts<=now),last5=Store.logs.slice().sort((a,b)=>b.ts-a.ts).slice(0,5);
     let to=null;
     if(S.level>1&&last5.length>=4&&avg(last5.map(l=>l.rpe||6))>=8.5)to=S.level-1;
@@ -2664,17 +2782,18 @@ function coachChecks(){
       const weeks=new Set(recent.map(l=>mondayOf(logDay(l))));if(weeks.size>=3)to=S.level+1}
     if(to){coachNote({kind:'level',from:S.level,to});S.level=to;S.levelAt=now;save();try{renderSettings()}catch(e){}changed=true}
   }
-  // skill paths you have started: three solid sessions with a step's moves marks it learned
-  Object.entries(PATHS).forEach(([eq,P])=>{if(!pathStarted(eq))return;const i=nextStep(eq);if(i>=P.steps.length||(c.noAuto||{})[eq+':'+i])return;
-    const step=P.steps[i],n=Store.logs.filter(l=>(l.moves||[]).some(m=>m.eq===eq&&step.m.includes(m.name)&&m.feel!=='h')).length;
-    if(n>=3){Store.state.skills=Object.assign({},Store.state.skills,{[eq+':'+i]:now});coachNote({kind:'skill',eq,i});changed=true}});
+  // skill paths: three solid logged sessions with an open move or flow step marks it mastered
+  Object.keys(PATHS).forEach(eq=>pOpenAll(eq).forEach(st=>{if(st.kind==='basic'||(c.noAuto||{})[st.id])return;
+    const n=Store.logs.filter(l=>(l.moves||[]).some(m=>m.eq===eq&&sameMove(m.name,st.m,eq)&&m.feel!=='h')).length;
+    if(n>=3){Store.state.path=Object.assign({},PS(),{[st.id]:now});coachNote({kind:'skill',eq,id:st.id});changed=true}}));
+  if(changed&&syncPathLevel())try{renderSettings()}catch(e){}
   if(changed)Store.saveState();
 }
 function noteText(n){
   if(n.kind==='level')return n.to>n.from?`<b>Moved you up to ${LEVELS[n.to-1]}.</b> Your last four weeks were steady at moderate effort, so new workouts have more reps, longer work periods and harder flows.`
     :`<b>Eased you back to ${LEVELS[n.to-1]} for now.</b> Your last few sessions were rated 9 or 10 out of 10. It moves back up once training feels steady again.`;
-  if(n.kind==='skill'){const P=PATHS[n.eq],st=P.steps[n.i],nx=P.steps[n.i+1];
-    return `<b>Marked “${esc(st.t)}” learned</b> on your ${esc(P.name.toLowerCase())} path after three solid sessions with it.${nx?` Next up: ${esc(nx.t)}.`:' That finishes the path.'}`}
+  if(n.kind==='skill'){const P=PATHS[n.eq],st=n.id&&P&&P.steps.find(x=>x.id===n.id);if(!st)return '';const nx=pOpen(n.eq,1)[0];
+    return `<b>Marked “${esc(st.t)}” mastered</b> on your ${esc(P.name.toLowerCase())} path after three solid sessions with it.${nx?` Next up: ${esc(nx.t)}.`:' That finishes the path.'}`}
   if(n.kind==='deload')return `<b>This is a lighter week.</b> You've trained steadily for ${n.weeks} weeks. Weights drop one step and there are no new targets, so your body can catch up and the next push sticks.`;
   return '';
 }
@@ -2686,7 +2805,7 @@ function renderCoach(){
     n.seen=true;
     if(k==='undo'){
       if(n.kind==='level'){S.level=n.from;S.levelAt=Date.now();save();renderSettings()}
-      if(n.kind==='skill'){const sk=Object.assign({},Store.state.skills);delete sk[n.eq+':'+n.i];Store.state.skills=sk;c.noAuto=Object.assign({},c.noAuto,{[n.eq+':'+n.i]:1});renderPrograms()}
+      if(n.kind==='skill'&&n.id){setStep(n.id,false);c.noAuto=Object.assign({},c.noAuto,{[n.id]:1});renderPrograms()}
       if(n.kind==='deload'){c.skipDeload=c.deload;c.deload=null}
       if(current&&current.single&&!current.single.program){current.single=buildWorkout(current.single.type,current.single.eqs,current.single.minutes,current.single.opts);keepBuilt();render()}
       renderRec(true);
@@ -2989,6 +3108,7 @@ function schedAround(){const t=todayStr(),up=upcoming(2),groups=new Set(),why=[]
 function aroundNote(w){const a=w.opts&&w.opts.around;if(!a)return '';const g=a.groups.map(x=>GROUPS[x].toLowerCase());
   return `<p class="tip good"><b>Built around your schedule:</b> ${g.length?`went easy on your ${esc(listJoin(g))} to save them for ${esc(listJoin(a.why))}.`:''}${a.light?`${g.length?' ':''}Your plan is in its lighter week, so weights here are a step down too.`:''}</p>`}
 const eqDots=eqs=>`<span class="eqdots">${(eqs||[]).filter(k=>EQ[k]).map(k=>`<i class="eqd eqd-${k}" title="${EQ[k].name}"></i>`).join('')}</span>`;
+function goPaths(eq){openPath=eq;renderPrograms();go('programs');setTimeout(()=>{const d=document.querySelector(`[data-path="${eq}"]`);if(d)d.scrollIntoView({block:'start'})},50)}
 function openDue(u){if(!u)return;
   if(u.src==='plan'){openWeek(u.k,u.i);return}
   const pr=PROGRAMS.find(x=>x.id===u.id);if(!pr)return;if(!progAvail(pr)){go('programs');return}
@@ -3020,7 +3140,7 @@ function contItems(){
   if(progList().some(x=>{const pr=PROGRAMS.find(y=>y.id===x.id);return pr&&progNext(pr,x)}))it.push('program');
   if(contSaved(r).length)it.push('built');
   if(progDoneList().some(x=>Date.now()-x.end<7*DAY))it.push('progdone');
-  if(Object.keys(PATHS).some(eq=>pathStarted(eq)&&nextStep(eq)<PATHS[eq].steps.length))it.push('skills');
+  if(Object.keys(PATHS).some(eq=>activeEq().includes(eq)&&pOpen(eq,1).length))it.push('skills');
   return it;
 }
 function renderContinue(){
@@ -3060,8 +3180,8 @@ function renderContinue(){
     h+=`<article class="ccard"><div class="eyebrow">Workouts you built · not logged yet</div>${ws.map(w=>`<div class="trow"><span>${eqDots(w.eqs)}<b>${esc(GOALS[w.type]+' · '+w.minutes+' min')}</b><small>${ago(w.built||Date.now())}</small></span>
       <span class="go"><button class="btn small" data-c="built:${esc(w.id)}">Open</button><button class="btn ghost small" data-c="builtgo:${esc(w.id)}">▶ Start</button><button class="link" data-c="builtdrop:${esc(w.id)}">Remove</button></span></div>`).join('')}</article>`}
   if(items.includes('skills')){
-    h+=`<article class="ccard"><div class="eyebrow">Skill paths</div>${Object.entries(PATHS).filter(([eq])=>pathStarted(eq)&&nextStep(eq)<PATHS[eq].steps.length).map(([eq,P])=>{const nx=nextStep(eq);
-      return `<div class="cskill">${eqBanner(eq,'')}<p><b>Next: ${esc(P.steps[nx].t)}</b><br><span class="hint">${esc(P.steps[nx].goal)}</span></p><button class="btn ghost small" data-c="skill:${eq}">Practice</button></div>`}).join('')}</article>`}
+    h+=`<article class="ccard"><div class="eyebrow">Skill paths</div>${Object.entries(PATHS).filter(([eq])=>activeEq().includes(eq)&&pOpen(eq,1).length).map(([eq,P])=>{const nx=pOpen(eq,1)[0];
+      return `<div class="cskill">${eqBanner(eq,'')}<p><b>${PATH_LVLS[nx.lvl]} · ${esc(nx.t)}</b><br><span class="hint">${esc(nx.goal)}</span></p><button class="btn ghost small" data-c="skill:${eq}">Practice</button></div>`}).join('')}${needBasics(activeEq()).length?`<p class="hint">Finish the Basics for your ${esc(eqNames(needBasics(activeEq())))} to unlock weekly plans and programs with it.</p>`:''}</article>`}
   const gst=goalStats();
   if(!items.length)h=`<div class="empty"><p><b>Nothing in progress yet.</b> Workouts you build, weekly plans, programs and skill paths you start will show up here so you can pick up where you left off.</p>
       <div class="go"><button class="btn" data-c="tobuild">Build a workout</button><button class="btn ghost" data-c="progs">Browse programs</button></div></div>`;
@@ -3082,7 +3202,7 @@ function renderContinue(){
     if(k==='built')openBuilt(a);
     if(k==='builtgo'){if(showSaved(a)){render();startGuided(current.single,0)}}
     if(k==='builtdrop'){if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Tap again to remove';return}dropSaved(a);Store.saveState();renderContinue();if(current&&current.single&&current.single.id===a){current=null;render()}}
-    if(k==='skill'){openPath=a;renderPrograms();go('programs');setTimeout(()=>{const d=document.querySelector(`[data-path="${a}"]`);if(d)d.scrollIntoView({block:'start'})},50)}
+    if(k==='skill'){goPaths(a)}
     if(k==='tobuild')go('build');
   });
 }
@@ -3105,7 +3225,8 @@ $('gen').onclick=()=>{const b=$('gen'),p=S.mode==='week'&&planNorm();
   if(p&&planNext(p)&&!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Tap again to replace your current plan (logged workouts stay)';
     setTimeout(()=>{if(b.classList.contains('armed')){b.classList.remove('armed');b.textContent='Build plan'}},4000);return}
   b.classList.remove('armed');if(S.mode==='week')b.textContent='Build plan';generate(true)};
-$('useSkills').onchange=e=>{S.useSkills=e.target.checked;save()};
+$('useSkills').onchange=e=>{S.useSkills=e.target.checked;save();syncPathLevel();renderSettings();renderPrograms();renderRec(true)};
+$('pathLock').onchange=e=>{S.pathLock=e.target.checked;save();renderPrograms()};
 $('gearDone').onclick=()=>{$('gearBox').open=false;$('gearBox').scrollIntoView({block:'nearest'})};
 $('suName').oninput=e=>{const v=e.target.value.trim().slice(0,24);if(!v)return;activeSetup().name=v;$('gearSum').textContent=v;save();renderSetupBar()};
 $('suName').onblur=e=>{if(!e.target.value.trim())e.target.value=activeSetup().name};
