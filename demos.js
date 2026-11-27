@@ -249,13 +249,18 @@ function gravedigger(){
     [3.75,Object.assign({},STAND)],[3.95,{}]];
 }
 // Row position (Chris): split hold, the base hand on the base, the lead hand toward or at the head; the mace
-// level and held to the lead side, head facing behind and the shaft pointing out to the front. ROW_L has the
-// left hand leading (left side); ROW_R is its mirror. G is the base hand; the lead hand sits 60 cm up the shaft.
-const ROW_SPLIT=60;
-const ROW_L=()=>{const B=[6,112,38],D=norm([0.14,-0.04,-1]);
-  return Object.assign({},STAND,{P:[0,93,0],pitch:4,yaw:14,hipYaw:6,feet:{L:[16,8,0],R:[-16,8,0]},turn:12,tL:0,tR:0,fyL:0,fyR:0,
-    G:B,D,choke:6,gR:0,gL:ROW_SPLIT,offL:0,offR:0,eL:[1,-0.6,-0.4],eR:[-1,-0.6,0.3]})};
-const ROW_R=()=>mirror(ROW_L());
+// level and held to the lead side in a dead hang on long arms, head facing behind and the shaft pointing out
+// to the front. ROW_L has the left hand leading (left side); ROW_R is its mirror. G is the base hand.
+// The arms hang long and straight (a dead hang): the lead hand hangs from its shoulder at the side, a little
+// behind, and the base hand reaches straight down and across to the front end of the shaft.
+const ROW_L=(extra)=>{
+  const body=Object.assign({},STAND,{P:[0,93,0],pitch:4,yaw:14,hipYaw:6,feet:{L:[16,8,0],R:[-16,8,0]},turn:12,tL:0,tR:0,fyL:0,fyR:0},extra||{});
+  const sL=shoulderOf(body,'L'),sR=shoulderOf(body,'R'),R=REACH1-0.5;
+  const L=add(sL,mul(norm([0.06,-1,-0.36]),R)),fwd=norm([-0.22,0.12,1]);
+  let d=40;while(d<90&&len(sub(add(L,mul(fwd,d)),sR))<R)d+=0.5;   // slide forward along the shaft to the base hand's reach
+  const B=add(L,mul(fwd,d));
+  return Object.assign(body,{G:B,D:norm(sub(L,B)),choke:6,gR:0,gL:len(sub(L,B)),offL:0,offR:0,eL:[1,-0.2,-0.4],eR:[-1,-0.2,0.3]})};
+const ROW_R=(extra)=>mirror(ROW_L(extra&&Object.assign({},extra,'twist' in extra?{twist:-extra.twist}:{},'hipYaw' in extra?{hipYaw:-extra.hipYaw}:{})));
 // Sword switch (Chris): from the row position the base hand lets go; the lead hand drives the mace forward
 // like a sword thrust; the other hand takes it at the same spot and carries it down into the row position on
 // the other side. from: a row position with the right hand leading (head hand) or the left (by D side).
@@ -264,7 +269,7 @@ function swordSwitch(from){
   const L=right?mirror(from):from;              // build it for a left lead, mirror back if needed
   const lead=add(L.G,mul(L.D,L.gL));
   const tip=[6,120,48],dir=norm([0,-0.05,-1]),d=L.gL;
-  const thrust=Object.assign({},L,{P:[0,93,0],pitch:0,yaw:0,hipYaw:0,G:sub(tip,mul(dir,d)),D:dir,gL:d,gR:d,offR:1,offL:0,freeR:[-20,92,4],
+  const thrust=Object.assign({},L,{P:[0,93,0],pitch:0,yaw:0,hipYaw:0,twist:0,G:sub(tip,mul(dir,d)),D:dir,gL:d,gR:d,offR:1,offL:0,freeR:[-20,92,4],
     eL:[1,-0.5,-0.2],eR:[-1,-0.5,-0.2],pass:false});
   const let_=Object.assign({},L,{offR:1,freeR:[-20,92,4]});
   const caught=Object.assign({},thrust,{offR:0});
@@ -286,14 +291,16 @@ function uppercut(){
   // horizontal along the left side; then back down the same way.
   const pose=(yaw,pitch,base,head,extra)=>Object.assign({P:[0,90,-2],pitch,yaw,hipYaw:yaw*0.5,feet:{L:[16,8,4],R:[-16,8,-4]},turn:12,
     eL:[1,-0.8,-0.2],eR:[-1,-0.8,-0.2]},wide(base,head,'R'),extra||{});
-  // start low and level along the right side, head to the rear; through a diagonal in front with the
+  // the row position, wound up, head to the rear; through a diagonal in front with the
   // head low; finish level and high along the left side
-  const start=ROW_R();
-  const mid=Object.assign(pose(-10,16,[16,136,22],[-20,84,30],{pass:true}),{P:[0,88,-3]});
-  const end=Object.assign(pose(30,0,[30,162,-50],[18,164,20],{tR:0.4,fyR:24,eL:[1,0,-0.3],eR:[-0.6,-0.6,0.4]}),{P:[0,92,0]});
-  const swing=Object.assign(pose(-22,12,[-4,122,40],[-30,88,-4],{pass:true}),{P:[0,89,-3]});
+  // twist: the chest turns on the spine with the mace, loaded toward the right side at the start and wound
+  // through to the left at the finish (positive twist turns the chest to the right)
+  const start=ROW_R({twist:32,hipYaw:-12});
+  const mid=Object.assign(pose(-10,16,[16,136,22],[-20,84,30],{pass:true,twist:6}),{P:[0,88,-3]});
+  const end=Object.assign(pose(30,0,[30,162,-50],[18,164,20],{tR:0.4,fyR:24,eL:[1,0,-0.3],eR:[-0.6,-0.6,0.4],twist:-30}),{P:[0,92,0]});
+  const swing=Object.assign(pose(-22,12,[-4,122,40],[-30,88,-4],{pass:true,twist:22}),{P:[0,89,-3]});
   const back=Object.assign({},mid,{tR:0.15,fyR:8});
-  const home=Object.assign({},STAND,{tR:0,fyR:0});
+  const home=Object.assign({},STAND,{tR:0,fyR:0,twist:0});
   const st=Object.assign({},start,{tR:0,fyR:0}),sw2=Object.assign({},swing,{tR:0,fyR:0});
   const reps=[[0,st],[0.2,{}],[0.4,swing],[0.6,mid],[0.95,end],[1.15,{}],[1.5,back],[1.7,sw2],[1.9,st],[2.1,{}],
     [2.3,swing],[2.5,mid],[2.85,end],[3.05,{}],[3.4,back],[3.6,sw2],[3.8,st],[4.0,{}]];
@@ -303,15 +310,16 @@ function uppercut(){
 }
 
 function paddle(){
-  // Paddle (Chris), from the row position on the lead (left) side: the lead hand pushes the head out to the
-  // front while the support hand brings the shaft up to vertical (base up, head down in front, like a paddle
+  // Paddle (Chris), from the row position on the lead (left) side: the lead hand pushes the head straight out
+  // to the front, level, while the support hand brings the shaft up to vertical (base up, head down in front, like a paddle
   // blade in the water). The head is drawn down and back in a paddling arc as the support hand pushes the
   // base down; the arc finishes with the lead hand bringing the head back up behind and the support hand
   // settling the mace back into the row position. Three strokes, a sword switch, the other side.
   const at=(B,D,pitch,yaw,pass)=>Object.assign({},ROW_L(),{G:B,D:norm(D),pitch,yaw,P:[0,93-pitch*0.15,-pitch*0.2],pass:!!pass});
   const row=ROW_L();
-  const reach=at([8,150,24],[0.1,-1,0.15],8,10,true);          // shaft coming up, head swinging forward
-  const catch_=at([10,154,12],[0.1,-0.85,0.5],12,8);           // vertical-ish, head out in front, base up
+  // the forward push is level: the head travels straight forward past the hip as the base rises overhead
+  const reach=at([15,181,22],[0.05,-0.97,-0.25],6,10,true);    // head beside the hip, shaft near vertical
+  const catch_=at([10,166,8],[0.1,-0.9,0.42],10,8);            // head out in front at the same height, base up
   const pull=at([9,144,30],[0.12,-1,-0.05],20,12,true);        // head down beside the leg
   const back=at([8,128,42],[0.12,-0.6,-0.8],10,16,true);       // head coming back up behind
   const stroke=t=>[[t+0.45,reach],[t+0.75,catch_],[t+0.95,{}],[t+1.4,pull],[t+1.75,back],[t+2.05,Object.assign({},row)],[t+2.25,{}]];
@@ -412,6 +420,9 @@ function curl(sw){
       {G:[3,175,-6],D:norm([0.45,-0.55,-0.7]),eL:[0.3,1,0.15],eR:[-0.3,1,0.15],pass:true},
       {G:[7,172,-4],D:norm([0.3,0.35,-0.88]),eL:[0.3,1,0.15],eR:[-0.3,1,0.15],pass:true},
       {G:[9,150,18],D:norm([0.1,1,0]),eL:[0.4,-1,0.4],eR:[-0.4,-1,0.4],pass:true}].map(p=>Object.assign(p,g));
+    // the 360 goes the other way from the curl: across and over the far (left) shoulder first, behind the
+    // back, over the curling side's shoulder and back to the front
+    o360.splice(0,o360.length,...o360.map(p=>Object.assign(mirror(p,false),g)));
     const front=Object.assign({G:[0,116,24],D:[0,1,0],eL:[1,-0.8,-0.3],eR:[-1,-0.8,-0.3]},g);
     // left hand lets go and the head falls to the left; the left hand catches it at the head while the
     // right hand, still 10 cm up the shaft, slides down to the base during the curl
@@ -1909,9 +1920,9 @@ const MOVES={
   'mace:gravedigger:right':{kf:mirrorKF(gravedigger()),
     cue:'Shovel grip. From the left shoulder, dig the head down and across to the floor by your right foot, pivoting the back foot, then return to the shoulder.'},
   'mace:uppercut':{kf:uppercut(),
-    cue:'Start in the row position: lead hand at the head, the mace level along that side with the head behind you. Drive through a diagonal in front with the head low and finish level and high on the other side; back down the same way. Sword switch to change sides.'},
+    cue:'Start in the row position: lead hand at the head, the mace level along that side with the head behind you and your chest turned toward it. Rotate through the torso and drive through a diagonal in front with the head low and finish level and high on the other side; back down the same way. Sword switch to change sides.'},
   'mace:paddle':{kf:paddle(),
-    cue:'Start in the row position on the lead side. The lead hand pushes the head out to the front as the support hand brings the shaft up to vertical. Draw the head down and back in a paddling arc while the support hand pushes the base down; finish with the lead hand bringing the head back up and the support hand settling it into the row position. Sword switch to the other side.'},
+    cue:'Start in the row position on the lead side. The lead hand pushes the head straight out to the front, level, as the support hand brings the shaft up to vertical. Draw the head down and back in a paddling arc while the support hand pushes the base down; finish with the lead hand bringing the head back up and the support hand settling it into the row position. Sword switch to the other side.'},
   'mace:sword switch':{kf:swordSwitchMove(),
     cue:'From the row position, the base hand lets go and the lead hand drives the mace forward like a sword thrust. The other hand takes it at the same spot and carries it down into the row position on the other side.'},
   'mace:prayer switch':{kf:handSwitches(),
@@ -1925,7 +1936,7 @@ const MOVES={
   'mace:shield press':{kf:shieldPress(),
     cue:'From high ready (lead hand at the head, the other at the base), bring the mace vertical at the chest. Press it straight out in front to full extension, keeping the shaft vertical, then bring it back. Both sides.'},
   'mace:ballistic curl 360':{kf:curl(false),
-    cue:'From order to the curl: the curling hand holds the head, the other the base, head down. Curl and throw the mace into a 360 as the curling hand slides down to the standard grip on top. Back at the front, let go with the bottom hand; let the mace fall to that side and catch it at the head with the same hand, ready to curl that side. Slide the new support hand down to the base as you curl.'},
+    cue:'From order to the curl: the curling hand holds the head, the other the base, head down. Curl and throw the mace into a 360 the other way from the curl (over the far shoulder first) as the curling hand slides down to the standard grip on top. Back at the front, let go with the bottom hand; let the mace fall to that side and catch it at the head with the same hand, ready to curl that side. Slide the new support hand down to the base as you curl.'},
   'mace:switch curl':{kf:curl(true),
     cue:'Wide grip with the curling hand on the head. Curl up, keep the mace arcing over the top, meet the hands at the head mid-arc and catch it with the other hand in the low curl position.'},
   'mace:offset bent-over row':{kf:offsetRow(),
