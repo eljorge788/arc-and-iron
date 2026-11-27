@@ -955,6 +955,26 @@ function bullwhip(){
   kf.push([t+0.15,Object.assign({},UPRIGHT,C_ONE)],[t+0.35,{}]);
   return kf;
 }
+// H2H clean (hand to hand), two hands, a switch move. Built from a right lead (right hand on top, club on the
+// right); both() gives the way back. From order, a two-hand front swing: cast forward, down and back between
+// the legs, then drive the hips. On the way back up the bottom hand lets go and the club slides out until the
+// top hand rests against the pommel; the loose hand takes hold again above it, so it is now the top (lead)
+// hand, and the club comes to order on that side.
+function h2hClean(){
+  const eTwo={eL:[1,-0.5,0],eR:[-1,-0.5,0]};
+  const start=Object.assign({},STAND,CB2,{gL:0,gR:7,G:[-7,124,22],D:[0,1,0],eL:[1,-1,-0.25],eR:[-1,-1,-0.25]});
+  const cast=Object.assign({G:[0,128,46],D:norm([0,0.2,1]),pass:true},eTwo);
+  const low=Object.assign({P:[0,88,-6],pitch:24,feet:WIDE,turn:15,kneeOut:0.5,G:[0,84,24],D:norm([0,-0.8,-0.5]),pass:true},eTwo);
+  const back=Object.assign({P:[0,84,-8],pitch:38,feet:WIDE,turn:15,kneeOut:0.6,G:[0,76,10],D:norm([0,-0.6,-0.8])},eTwo);
+  // driving up: the bottom (left) hand lets go and stays close to the club
+  const fwd=Object.assign({},TALL,{G:[0,106,34],D:norm([0,0.4,0.9]),offL:1,freeL:[10,104,30],pass:true},eTwo);
+  // the club slides through the top hand until that hand rests on the pommel
+  const slide=Object.assign({},TALL,{G:[1,116,34],D:norm([0,0.78,0.62]),gR:0,offL:1,freeL:[10,124,32],eR:[-1,-0.7,0.1],eL:[1,-0.8,0.2],pass:true});
+  // the loose hand takes hold above it and becomes the top hand
+  const regrip=Object.assign({},TALL,{G:[3,120,28],D:norm([0,0.95,0.3]),gR:0,gL:7,offL:0,eL:[1,-1,-0.1],eR:[-1,-1,-0.1],pass:true});
+  const order=Object.assign({},UPRIGHT,{G:[7,124,22],D:[0,1,0],gR:0,gL:7,offL:0,offR:0,eL:[1,-1,-0.25],eR:[-1,-1,-0.25]});
+  return [[0,start],[0.25,{}],[0.6,cast],[0.95,low],[1.15,back],[1.3,{}],[1.65,fwd],[1.9,slide],[2.15,regrip],[2.45,order],[2.65,{}]];
+}
 function clubBarbarian(){
   // Start with the two-hand arm cast over the lead (left) shoulder. As the club is pulled back to the front,
   // sink into the squat and lock the arms out, club upright in front. Arm cast again as you stand, and
@@ -1431,6 +1451,8 @@ Object.assign(MOVES,{
     cue:'Two hands, from order on the lead side. Cast out into an outside circle and bring the club to rest across the opposite shoulder, as close to horizontal as you can and behind your head so the weight is centred. Squat. As you stand, cast it out from that side into another circle and rest it across your lead shoulder, then squat again. Stand and return to order. Both sides.'},
   'club:bullwhip':{kf:both(bullwhip()),label:'One hand',
     cue:'One hand only. From order, cast out into an outside circle and rotate your torso to the far side as you bring the club across. Turn the wrist so the hand comes up that far side with the club hanging down, bring it past the far-side ear and half mill it behind your head (the small circle), pull it over your lead shoulder and cast out into an inside circle. To repeat, let the circle swing the club out to a straight arm at shoulder height and swing straight back into the outside circle. Both arms.'},
+  'club:h2h clean':{kf:both(h2hClean()),label:'Two hands',
+    cue:'Two hands, from order on the lead side. Two-hand front swing: cast forward, down and back between the legs, then drive the hips. On the way back up let go with the bottom hand and let the club slide out until the top hand rests against the pommel. Take hold again with the loose hand above it: that hand is now on top and leads, and the club comes to order on its side. Each rep switches the lead.'},
   'club:one-arm shield cast':{kf:both(oneArmShield()),
     cue:'One hand, club in order at the shoulder. Cast it over the opposite ear, let it swing down behind your head and shoulders, then pull it over your lead shoulder back to the front and into order. Both arms.'},
   'club:two-hand clean':{kf:twoClean(),
@@ -1773,11 +1795,10 @@ function trimHold(kf){let e=kf.length;while(e>1&&!Object.keys(kf[e-1][1]).length
 function flowChain(parts){               // parts: [kf, step index]; the first part keeps its start pose
   const out=[],marks=[];let end=0;
   parts.forEach(([kf,step],i)=>{
-    let k=trimHold(kf);const start=k[0][1];
-    if(i&&k.length>2&&!Object.keys(k[1][1]).length)k=k.slice(2);   // drop the start pose and its hold
-    else if(i)k=k.slice(1);
-    if(i){const grip={};for(const g of ['offL','offR','gL','gR','freeL','freeR','choke','len'])if(g in start)grip[g]=start[g];
-      k=[[k[0][0],Object.assign({},grip,k[0][1])]].concat(k.slice(1))}   // keep the move's hold (which hand, where the free hand is)
+    let k=trimHold(kf);
+    if(i){                                // run through the move's start pose without stopping: drop only its hold
+      const hold=k.length>2&&!Object.keys(k[1][1]).length?k[1][0]-k[0][0]:0;
+      k=[[k[0][0],Object.assign({},k[0][1],{pass:true})]].concat(k.slice(hold?2:1).map(([t,p])=>[t-hold,p]))}
     const off=i?end+0.3-k[0][0]:0;
     marks.push({t:i?end:0,step});
     k.forEach(([t,p])=>out.push([t+off,p]));
@@ -1799,6 +1820,20 @@ const FLOW_TL={
   // the club to the other hand; repeat with the new lead side.
   'club:three-club mini flow':()=>flowTL([[armCast(),0],[mill(),1],[switchShield(),2]],['Arm cast','Mill','Switch shield cast'])
 };
+const FLOW_TL2={
+  // Club Foundations (Chris): one rep of each move on the same lead side, then the H2H clean switches the lead
+  // and the whole sequence is mirrored. Built from a right lead (right hand on top, club on the right).
+  'club:club foundations':()=>{
+    const ss=sideSwingKF(false);                               // one side swing rep: cast, low, up to the top
+    const orderR=Object.assign({},STAND,CB2,{gL:0,gR:7,G:[-7,124,22],D:[0,1,0],eL:[1,-1,-0.25],eR:[-1,-1,-0.25]});
+    const dip={G:[-3,110,34],D:norm([0,-0.25,1]),eL:[1,-0.5,0],eR:[-1,-0.5,0],pass:true};   // from order, lower it in front
+    const one=[[0,orderR],[0.25,{}],[0.6,dip],[0.95,Object.assign({},ss[0][1],{pass:true})]].concat(ss.slice(2,9).map(([t,p])=>[t+0.65,p]));
+    one.push([2.95,Object.assign({},UPRIGHT,{G:[-7,124,22],D:[0,1,0],eL:[1,-1,-0.25],eR:[-1,-1,-0.25],pass:true})],[3.15,{}]);
+    const tp=mirrorKF(torchPressTwo()).slice(0,6);            // one torch press
+    return flowTL([[one,0],[mirrorKF(twoArmCast()),1],[topSwap(shieldCast()),2],[tp,3],[h2hClean(),4]],
+      ['Two-hand side swing','Two-hand arm cast','Two-hand shield cast','Two-hand torch press','H2H clean']);}
+};
+Object.assign(FLOW_TL,FLOW_TL2);
 const flowTLFor=flow=>{const f=FLOW_TL[(flow.eq||'club')+':'+String(flow.name).toLowerCase()];return f?f():null};
 
 window.Demos={
