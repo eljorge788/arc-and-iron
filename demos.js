@@ -236,32 +236,32 @@ function pendulum(one){
 }
 const C_STAND_R=()=>[-14,104,22];
 function gravedigger(reps=2){
-  // Gravedigger (Chris), left lead: offset grip in high ready (base hand at the other hip, the lead hand
-  // along the shaft, head over the lead shoulder). Hinge with a flat back and bring the head straight down
-  // near the lead foot; then bring it up and high over the lead shoulder in a large arc, flat back, the
-  // chest turning on the spine, to finish in the high hold. Mirrored for the right lead.
-  const OFF=44;                                  // the lead hand sits this far below the head (offset grip)
-  const pose=(lead,D,body,el,er,pass)=>{const d=norm(D),gl=MACE-6-OFF;
-    return Object.assign({},STAND,{feet:{L:[18,8,4],R:[-18,8,-2]},turn:12},body,{G:sub(lead,mul(d,gl)),D:d,choke:6,gR:0,gL:gl,offL:0,offR:0,eL:el,eR:er,pass:!!pass})};
-  // high ready in the offset grip: the same line as HIGH_READY, the lead hand partway up
-  const hr=HIGH_READY(),hrD=norm(hr.D),hrLead=add(hr.G,mul(hrD,MACE-6-OFF>hr.gL?hr.gL:MACE-6-OFF));
-  const high=pose(hrLead,hrD,{P:[0,94,0],pitch:0,yaw:0,twist:0,kneeOut:0.35},[1,-1,0.2],[-1,-0.6,0.2]);
-  // head straight down by the lead (left) foot: knees soft, hips back, back flat
-  // placed by the support (base) hand and the direction to the head
-  const poseB=(base,toward,body,el,er,pass)=>{const d=norm(sub(toward,base));
-    return Object.assign({},STAND,{feet:{L:[18,8,4],R:[-18,8,-2]},turn:12},body,{G:base,D:d,choke:6,gR:0,gL:MACE-6-OFF,offL:0,offR:0,eL:el,eR:er,pass:!!pass})};
-  // the support hand stays low and moves back past the hip so the head can pivot straight down by the lead foot
-  const down=poseB([-12,84,-10],[16,12,26],{P:[1,62,-18],pitch:56,yaw:10,twist:-8,kneeOut:0.6},[0.6,-0.4,0.6],[-1,0.3,-0.3]);
-  const sink=poseB([-15,90,4],[24,70,46],{P:[1,76,-12],pitch:40,yaw:8,twist:-4,kneeOut:0.45},[0.8,-0.6,0.4],[-1,0,-0.2],true);
-  // the lead hand pushes the head straight down as the support hand pivots the base up
-  // the throw (like shovelling dirt over the shoulder): both hands sweep a huge arc from the bottom, arms
-  // long, up in front of the lead side, and finish with the mace level and high over the lead shoulder,
-  // head behind
-  const scoop=pose([20,90,40],[0.2,-0.55,0.8],{P:[1,80,-10],pitch:30,yaw:18,twist:-14,kneeOut:0.45},[1,-0.3,0.2],[-1,-0.3,0.1],true);
-  const lift=pose([22,150,24],[0.3,0.8,0.5],{P:[0,92,-3],pitch:6,yaw:26,twist:-18,kneeOut:0.35},[1,-0.2,0.2],[-1,-0.3,0.2],true);
-  const thrown=pose([24,176,-18],[0.2,0.08,-1],{P:[0,94,0],pitch:-4,yaw:34,twist:-10,kneeOut:0.3,tR:0.3,fyR:20},[1,0.2,0.2],[-1,0.3,0.4]);
+  // Gravedigger (Chris), left lead, like shovelling dirt and throwing it over the shoulder:
+  //  1. High ready in the offset grip (base hand at the other hip, the lead hand along the shaft).
+  //  2. The torso turns toward the support (right) side and the straight support arm reaches out to that side,
+  //     letting the lead hand bring the head down: low, mostly level, slightly diagonal, head toward the lead foot.
+  //  3. The torso turns back the other way for a huge sweep up in front of the lead side, the support hand
+  //     travelling from the support side to over the lead shoulder, finishing with the mace level and high
+  //     over the lead shoulder, head behind. Back to high ready. Mirrored for the right lead.
+  const OFF=34,gl=MACE-6-OFF;                    // the lead hand sits this far below the head (offset grip)
+  const feet={L:[18,8,4],R:[-18,8,-2]};
+  // a pose placed by the support (base) hand: at a point, or reached out from the right shoulder
+  const at=(body,base,D,el,er,pass)=>{const b=Object.assign({},STAND,{feet,turn:12},body);
+    const B=Array.isArray(base[0])?null:base.length===4?add(shoulderOf(b,'R'),mul(norm(base.slice(0,3)),base[3])):base;
+    return Object.assign(b,{G:B,D:norm(D),choke:6,gR:0,gL:gl,offL:0,offR:0,eL:el,eR:er,pass:!!pass})};
+  const hr=HIGH_READY(),hrD=norm(hr.D);
+  const high=at({P:[0,94,0],pitch:0,yaw:0,twist:0,kneeOut:0.35},hr.G,hrD,[1,-1,0.2],[-1,-0.6,0.2]);
+  // turning to the support side, the support arm going out straight, the head coming down
+  const sink=at({P:[-1,80,-10],pitch:30,yaw:-14,twist:6,kneeOut:0.45},[-40,92,32],[0.9,-0.25,0.2],[1,-0.6,0.3],[-1,-0.3,0.2],true);
+  // the low position: mace mostly level, head a little lower, toward the lead foot
+  const low=at({P:[-2,66,-16],pitch:48,yaw:-28,twist:10,kneeOut:0.6},[-0.5,-0.7,0.5,54],[1,-0.32,0.12],[1,-0.4,0.4],[-1,-0.2,0.2]);
+  // the sweep: the torso turns back toward the lead side, arms long, up in front of the lead side
+  const scoop=at({P:[0,80,-10],pitch:28,yaw:10,twist:-10,kneeOut:0.45},[-12,96,12],[0.85,-0.1,0.5],[1,-0.3,0.3],[-1,-0.3,0.2],true);
+  const lift=at({P:[0,92,-3],pitch:6,yaw:26,twist:-16,kneeOut:0.35},[8,140,40],[0.45,0.55,-0.7],[1,-0.2,0.3],[-1,-0.3,0.3],true);
+  // thrown: the support hand over the lead shoulder, the mace level and high, head behind
+  const thrown=at({P:[0,94,0],pitch:-4,yaw:34,twist:-10,kneeOut:0.3,tR:0.3,fyR:20},[12,172,34],[0.05,0.05,-1],[1,0.2,0.2],[-1,0.3,0.4]);
   const one=[[0,STAND],[0.6,high],[0.9,{}]];let t=0.9;
-  for(let r=0;r<reps;r++){one.push([t+0.3,sink],[t+0.6,down],[t+0.8,{}],[t+1.2,scoop],[t+1.55,lift],[t+1.9,thrown],[t+2.2,{}],[t+2.8,Object.assign({},high,{tR:0,fyR:0})],[t+3.0,{}]);t+=3.0}
+  for(let r=0;r<reps;r++){one.push([t+0.35,sink],[t+0.7,low],[t+0.9,{}],[t+1.3,scoop],[t+1.65,lift],[t+2.0,thrown],[t+2.3,{}],[t+2.9,Object.assign({},high,{tR:0,fyR:0})],[t+3.1,{}]);t+=3.1}
   one.push([t+0.6,Object.assign({},STAND,{twist:0})],[t+0.8,{}]);
   return one;
 }
@@ -1944,9 +1944,9 @@ const MOVES={
   'mace:one-arm pendulum swing':{kf:pendulum(true),label:'One hand',alt:'mace:pendulum swing',
     cue:'One hand, choked up, head hanging in line with the arm. The shoulder is the pivot: swing the arm and mace together side to side. Both hands.'},
   'mace:gravedigger:left':{kf:gravedigger(),
-    cue:'Left hand leads. Offset grip in high ready: base hand at the right hip, left hand along the shaft, head over the left shoulder. Push the head straight down near your left foot; the right hand stays low and moves back past the hip to let it pivot. Then sweep both hands, arms long, in a huge arc up in front of the left side, like throwing a shovel of dirt over your shoulder, finishing with the mace level and high over the left shoulder, head behind you. Back to high ready.'},
+    cue:'Left hand leads. Offset grip in high ready: base hand at the right hip, left hand along the shaft, head over the left shoulder. Turn toward the right and reach the right arm out straight so the left hand can bring the head down low, the mace mostly level with the head toward your left foot. Then turn back the other way and sweep both hands, arms long, in a huge arc up in front of the left side, the right hand travelling over to your left shoulder, like throwing a shovel of dirt over your shoulder, finishing with the mace level and high over the left shoulder, head behind you. Back to high ready.'},
   'mace:gravedigger:right':{kf:mirrorKF(gravedigger()),
-    cue:'Right hand leads. Offset grip in high ready: base hand at the left hip, right hand along the shaft, head over the right shoulder. Push the head straight down near your right foot; the left hand stays low and moves back past the hip to let it pivot. Then sweep both hands, arms long, in a huge arc up in front of the right side, like throwing a shovel of dirt over your shoulder, finishing with the mace level and high over the right shoulder, head behind you. Back to high ready.'},
+    cue:'Right hand leads. Offset grip in high ready: base hand at the left hip, right hand along the shaft, head over the right shoulder. Turn toward the left and reach the left arm out straight so the right hand can bring the head down low, the mace mostly level with the head toward your right foot. Then turn back the other way and sweep both hands, arms long, in a huge arc up in front of the right side, the left hand travelling over to your right shoulder, like throwing a shovel of dirt over your shoulder, finishing with the mace level and high over the right shoulder, head behind you. Back to high ready.'},
   'mace:uppercut':{kf:uppercut(),
     cue:'Start in the row position: lead hand at the head, the mace level along that side with the head behind you and your chest turned toward it. Rotate through the torso and drive through a diagonal in front with the head low and finish level and high on the other side; back down the same way. Sword switch to change sides.'},
   'mace:paddle':{kf:paddle(),
