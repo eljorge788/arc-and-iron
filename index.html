@@ -864,13 +864,17 @@ const X=[
 ['Double swing','kb',2,'med','hinge','db','The one-arm swing with a bell in each hand, feet a little wider; the bells move together without knocking.'],
 ['Suitcase deadlift','kb',1,'heavy','hinge','u','Bell outside the lead foot; shoulders square, hinge and take it with the lead hand, stand with the arm straight down; lower the same way.'],
 ['Single-leg deadlift','kb',2,'med','hinge','u','Single-leg RDL: bell outside the lead foot; hinge with the other leg straight back in line with your body, take the bell like a suitcase deadlift and stand, free leg off the floor.'],
-['Goblet squat','kb',1,'med','squat','','Bell upside down by the horns, elbows on your ribs. At the bottom, elbows inside the knees: push out with the elbows, squeeze in with the knees, chest up. If the horns are too much, hold the bell from underneath.'],
+['Goblet squat','kb',1,'med','squat','','Goblet hold: hands on the horns, bell facing down at the chest, elbows in. Squat all the way down and drive straight up.'],
 ['Front squat','kb',2,'med','squat','u','Bell in the rack, free arm out to the side. Racked elbow inside the knee, lean back against the bell, head up, drive all the way up.'],
 ['Double front squat','kb',2,'med','squat','d','A bell in each hand in the rack, wrists straight, elbows in; sit between your heels and drive up.'],
 ['Rack reverse lunge','kb',1,'med','lunge','u','Bell racked in the lead hand; step back with the same side leg, land softly, front shin near vertical.'],
 ['Overhead press','kb',1,'med','press','u','Squeeze the glutes; finish with the biceps by the ear.'],
 ['Push press','kb',2,'med','press','u','From the rack: slight squat, drive with the legs into an explosive press to lockout; ease it back to the rack.'],
-['Bottoms-up press','kb',3,'light','press','u','Crush the handle and press slowly, stacked.'],
+['Crush press','kb',2,'light','press','','Crush grip: squeeze the ball of the bell between your palms and press it overhead.'],
+['Thrusters','kb',2,'med','squat','b','Front squat holding the bell (crush, horn or goblet hold) and carry the drive up into a push press overhead.'],
+['Horn curl','kb',1,'light','pull','','Horn hold, bell reversed, arms straight; elbows locked to the ribs, curl it to the chest.'],
+['Pullover','kb',1,'light','pull','','Horn hold: take the bell over the head and behind the back, elbows at 90 degrees, and back to the front.'],
+['Tricep press','kb',1,'light','press','','Skull crushers: from the pullover, biceps by the ears, straighten the arms to bring the bell over the head and lower it behind.'],
 ['Bent-over row','kb',1,'heavy','pull','u','Bell between the legs; pivot to one side and hinge, free arm braced on the leg; row elbow to hip pocket, lower under control.'],
 ['Gorilla row','kb',2,'med','pull','d','Two bells, deep hinge, no pivot, back straight; rest on one bell and row the other to the chest, then switch.'],
 ['High pull','kb',2,'med','pull','b','A two-hand swing that brings the handle under the chin, elbows as high as they go; swing back down under control.'],
@@ -1477,7 +1481,7 @@ function eqBanner(eq,wt,opts={}){
 /* ---------- render output ---------- */
 function eqLabel(eqs){return eqs.map(k=>EQ[k].name).join(' + ')}
 // moves and flows that were renamed: old log name -> current name, so history and weights carry over
-const RENAMED={'club|Two-hand 180':'One-hand 180','club|Half Mill to Torch Press':'Rotational Torch Press to Half Reverse Mill','club|Half Mill to Rotational Torch Press':'Rotational Torch Press to Half Reverse Mill','club|Two-hand swipe':'Swipe','club|Pullover':'Two-hand arm cast','club|One-hand pullover':'Arm cast'};
+const RENAMED={'kb|Bottoms-up press':'Crush press','club|Two-hand 180':'One-hand 180','club|Half Mill to Torch Press':'Rotational Torch Press to Half Reverse Mill','club|Half Mill to Rotational Torch Press':'Rotational Torch Press to Half Reverse Mill','club|Two-hand swipe':'Swipe','club|Pullover':'Two-hand arm cast','club|One-hand pullover':'Arm cast'};
 const sameMove=(logName,name,eq)=>logName===name||RENAMED[eq+'|'+logName]===name;
 function lastFor(name,eq){
   let best=null;
@@ -1991,7 +1995,7 @@ const PATHS={
     {t:'Clean',m:['Clean','Clean with transitions','High pull','Single-leg deadlift'],goal:'3 swing cleans per side, pausing to check the rack each time; then one set with hand-to-hand transitions.'},
     {t:'Press',m:['Overhead press','Clean & press','Start-stop','Push press','Bent-over row'],goal:'Build to 4 sets of 3 strict presses per side, adding a set each session. Start and stop every set the same way.'},
     {t:'Turkish get-up',m:['Turkish get-up'],goal:'1 slow get-up per side with the arm locked the whole way.'},
-    {t:'Snatch & windmill',m:['Snatch','Windmill','Bottoms-up press'],goal:'10 per side with no bell flip onto the forearm.'}]}
+    {t:'Snatch & windmill',m:['Snatch','Windmill','Crush press'],goal:'10 per side with no bell flip onto the forearm.'}]}
 };
 // The kettlebell path gained two steps (figure 8s, rack position) and moved others, and progress is saved by
 // step number, so older saves are moved over once. A new step counts as learned if you had already learned the
