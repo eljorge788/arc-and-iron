@@ -1553,12 +1553,14 @@ function kbDoubleSwing(){
   kf.push([t+0.5,Object.assign({},pass,{pass:false})],[t+0.8,hang],[t+1.1,{}]);
   return kf;
 }
+// snatch: the bell driven up close to the body, and the arm on its way back down into the swing
+const SN_PULL=Object.assign(R1(Object.assign({},UP_KB,{G:[-14,146,18],D:norm([0,-0.9,-0.2]),W:[1,0,0],eR:[-1,0.6,0]})),{pass:true});
+const SN_OVER=Object.assign(R1(armR(Object.assign({},UP_KB),[0.1,0.35,0.93])),{pass:true});
 function kbSnatch(){
   // one-arm swing, then in one explosive move drive the bell up close to the body and punch through so it
   // turns to sit behind the wrist (like the rack) with the arm straight up overhead, biceps by the ear,
   // bell high. Drop it back into the swing.
-  const pull=Object.assign(R1(Object.assign({},UP_KB,{G:[-14,146,18],D:norm([0,-0.9,-0.2]),W:[1,0,0],eR:[-1,0.6,0]})),{pass:true});
-  const over=Object.assign(R1(armR(Object.assign({},UP_KB),[0.1,0.35,0.93])),{pass:true});
+  const pull=SN_PULL,over=SN_OVER;
   let kf=[[0,standFree(FLOOR_AHEAD)],[0.35,{}],[1.1,reachFree(FLOOR_AHEAD)],[1.35,setOne(FLOOR_AHEAD)],[1.55,{}],[2.0,HIKE_R]];
   let t=2.0;
   for(let i=0;i<2;i++){kf.push([t+0.27,SWPASS_R],[t+0.48,pull],[t+0.7,LOCK_R],[t+1.15,{}],[t+1.45,over],[t+1.72,SWPASS_R],[t+2.0,HIKE_R]);t+=2.0}
@@ -1651,7 +1653,8 @@ function bellUp(pose,extra){
   const D=norm(add(mul(F.f,-0.75),[0,-0.6,0]));
   return Object.assign({},pose,{kb:1,G:add(sR,[0,54,0]),D,W:perpTo(D,F.l),hR:0,hL:0,hD:0,offR:0,eR:[-1,0,0]},extra||{});
 }
-function kbWindmill(){
+function kbWindmill(){return both(windmillKF(2))}
+function windmillKF(reps){
   // Windmill (Chris): from the overhead hold, feet pivot 45 degrees toward the non-lead side. Hinge at the
   // waist with the weight on the lead leg, kept straight; the support hand glides down the inside of the
   // other leg. The bell stays straight up as the torso turns toward the lead side and hinges down, until the
@@ -1670,9 +1673,9 @@ function kbWindmill(){
   const held=(b,f,pass)=>bellUp(b,{G:add(shoulderOf(b,'R'),[0,56,0]),offL:1,freeL:f===null?add(shoulderOf(b,'L'),[4,-52,6]):f==='down'?down(b):glide(b,f),eL:[1,-0.3,0.2],pass:!!pass});
   const start=held(Object.assign({},UP_KB,{feet:{L:[14,8,0],R:[-14,8,0]}}),null);
   const kf=[[0,start],[0.4,{}],[0.9,held(stand,null)],[1.15,{}]];let t=1.15;
-  for(let i=0;i<2;i++){kf.push([t+0.7,held(mid,0.55,true)],[t+1.4,held(low,'down')],[t+1.7,{}],[t+2.4,held(mid,0.55,true)],[t+3.1,held(stand,null)],[t+3.35,{}]);t+=3.35}
+  for(let i=0;i<reps;i++){kf.push([t+0.7,held(mid,0.55,true)],[t+1.4,held(low,'down')],[t+1.7,{}],[t+2.4,held(mid,0.55,true)],[t+3.1,held(stand,null)],[t+3.35,{}]);t+=3.35}
   kf.push([t+0.5,Object.assign({},start)],[t+0.75,{}]);
-  return both(kf);
+  return kf;
 }
 function kbTurkishGetUp(){
   // Turkish get-up (Chris): lying on the back, bell straight up over the lead (right) shoulder, lead knee
@@ -1937,7 +1940,7 @@ const ALIAS={kb:{'bottoms-up press':'crush press','skull crushers':'tricep press
     'single kettlebell front squat':'front squat','kettlebell front squat':'front squat','single front squat':'front squat','figure 8':'figure-8','figure 8 front to back':'figure-8','figure-8 front to back':'figure-8','figure 8s':'figure-8',
     'figure 8 back to front':'figure-8 back to front','alternating-direction halo':'alternating halo','alternating halos':'alternating halo',
     'two hands to rack':'rack pickup','rack pick-up':'rack pickup','single-arm swing':'one-arm swing','baby single-arm swing':'one-arm swing',
-    'one arm swing':'one-arm swing','hand-to-hand transition':'hand-to-hand swing','hand to hand swing':'hand-to-hand swing',
+    'one arm swing':'one-arm swing','hand-to-hand swing switch':'hand-to-hand swing','hand-to-hand transition':'hand-to-hand swing','hand to hand swing':'hand-to-hand swing',
     'push back drill':'push-back drill','push-back drill from the rack':'push-back drill','swing clean':'clean','first swing clean':'clean',
     'swing clean with hand-to-hand transitions':'clean with transitions','clean transitions':'clean with transitions',
     'press':'overhead press','single-arm press':'overhead press','single-arm overhead press':'overhead press',
@@ -2326,6 +2329,97 @@ Object.assign(FLOW_TL2,{
     ['Rotational torch press','Half reverse mill','Switch 180'])
 });
 Object.assign(FLOW_TL,FLOW_TL2);
+
+/* ---------- flowing kettlebell flows (Chris) ----------
+   Parts are [kf, step, side]; side 'R' or 'L' labels the working hand, null for two-hand flows with no
+   lead side. Each part starts where the one before it ended. */
+function flowTLs(parts,stepNames){
+  const c=flowChain(parts.map(([kf,st])=>[kf,st]));
+  c.kf.push([c.end+0.3,{}]);
+  const tl=join([{kf:c.kf}]);
+  const side={R:' (right hand)',L:' (left hand)'},swap={R:' (right hand to left)',L:' (left hand to right)'};
+  tl.marks=c.marks.map((m,i)=>{const sd=parts[i][2],nm=stepNames[m.step];return {t:m.t*TEMPO,step:m.step,side:sd==='R'?'Right hand':sd==='L'?'Left hand':'',
+    label:nm+((/switch/i.test(nm)?swap:side)[sd]||'')}});
+  return tl;
+}
+// one-hand flows: the right-hand parts, then the same mirrored for the left. The intro (bell from the floor
+// to the hike) leads into the first part and the outro (park it again) follows the last.
+function kbSidedFlow(parts,names,intro,outro){
+  const R=parts.map(([kf,st])=>[kf,st,'R']),L=parts.map(([kf,st])=>[mirrorKF(kf),st,'L']);
+  const all=R.concat(L);
+  if(intro){const k=all[0][0],d=endOf(intro);all[0]=[intro.concat(k.slice(1).map(([t,p])=>[t+d,p])),all[0][1],'R']}
+  if(outro){const last=all[all.length-1],k=trimHold(last[0]),e=endOf(k);all[all.length-1]=[k.concat(outro.map(([t,p])=>[t+e,p])),last[1],'L']}
+  return flowTLs(all,names);
+}
+// floor to hike, and hike back to the floor (bell parked 12-18 inches ahead)
+const KB_INTRO=()=>[[0,standFree(FLOOR_AHEAD)],[0.35,{}],[1.1,reachFree(FLOOR_AHEAD)],[1.35,setOne(FLOOR_AHEAD)],[1.55,{}],[2.0,HIKE_R]];
+const KB_OUTRO=()=>[[0.45,setOne(FLOOR_AHEAD)],[0.65,{}],[0.85,reachFree(FLOOR_AHEAD)],[1.6,standFree(FLOOR_AHEAD)],[1.85,{}]];
+// pieces, all for the right hand
+const kfSwing1=()=>[[0,HIKE_R],[0.27,SWPASS_R],[0.55,SWTOP_R],[0.82,SWPASS_R],[1.1,HIKE_R]];
+const kfClean1=()=>[[0,HIKE_R]].concat(cleanUp(0));
+const KB_FIST={freeL:add(shoulderOf(UP_KB,'L'),[54,-2,4]),eL:[0,-1,0]};
+const kfPress1=()=>[[0,Object.assign({},RACK_R,KB_FIST)]].concat(pressRep(0.3,KB_FIST));
+const kfFrontSquat1=()=>{const arm=Object.assign({},RACK_R,{freeL:add(shoulderOf(UP_KB,'L'),[54,-1,4]),eL:[0,-1,0]});
+  const top=Object.assign({},arm,{feet:KFEET,turn:4,kneeOut:0.45,roll:3});
+  const bottom=carry(Object.assign({},UP_KB,{P:[1,48,-12],pitch:8,roll:5,feet:KFEET,turn:4,kneeOut:0.6}),arm);
+  return [[0,top],[0.95,bottom],[1.2,{}],[2.0,Object.assign({},top)]]};
+// hand-to-hand swing switch: up with the right hand, change hands at the top, down with the left
+const kfSwitchUp=t=>[[t+0.27,SWPASS_R],[t+0.55,SWTOP_R],[t+0.7,SWITCH_TOP],[t+0.98,mirror(SWPASS_R)],[t+1.25,mirror(HIKE_R)]];
+// from the rack: drop into the swing, then the switch
+const kfRackSwitch=()=>[[0,Object.assign({},RACK_R)],[0.3,PINNED_R],[0.6,HIKE_R]].concat(kfSwitchUp(0.6));
+// from overhead: drop straight into the swing (as after a snatch), then the switch
+const kfOverheadSwitch=()=>[[0,Object.assign({},LOCK_R)],[0.3,SN_OVER],[0.57,SWPASS_R],[0.85,HIKE_R]].concat(kfSwitchUp(0.85));
+// from overhead: press back down to the rack, drop into the swing, then the switch
+const kfPressDownSwitch=()=>[[0,Object.assign({},LOCK_R)],[0.45,Object.assign({},PRESS_MID_R)],[0.9,Object.assign({},RACK_R)],[1.15,{}],[1.45,PINNED_R],[1.75,HIKE_R]].concat(kfSwitchUp(1.75));
+const kfSnatch1=()=>[[0,HIKE_R],[0.27,SWPASS_R],[0.48,SN_PULL],[0.7,Object.assign({},LOCK_R)]];
+const kfCleanPress1=()=>kfClean1().concat([[1.35,Object.assign({},PRESS_MID_R)],[1.8,Object.assign({},LOCK_R)]]);
+const kfOverheadHold=()=>[[0,Object.assign({},LOCK_R)],[1.0,Object.assign({},LOCK_R,{G:add(LOCK_R.G,[0,0.5,0])})]];
+
+/* Halo flow (Chris): from the horn hold, alternating halos that finish each circle down at the hip opposite
+   the side the bell came round to the front, pause, and reverse; a goblet squat, a thruster that finishes
+   with the bell lowered behind the head, a skull crusher and a pullover back to the chest. */
+const HF_FEET={feet:{L:[18,8,0],R:[-18,8,0]},turn:6};
+const hfBody=p=>Object.assign({},p,HF_FEET,{kneeOut:p.kneeOut===undefined||p.kneeOut<0.45?0.45:p.kneeOut});
+const hfHalo=deg=>hfBody(Object.assign({},UP_KB,{hR:-8,hL:8,hD:5,offL:0,offR:0},haloAt(deg)));
+// bell at the hip, side +1 = left hip, -1 = right; still upside down by the horns, the chest turned toward it
+const hfHip=sd=>hfBody(Object.assign({},UP_KB,{yaw:sd*22,hR:-8,hL:8,hD:5,offL:0,offR:0,G:[sd*20,92,20],D:norm([sd*0.25,1,0.15]),W:norm([1,-sd*0.25,0]),
+  eL:[0.6,-0.6,-0.4],eR:[-0.6,-0.6,-0.4]}));
+function hfHaloTo(dir,from){             // one halo in a direction (+1: right hand past the left ear), ending at the hip
+  const k=[[0,from]];
+  if(from.yaw)k.push([0.45,Object.assign(hfHalo(0),{pass:true})]);
+  const t0=endOf(k);
+  for(let i=1;i<=8;i++)k.push([t0+0.26*i,Object.assign(hfHalo(dir*45*i),{pass:true})]);
+  const e=endOf(k);k.push([e+0.5,hfHip(dir)],[e+0.85,Object.assign({},hfHip(dir))]);
+  return k;
+}
+function hfGobletSquat(){
+  const top=carry(Object.assign({},UP_KB,HF_FEET,{kneeOut:0.45}),GOBLET_HOLD);
+  const bottom=carry(Object.assign({},UP_KB,HF_FEET,{P:[0,47,-12],pitch:8,kneeOut:0.6}),GOBLET_HOLD);
+  return [[0,hfHip(-1)],[0.5,Object.assign(hfHalo(0),{pass:true})],[0.85,top],[1.05,{}],[2.0,bottom],[2.25,{}]];
+}
+function hfThruster(){
+  const bottom=carry(Object.assign({},UP_KB,HF_FEET,{P:[0,47,-12],pitch:8,kneeOut:0.6}),GOBLET_HOLD);
+  const rise=Object.assign(carry(Object.assign({},UP_KB,HF_FEET,{P:[0,80,-5],pitch:4,kneeOut:0.5}),Object.assign({},GOBLET_HOLD,{G:[0,146,22]})),{pass:true});
+  return [[0,bottom],[0.4,rise],[0.75,hfBody(HORN_UP)],[1.0,{}],[1.55,hfBody(HORN_BEHIND)],[1.75,{}]];
+}
+const hfSkull=()=>[[0,hfBody(HORN_BEHIND)],[0.55,hfBody(HORN_UP)],[0.8,{}],[1.35,hfBody(HORN_BEHIND)],[1.55,{}]];
+const hfPullover=()=>[[0,hfBody(HORN_BEHIND)],[0.45,hfBody(HORN_OVER)],[0.9,hfBody(hornCurlAt(145))],[1.3,hfHalo(0)],[1.6,{}]];
+
+Object.assign(FLOW_TL,{
+  // Swing–Clean–Press–Squat (Chris): one rep of each with the right hand, a hand-to-hand swing switch, then
+  // the same with the left; the bell never touches down
+  'kb:swing–clean–press–squat':()=>kbSidedFlow([[kfSwing1(),0],[kfClean1(),1],[kfPress1(),2],[kfFrontSquat1(),3],[kfRackSwitch(),4]],
+    ['One-arm swing','Clean','Press','Front squat','Hand-to-hand swing switch'],KB_INTRO(),KB_OUTRO()),
+  'kb:halo flow':()=>flowTLs([[[[0,hfHalo(0)],[0.5,{}]].concat(hfHaloTo(1,hfHalo(0)).slice(1).map(([t,p])=>[t+0.5,p])),0,null],
+    [hfHaloTo(-1,hfHip(1)),0,null],[hfGobletSquat(),1,null],[hfThruster(),2,null],[hfSkull(),3,null],[hfPullover(),4,null]],
+    ['Alternating halo','Goblet squat','Thruster','Skull crusher','Pullover']),
+  // Snatch–Windmill Chain (Chris): one rep of each into the next, a hand-to-hand swing switch, then the left
+  'kb:snatch–windmill chain':()=>kbSidedFlow([[kfSnatch1(),0],[kfOverheadHold(),1],[windmillKF(1),2],[kfOverheadSwitch(),3]],
+    ['Snatch','Overhead hold','Windmill','Hand-to-hand swing switch'],KB_INTRO(),KB_OUTRO()),
+  // the easier chain: a clean and press gets the bell overhead instead of the snatch
+  'kb:clean & press windmill chain':()=>kbSidedFlow([[kfCleanPress1(),0],[kfOverheadHold(),1],[windmillKF(1),2],[kfPressDownSwitch(),3]],
+    ['Clean & press','Overhead hold','Windmill','Hand-to-hand swing switch'],KB_INTRO(),KB_OUTRO())
+});
 const flowTLFor=flow=>{const f=FLOW_TL[(flow.eq||'club')+':'+String(flow.name).toLowerCase()];return f?f():null};
 
 window.Demos={
