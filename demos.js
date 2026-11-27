@@ -353,6 +353,7 @@ function handSwitches(){
   };
   const toCenter=(dir,t0)=>{const out=[];for(let i=0;i<=N;i++)out.push([t0+0.6*i/N,at(i/N,dir)]);return out};
   const fromCenter=(dir,t0)=>{const out=[];for(let i=N;i>=0;i--)out.push([t0+0.6*(N-i)/N,at(i/N,dir)]);return out};
+  if(arguments[0]==='parts')return {at,toCenter,fromCenter};
   // center pose: both hands on the head; the centers from each side are the same place
   const seq=[[0,STAND],[0.6,at(0,-1)],[0.8,{}]]
     .concat(toCenter(-1,0.8).slice(1)).concat(fromCenter(1,1.4).slice(1)).concat([[2.2,{}]])
@@ -2565,11 +2566,15 @@ function maceFlow(parts,names,first,steps2){
   tl.marks.forEach((m,i)=>{const f=A.concat(B)[i][2];if(f&&!flip[i]){const nl=out[i][2]==='L'?'R':'L';m.label=names[m.step]+MACE_LBL.side[nl];m.side=nl==='R'?'Right hand leads':'Left hand leads'}});
   return tl;
 }
-// prayer switch in order: the hands slide up to meet at the head in prayer, mace upright at the chest, and
-// come back down to the base with the other hand on top (left on top -> right on top)
+// prayer switch between moves (Chris): from order the mace comes down to a horizontal hold, the lead hand
+// shifting up to the head as it goes, head out to the lead side; prayer switch at the center to horizontal on
+// the other side, then flow into the next move. Left lead to right lead here.
 function prayerOrder(){
-  const SP=84,center={G:[0,124-SP,30],D:[0,1,0],choke:MACE-SP-6,gL:SP,gR:SP*0.95,eL:[1,-0.8,-0.1],eR:[-1,-0.8,-0.1]};
-  return [[0,STAND],[0.55,center],[0.8,{}],[1.35,Object.assign({},mirror(STAND))],[1.5,{}]];
+  const H=handSwitches('parts'),side=H.at(0,1);
+  const into=Object.assign({},side,{G:add(side.G,[6,-6,2]),D:norm([0.7,0.7,0]),gL:40,pass:true});   // tipping over, hand sliding up
+  const out=H.at(0,-1),rise=Object.assign({},out,{G:add(out.G,[-6,-6,2]),D:norm([-0.7,0.7,0]),gR:40,pass:true});
+  return [[0,STAND],[0.35,into],[0.7,side],[0.85,{}]].concat(H.toCenter(1,0.85).slice(1),H.fromCenter(-1,1.45).slice(1),
+    [[2.2,{}],[2.55,rise]]);
 }
 // from order (left on top): the bottom (right) hand lets go and takes a high overhand hold up near the head,
 // then as the new lead it carries the head in a high arc over to the right and down behind into the row position
