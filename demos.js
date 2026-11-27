@@ -1765,15 +1765,52 @@ function show(title,eye,tl,stepNames,variants){
   start(tl);
 }
 
+/* ---------- flowing flow demos ----------
+   A flow built here plays as one continuous movement: each move runs straight into the next with no stop
+   at order and no blend pause, and the whole cycle repeats on the other lead side. Marks carry the step
+   index (for highlighting the step list) and the lead side. */
+function trimHold(kf){let e=kf.length;while(e>1&&!Object.keys(kf[e-1][1]).length)e--;return kf.slice(0,e)}
+function flowChain(parts){               // parts: [kf, step index]; the first part keeps its start pose
+  const out=[],marks=[];let end=0;
+  parts.forEach(([kf,step],i)=>{
+    let k=trimHold(kf);const start=k[0][1];
+    if(i&&k.length>2&&!Object.keys(k[1][1]).length)k=k.slice(2);   // drop the start pose and its hold
+    else if(i)k=k.slice(1);
+    if(i){const grip={};for(const g of ['offL','offR','gL','gR','freeL','freeR','choke','len'])if(g in start)grip[g]=start[g];
+      k=[[k[0][0],Object.assign({},grip,k[0][1])]].concat(k.slice(1))}   // keep the move's hold (which hand, where the free hand is)
+    const off=i?end+0.3-k[0][0]:0;
+    marks.push({t:i?end:0,step});
+    k.forEach(([t,p])=>out.push([t+off,p]));
+    end=out[out.length-1][0];
+  });
+  return {kf:out,marks,end};
+}
+function flowTL(sides,stepNames){       // sides: [[kf, step], ...] for the right lead; mirrored for the left
+  const right=sides,left=sides.map(([kf,st])=>[mirrorKF(kf),st]);
+  const c=flowChain(right.concat(left));
+  c.kf.push([c.end+0.3,{}]);
+  const tl=join([{kf:c.kf}]);
+  tl.marks=c.marks.map((m,i)=>({t:m.t*TEMPO,step:m.step,side:i<right.length?'Right hand leads':'Left hand leads',
+    label:stepNames[m.step]+(i<right.length?' (right hand)':' (left hand)')}));
+  return tl;
+}
+const FLOW_TL={
+  // Three-Club Mini Flow (Chris): arm cast, push straight into a mill, then a switch shield cast that hands
+  // the club to the other hand; repeat with the new lead side.
+  'club:three-club mini flow':()=>flowTL([[armCast(),0],[mill(),1],[switchShield(),2]],['Arm cast','Mill','Switch shield cast'])
+};
+const flowTLFor=flow=>{const f=FLOW_TL[(flow.eq||'club')+':'+String(flow.name).toLowerCase()];return f?f():null};
+
 window.Demos={
   has:(name,eq)=>!!key(name,eq),
-  hasFlow:flow=>!!flowKeys(flow),
+  hasFlow:flow=>!!(flowTLFor(flow)||flowKeys(flow)),
   open(name,eq){const k=key(name,eq);if(!k)return false;const mv=MOVES[k];
     const vars=mv.alt?[{label:mv.label,tl:join([mv])},{label:MOVES[mv.alt].label,tl:join([MOVES[mv.alt]])}]:null;
     show(String(name).replace(/\s*[×x]\s*\d.*$/,''),'Move demo',join([mv]),null,vars);return true},
-  openFlow(flow){const ks=flowKeys(flow);if(!ks)return false;
+  openFlow(flow){const ft=flowTLFor(flow);if(ft){show(flow.name,'Flow demo',ft,ft.marks.map(m=>m.label));return true}
+    const ks=flowKeys(flow);if(!ks)return false;
     show(flow.name,'Flow demo',join(ks.map(k=>MOVES[k[0]]),ks.map(k=>k[1])),ks.map(k=>k[1]));return true},
   // for previews and tests
-  _Player:Player,_join:join,_MOVES:MOVES,_key:key,_poseAt:poseAt,_skeleton:skeleton,_onBody:onBody,_STAND:STAND,_shaft:shaft,_norm:norm,_scene:scene,_CAM:CAM,_mirror:mirror,_mirrorKF:mirrorKF,_chain:chain,_torsoFrame:torsoFrame,_RACK_R:RACK_R,_LOCK_R:LOCK_R,_PRESS_MID_R:PRESS_MID_R,_UP_KB:UP_KB
+  _Player:Player,_join:join,_flowTL:flowTLFor,_MOVES:MOVES,_key:key,_poseAt:poseAt,_skeleton:skeleton,_onBody:onBody,_STAND:STAND,_shaft:shaft,_norm:norm,_scene:scene,_CAM:CAM,_mirror:mirror,_mirrorKF:mirrorKF,_chain:chain,_torsoFrame:torsoFrame,_RACK_R:RACK_R,_LOCK_R:LOCK_R,_PRESS_MID_R:PRESS_MID_R,_UP_KB:UP_KB
 };
 })();
