@@ -163,7 +163,8 @@ function frontSquat(){
   const bottom=out({P:[0,56,-14],pitch:22,yaw:0,feet:wide,turn:15});
   return [[0,STAND],[0.55,top],[0.7,{}],[1.5,bottom],[1.75,{}],[2.55,top],[2.7,{}],[3.2,Object.assign({},STAND)],[3.4,{}]];
 }
-function lateralLunge(){
+function lateralLunge(){return both(lateralLungeKF())}
+function lateralLungeKF(){
   // Lateral lunge (Chris): from the order position (left hand on top), the left foot stays planted for the
   // leg that will stretch out and the right takes a big step out, all the weight onto it; the top hand
   // slides to the head and punches it down low and parallel along the straight leg. Rise to center, prayer
@@ -190,7 +191,7 @@ function lateralLunge(){
     leg(pR,ctr,1.2,0.6),[[1.8,ctr]],leg(ctr,pL,1.8,0.6),[[2.4,pL],[2.7,{}],
     [3.15,Object.assign({},pL,{P:[-14,78,-6],pitch:10,roll:-8,feet:{L:[12,8,0],R:[-60,22,8]},G:add(pL.G,[8,40,10]),D:norm([-0.4,0.8,0.1]),pass:true})],
     [3.55,knee],[3.85,{}],[4.4,Object.assign({},mirror(STAND))],[4.65,{}]]);
-  return both(kf);
+  return kf;
 }
 function frontLunge(){
   // left foot steps forward; front shin near vertical; then the right
@@ -309,6 +310,7 @@ function uppercut(){
   const st=Object.assign({},start,{tR:0,fyR:0}),sw2=Object.assign({},swing,{tR:0,fyR:0});
   const reps=[[0,st],[0.2,{}],[0.4,swing],[0.6,mid],[0.95,end],[1.15,{}],[1.5,back],[1.7,sw2],[1.9,st],[2.1,{}],
     [2.3,swing],[2.5,mid],[2.85,end],[3.05,{}],[3.4,back],[3.6,sw2],[3.8,st],[4.0,{}]];
+  if(arguments[0]==='parts')return {st,swing,mid,end,back,sw2};
   const sword=swordSwitch(st);
   return chain([[0,mirror(STAND)],[0.6,start],[0.9,{}]],reps.slice(1).map(([t,p])=>[t-0.2+0.2,p]),sword,mirrorKF(reps).slice(1),
     [[0,Object.assign({},home)],[0.25,{}]]);
@@ -378,6 +380,7 @@ function archerHold(){
     return o};
   const sw=(t0,dir)=>{const o=[];for(let i=1;i<=4;i++)o.push([t0+0.15*i,at(i/4,dir,i<4)]);return o};
   const back=(t0,dir)=>{const o=[];for(let i=3;i>=0;i--)o.push([t0+0.15*(4-i),at(i/4,dir,i>0)]);return o};
+  if(arguments[0]==='parts')return {at,sw,back};
   // starts from high ready and returns through it to the order position
   const hr=HIGH_READY(),T=1.1;
   return [[0,STAND],[0.6,hr],[0.9,{}],[0.8+T,at(0,1)],[2.3+T,{}]].concat(sw(2.3+T,1),back(2.9+T,-1),[[4.9+T,{}]],sw(4.9+T,-1),back(5.5+T,1),[[6.6+T,{}]],
@@ -394,16 +397,18 @@ function shieldPress(){
   one.push([t+0.5,Object.assign({},hr)],[t+0.8,{}],[t+1.4,Object.assign({},STAND)],[t+1.6,{}]);
   return both(one);
 }
-function offsetPress(){
+function offsetPress(){return both(offsetPressKF(2))}
+function offsetPressKF(reps){
   // mace horizontal with the head out to the left; pressed from the clean-rack position to overhead
   // offset hold (Chris): one hand on the base, the lead hand along the shaft; the closer it sits to the head
   // the easier it feels. Here the left hand leads, the head out to the left.
   const rack={G:[-17,132,18],D:[1,0,0.04],gR:0,gL:32,eL:[0.6,-1,0],eR:[-1,-1,0]};
   const tilt={G:[-8,118,24],D:norm([0.7,0.7,0.1]),gR:0,gL:20,pass:true};
   const top={G:[-17,188,6],D:[1,0,0.02],gR:0,gL:32,eL:[1,0.2,-0.2],eR:[-1,0.2,-0.2]};
-  const one=[[0,STAND],[0.35,tilt],[0.7,rack],[0.95,{}],[1.55,top],[1.8,{}],[2.4,rack],[2.6,{}],[3.2,top],[3.45,{}],
-    [4.05,rack],[4.25,{}],[4.6,tilt],[4.95,{G:STAND.G,D:STAND.D,gR:0,gL:10,eL:STAND.eL,eR:STAND.eR}],[5.1,{}]];
-  return both(one);
+  const one=[[0,STAND],[0.35,tilt],[0.7,rack],[0.95,{}]];let t=0.95;
+  for(let i=0;i<reps;i++){one.push([t+0.6,top],[t+0.85,{}],[t+1.45,Object.assign({},rack)],[t+1.65,{}]);t+=1.65}
+  one.push([t+0.35,Object.assign({},tilt)],[t+0.7,{G:STAND.G,D:STAND.D,gR:0,gL:10,eL:STAND.eL,eR:STAND.eR}],[t+0.85,{}]);
+  return one;
 }
 function curl(sw){
   // Wide grip: the working hand (right) holds the head, the left hand the base. The shaft runs from
@@ -2454,12 +2459,12 @@ Object.assign(FLOW_TL,FLOW_TL2);
 /* ---------- flowing kettlebell flows (Chris) ----------
    Parts are [kf, step, side]; side 'R' or 'L' labels the working hand, null for two-hand flows with no
    lead side. Each part starts where the one before it ended. */
-function flowTLs(parts,stepNames){
+function flowTLs(parts,stepNames,labels){
   const c=flowChain(parts.map(([kf,st])=>[kf,st]));
   c.kf.push([c.end+0.3,{}]);
   const tl=join([{kf:c.kf}]);
-  const side={R:' (right hand)',L:' (left hand)'},swap={R:' (right hand to left)',L:' (left hand to right)'};
-  tl.marks=c.marks.map((m,i)=>{const sd=parts[i][2],nm=stepNames[m.step];return {t:m.t*TEMPO,step:m.step,side:sd==='R'?'Right hand':sd==='L'?'Left hand':'',
+  const {side,swap}=labels||{side:{R:' (right hand)',L:' (left hand)'},swap:{R:' (right hand to left)',L:' (left hand to right)'}};
+  tl.marks=c.marks.map((m,i)=>{const sd=parts[i][2],nm=stepNames[m.step];return {t:m.t*TEMPO,step:m.step,side:sd==='R'?(labels?'Right hand leads':'Right hand'):sd==='L'?(labels?'Left hand leads':'Left hand'):'',
     label:nm+((/switch/i.test(nm)?swap:side)[sd]||'')}});
   return tl;
 }
@@ -2540,6 +2545,90 @@ Object.assign(FLOW_TL,{
   // the easier chain: a clean and press gets the bell overhead instead of the snatch
   'kb:clean & press windmill chain':()=>kbSidedFlow([[kfCleanPress1(),0],[kfOverheadHold(),1],[windmillKF(1),2],[kfPressDownSwitch(),3]],
     ['Clean & press','Overhead hold','Windmill','Hand-to-hand swing switch'],KB_INTRO(),KB_OUTRO())
+});
+
+/* ---------- flowing mace flows (Chris) ----------
+   Parts are built for one lead hand (the top hand) and mirrored for the other. A prayer switch in order
+   changes the top hand; every move starts where the one before it ended. */
+const MACE_LBL={side:{R:' (right lead)',L:' (left lead)'},swap:{R:' (right lead to left)',L:' (left lead to right)'}};
+// first: 'L' or 'R', the lead of the parts as written; steps2: step indexes for the mirrored half (default same)
+// A part changes the lead when its step is a switch, or when it is flagged (third element true); the labels
+// follow the lead hand through the cycle.
+function maceFlow(parts,names,first,steps2){
+  const other=first==='L'?'R':'L';
+  const A=parts.map(([kf,st,f])=>[kf,st,f]),B=parts.map(([kf,st,f],i)=>[mirrorKF(kf),steps2?steps2[i]:st,f]);
+  let lead=first;const out=[],flip=[];
+  for(const [kf,st,f] of A.concat(B)){const sw=f||/switch/i.test(names[st]);out.push([kf,st,lead]);flip.push(sw&&/switch/i.test(names[st]));if(sw)lead=lead==='L'?'R':'L'}
+  void other;
+  const tl=flowTLs(out,names,MACE_LBL);
+  // a flagged part that is not itself a switch step is labelled with the lead it hands over to
+  tl.marks.forEach((m,i)=>{const f=A.concat(B)[i][2];if(f&&!flip[i]){const nl=out[i][2]==='L'?'R':'L';m.label=names[m.step]+MACE_LBL.side[nl];m.side=nl==='R'?'Right hand leads':'Left hand leads'}});
+  return tl;
+}
+// prayer switch in order: the hands slide up to meet at the head in prayer, mace upright at the chest, and
+// come back down to the base with the other hand on top (left on top -> right on top)
+function prayerOrder(){
+  const SP=84,center={G:[0,124-SP,30],D:[0,1,0],choke:MACE-SP-6,gL:SP,gR:SP*0.95,eL:[1,-0.8,-0.1],eR:[-1,-0.8,-0.1]};
+  return [[0,STAND],[0.55,center],[0.8,{}],[1.35,Object.assign({},mirror(STAND))],[1.5,{}]];
+}
+// from order (left on top): the bottom (right) hand lets go and takes a high overhand hold up near the head,
+// then as the new lead it carries the head in a high arc over to the right and down behind into the row position
+function highGrabToRow(){
+  const up=wide([0,0,0],[0,1,0]);void up;
+  const P=Object.assign({},STAND);
+  const let_=Object.assign({},P,{offR:1,freeR:[-22,120,20]});
+  const grab=Object.assign({},P,{offR:0,gR:70,eR:[-1,0.2,0.2]});
+  const arc={G:[4,118,26],D:norm([-0.7,0.6,-0.35]),choke:6,gL:0,gR:70,eL:[1,-0.8,0],eR:[-0.6,0.6,0.3],pass:true};
+  const arc2={G:[2,112,30],D:norm([-0.55,-0.1,-0.85]),choke:6,gL:0,gR:72,yaw:-10,twist:16,pass:true};
+  const st=uppercut('parts').st;
+  return [[0,P],[0.3,let_],[0.55,grab],[0.7,{}],[1.1,arc],[1.45,arc2],[1.8,st],[2.0,{}]];
+}
+// one uppercut from the row position (right lead) back to the row position
+function uppercutRep(){const u=uppercut('parts');
+  return [[0,u.st],[0.25,u.swing],[0.45,u.mid],[0.8,u.end],[1.0,{}],[1.35,u.back],[1.55,u.sw2],[1.75,Object.assign({},u.st)],[1.9,{}]]}
+// one uppercut that comes back down in front, the lead (right) hand sliding down to the base on top as the
+// mace comes back up into the order position, ready for a 360
+function uppercutToFront(){const u=uppercut('parts');
+  const down=Object.assign({},u.mid,{tR:0,fyR:0,twist:0,pass:true});
+  return [[0,u.st],[0.25,u.swing],[0.45,u.mid],[0.8,u.end],[1.0,{}],[1.4,down],[1.85,Object.assign({},mirror(STAND),{twist:0})],[2.0,{}]]}
+// archer: order -> high ready -> archer to the left -> prayer switch -> archer to the right (right hand leads)
+function archerPair(){const A=archerHold('parts'),hr=HIGH_READY();
+  const into=[[0,STAND],[0.6,hr],[0.9,{}],[1.9,A.at(0,1)],[2.9,{}]];
+  const sw=[[0,A.at(0,1)]].concat(A.sw(0,1),A.back(0.6,-1),[[1.8,{}]]);
+  return {into,sw,hold:[[0,A.at(0,-1)],[1.0,{}]]};
+}
+Object.assign(FLOW_TL,{
+  // Foundation Flow (Chris): right lead first: 10-to-2 (one swing each way), one barbarian squat, reverse lunge
+  // with the right leg, prayer switch; then the same with the left lead
+  'mace:foundation flow':()=>maceFlow([[mirrorKF(tenToTwo()),0],[mirrorKF(barbarianSquat()),1],[mirrorKF(reverseLunge('L')),2],[mirrorKF(prayerOrder()),3]],
+    ['10-to-2','Barbarian squat','Reverse lunge','Prayer switch'],'R'),
+  // Gravedigger Flow (Chris): gravedigger left, prayer switch, gravedigger right, one front squat, one offset
+  // press; then mirrored, starting with the gravedigger right as the hands have already switched
+  'mace:gravedigger flow':()=>maceFlow([[gravedigger(),0],[prayerOrder(),1],[mirrorKF(gravedigger()),2],[mirrorKF(frontSquat()),3],[mirrorKF(offsetPressKF(1)),4]],
+    ['Gravedigger left','Prayer switch','Gravedigger right','Mace front squat','Offset press'],'L',[2,1,0,3,4]),
+  // Squat · Lunge · 360 (Chris): barbarian squat, lead-leg reverse lunge, 360, prayer switch; then mirrored
+  'mace:squat · lunge · 360':()=>maceFlow([[barbarianSquat(),0],[reverseLunge('L'),1],[threeSixty(),2],[prayerOrder(),3]],
+    ['Barbarian squat','Reverse lunge','360','Prayer switch'],'L'),
+  // 360 Uppercut Flow (Chris): 360 into a squat; the support hand lets go and takes a high overhand hold, and
+  // as the new lead carries the head in a high arc into the row position; one uppercut, brought down in front
+  // as the lead hand slides down and regrips for the 360 on the other side
+  'mace:360 uppercut flow':()=>maceFlow([[threeSixty(),0],[frontSquat(),1],[highGrabToRow(),2],[uppercutToFront(),3]],
+    ['360','Squat','Switch hands: high grab into the row position','Uppercut'],'L'),
+  // Curl & Step Flow (Chris): a front lunge on each leg, two ballistic curl 360s, then the lateral lunge (one
+  // to each side with the prayer switch); mirrored
+  'mace:curl & step flow':()=>maceFlow([[frontLunge(),0],[curl(false),1],[lateralLungeKF(),2]],
+    ['Front lunge','Ballistic curl 360','Lateral lunge (prayer switch)'],'L'),
+  // Warrior Flow (Chris): reverse lunge on each leg, archer hold, prayer switch, archer hold on the other side,
+  // 360, the high grab into the row position, uppercut, sword switch, uppercut, then the lead hand brings the
+  // mace back up to order; mirrored
+  'mace:warrior flow':()=>{const A=archerPair(),u=uppercut('parts');
+    const toOrder=[[0,A.hold[0][1]],[0.6,mirror(HIGH_READY())],[0.9,{}],[1.5,Object.assign({},mirror(STAND))],[1.65,{}]];
+    const upR=uppercutRep(),upL=mirrorKF(upR);
+    const sword=swordSwitch(mirror(u.st));
+    const home=[[0,Object.assign({},u.st)],[0.55,Object.assign({},mirror(STAND),{twist:0,yaw:0,hipYaw:0,pitch:0})],[0.75,{}]];
+    return maceFlow([[reverseLunge('L'),0],[reverseLunge('R'),0],[A.into,1],[A.sw,2],[A.hold.concat(toOrder.slice(1).map(([t,p])=>[t+1.0,p])),1],
+      [mirrorKF(threeSixty()),3],[mirrorKF(highGrabToRow()),4,true],[upL,4],[sword,5],[upR,4],[home,4]],
+      ['Reverse lunge','Archer hold','Prayer switch','360','Uppercut','Sword switch'],'L');}
 });
 const flowTLFor=flow=>{const f=FLOW_TL[(flow.eq||'club')+':'+String(flow.name).toLowerCase()];return f?f():null};
 
