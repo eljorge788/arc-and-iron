@@ -561,6 +561,9 @@ textarea{min-height:70px;resize:vertical}
 .progcard p,.progactive p{margin:0}
 .progactive{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
 .progactive h3{font-size:1.5rem}
+.progsec{margin:10px 0 0;font-family:var(--display);text-transform:uppercase;font-size:1.1rem;color:var(--muted)}
+.progdone{opacity:.92}
+.tag.tag-done{background:var(--good-soft);color:var(--good)}
 .nextup{display:grid;gap:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 0}
 .nextup b{display:block;font-size:1.05rem}
 .nextup span{color:var(--muted);font-size:.9rem}
@@ -2111,7 +2114,15 @@ const PROGRAMS=[
    moves it into the list once. */
 function progList(){const st=Store.state;if(!Array.isArray(st.programs))st.programs=[];
   if(st.program){if(!st.programs.some(x=>x.id===st.program.id))st.programs.unshift(st.program);st.program=null}
-  for(let i=st.programs.length-1;i>=0;i--){const x=st.programs[i];if(!x||!PROGRAMS.some(p=>p.id===x.id))st.programs.splice(i,1)}return st.programs}
+  for(let i=st.programs.length-1;i>=0;i--){const x=st.programs[i],pr=x&&PROGRAMS.find(p=>p.id===x.id);if(!pr){st.programs.splice(i,1);continue}
+    if(!progNext(pr,x)){st.programs.splice(i,1);closeProg(x)}}return st.programs}
+/* Finished programs leave the running list (so their weekdays free up on the schedule) and go to Store.state.progDone,
+   newest first: {id,start,end,done,days}. Achievements and the Completed list read it. */
+function progDoneList(){const st=Store.state;if(!Array.isArray(st.progDone))st.progDone=[];return st.progDone}
+function closeProg(x){const end=Math.max(0,...Object.values(x.done||{}))||Date.now();
+  progDoneList().unshift({id:x.id,start:x.start||null,end,done:Object.assign({},x.done||{}),days:(x.days||[]).slice()});
+  if(Store.state.progDone.length>30)Store.state.progDone.length=30;
+  savedList().filter(w=>w.program&&w.program.id===x.id).map(w=>w.id).forEach(id=>dropSaved(id))}
 function progState(id){return progList().find(x=>x.id===id)||null}
 function progAvail(p){const a=activeEq();return p.needs==='any2'?a.length>=2:p.needs.every(k=>a.includes(k))}
 function progEqs(p){const a=activeEq();return p.needs==='any2'?a:p.needs.filter(k=>a.includes(k))}
@@ -2128,7 +2139,8 @@ function openProgramDay(p,w,d){
 function markProgDay(id,key,val){
   const st=progState(id);if(!st)return;
   st.done=Object.assign({},st.done||{});if(val)st.done[key]=Date.now();else delete st.done[key];
-  Store.saveState();renderPrograms();renderContinue();
+  const pr=PROGRAMS.find(x=>x.id===id),fin=!!(pr&&!progNext(pr,st));if(fin)progList();
+  Store.saveState();renderPrograms();renderContinue();if(fin){renderRec();renderTrack()}return fin;
 }
 function renderPrograms(){
   // skill paths
@@ -2153,16 +2165,22 @@ function renderPrograms(){
     html+=`<div class="progactive">${artHTML(PROG_ART[pid])}<div class="eyebrow">Your program</div><h3>${esc(active.name)}</h3><p class="hint">${doneN} of ${tot} sessions done</p>`;
     if(nx){const spec=active.day(nx.w,nx.d);html+=`<div class="nextup"><div><b>Next: Week ${nx.w} · Day ${nx.d}${nextDate?' · '+dayWord(nextDate.date):''}</b><span>${esc(spec.label)} · ${spec.min} min</span><p class="hint">${esc(active.notes[nx.w-1])}</p></div>
       <div class="go">${progAvail(active)?`<button class="btn" data-po="${pid}:${nx.w}:${nx.d}">Open workout</button>`:'<span class="hint">Turn on the gear this program needs under Build › Your gear.</span>'}<button class="btn ghost small" data-pd="${pid}:${progKey(nx.w,nx.d)}">Mark done</button></div></div>`}
-    else html+=`<p class="tip good"><b>Program complete.</b> Pick another below or rerun this one.</p>`;
     html+=schedPickHTML(active,st);
     html+=`<div class="pgrid">${Array.from({length:active.weeks},(_,wi)=>`<div class="pweek"><span>Week ${wi+1}</span>${Array.from({length:active.days},(_,di)=>{const k=progKey(wi+1,di+1),dn=(st.done||{})[k];const cur=nx&&nx.w===wi+1&&nx.d===di+1;
       return `<button class="pday ${dn?'dn':''} ${cur?'cur':''}" data-po="${pid}:${wi+1}:${di+1}" aria-label="Week ${wi+1} day ${di+1}${dn?', done '+fmtDate(dn):''}">${dn?'✓':esc(st.days[di]||'D'+(di+1))}</button>`}).join('')}</div>`).join('')}</div>
       <p class="hint">Tap any day to open it. Logging a program workout marks it done.</p>
       <button class="link" data-leave="${pid}">Leave program</button></div>`;
   });
-  html+=PROGRAMS.filter(p=>!acts.some(a=>a.p.id===p.id)).map(p=>{const ok=progAvail(p);
+  const fin=[];progDoneList().forEach(x=>{if(!fin.some(y=>y.id===x.id)&&PROGRAMS.some(p=>p.id===x.id))fin.push(x)});
+  html+=PROGRAMS.filter(p=>!acts.some(a=>a.p.id===p.id)&&!fin.some(x=>x.id===p.id)).map(p=>{const ok=progAvail(p);
     return `<div class="progcard">${artHTML(PROG_ART[p.id])}<div class="block-head"><b>${esc(p.name)}</b><span class="tag">${p.level}</span></div><p>${esc(p.blurb)}</p><p class="hint">${p.weeks} weeks · ${p.days} days a week · ${p.needs==='any2'?'any two implements':p.needs.map(k=>EQ[k].name).join(', ')}</p>
       ${ok?`<button class="btn ghost small" data-ps="${p.id}">${acts.length?'Add this program':'Start program'}</button>${acts.length?'<span class="hint">Runs alongside your current program and plan. You pick its days next.</span>':''}`:`<span class="hint">Needs ${p.needs==='any2'?'two implements':p.needs.map(k=>EQ[k].name.toLowerCase()).join(', ')} turned on in your gear.</span>`}</div>`}).join('');
+  if(fin.length){html+=`<h3 class="progsec">Completed</h3>`+fin.map(x=>{const p=PROGRAMS.find(q=>q.id===x.id),runs=progDoneList().filter(y=>y.id===x.id).length,
+      running=acts.some(a=>a.p.id===p.id),fresh=Date.now()-x.end<3*DAY;
+    return `<div class="progcard progdone">${artHTML(PROG_ART[p.id])}<div class="block-head"><b>✓ ${esc(p.name)}</b><span class="tag tag-done">Completed</span></div>
+      <p class="hint">${fresh?'<b>Just finished.</b> ':''}Finished ${fmtDate(x.end)}${x.start?' · started '+fmtDate(x.start):''} · all ${p.weeks*p.days} sessions${runs>1?' · completed '+runs+' times':''}</p>
+      ${fresh?'<p class="hint">Its training days are free on your schedule now. Start another program or a weekly plan to fill them.</p>':''}
+      ${running?'<span class="hint">Running again above.</span>':progAvail(p)?`<button class="btn ghost small" data-ps="${p.id}">Run it again</button>`:''}</div>`}).join('')}
   pl.innerHTML=html;
   const byId=id=>PROGRAMS.find(p=>p.id===id);
   pl.querySelectorAll('[data-po]').forEach(b=>b.onclick=()=>{const[id,w,d]=b.dataset.po.split(':');const pr=byId(id);if(pr&&progAvail(pr))openProgramDay(pr,+w,+d)});
@@ -2323,7 +2341,7 @@ $('lgSave').onclick=async()=>{
   const prg=pendingLog&&pendingLog.program,wref=pendingLog&&pendingLog.weekRef,wid=pendingLog&&pendingLog.wid;
   const gBefore=goalStats(),gAfter=goalStats([rec]),gHit=gBefore&&mondayOf(date)===gAfter.mon&&!gBefore.met&&gAfter.met;
   const recs=recordsIn(rec),recMsg=(recs.list.length?` <b>New best:</b> ${esc(recs.list.join(', '))}.${recs.list.some(x=>/ (kg|lb)$/.test(x))?' Keep every rep clean as the weight climbs.':''}`:'')+(recs.longest?` Your longest session yet.`:'');
-  try{await Store.add('log',rec);calSel=date;calMonth=date.slice(0,7);if(prg)markProgDay(prg.id,prg.key,true);finishedWorkout(wid,wref);lgFeel={};msg.innerHTML=(gHit?`<b>Weekly goal met.</b> ${gAfter.streak>1?gAfter.streak+'-week streak. ':''}`:'Saved. Nice work. ')+(recMsg?recMsg+' ':'')+'<button class="link" type="button" onclick="go(\'progress\')">See your progress</button>';pendingLog=null;$('lgNotes').value='';$('lgMin').value='';renderLogForm()}
+  try{await Store.add('log',rec);calSel=date;calMonth=date.slice(0,7);const pFin=prg?markProgDay(prg.id,prg.key,true):false,pNm=pFin&&(PROGRAMS.find(x=>x.id===prg.id)||{}).name;finishedWorkout(wid,wref);lgFeel={};msg.innerHTML=(pFin?`<b>Program complete: ${esc(pNm)}.</b> Its days are free on your schedule for a new program or plan. `:'')+(gHit?`<b>Weekly goal met.</b> ${gAfter.streak>1?gAfter.streak+'-week streak. ':''}`:'Saved. Nice work. ')+(recMsg?recMsg+' ':'')+'<button class="link" type="button" onclick="go(\'progress\')">See your progress</button>';pendingLog=null;$('lgNotes').value='';$('lgMin').value='';renderLogForm()}
   catch(e){msg.textContent=e&&e.code==='quota_exceeded'?'Your log is full. Delete a few old entries, then save again.':'That did not save. Check your connection and try again.'}
   $('lgSave').disabled=false;msg.hidden=false;setTimeout(()=>msg.hidden=true,8000);
 };
@@ -2465,7 +2483,7 @@ function achCtx(){
 const hit=(cur,max,at)=>({got:cur>=max,cur:Math.min(cur,max),max,at});
 function nthTs(arr,n){return arr.length>=n?arr[n-1]:null}
 const ACH=[];
-PROGRAMS.forEach(p=>ACH.push({id:'prog-'+p.id,g:'finish',tier:3,icon:'flag',t:p.name,d:`Finish every day of the ${p.name} program.`,check(c){const s=(c.st.programs||[]).find(x=>x.id===p.id)||c.st.program;
+PROGRAMS.forEach(p=>ACH.push({id:'prog-'+p.id,g:'finish',tier:3,icon:'flag',t:p.name,d:`Finish every day of the ${p.name} program.`,check(c){const s=(c.st.progDone||[]).find(x=>x.id===p.id)||(c.st.programs||[]).find(x=>x.id===p.id)||c.st.program;
   if(!s||s.id!==p.id)return{got:false,cur:0,max:p.weeks*p.days};const n=Object.keys(s.done||{}).length;return{got:!progNext(p,s),cur:Math.min(n,p.weeks*p.days),max:p.weeks*p.days,at:Math.max(0,...Object.values(s.done||{}))||null}}}));
 ACH.push(
   {id:'plan-1',g:'finish',tier:1,icon:'flag',t:'Full week',d:'Finish every day of a weekly plan.',check:c=>hit((c.st.plansDone||[]).length,1)},
@@ -2944,6 +2962,7 @@ function contItems(){
   if(upcoming(1).some(u=>u.date===todayStr()))it.unshift('today');
   if(progList().some(x=>{const pr=PROGRAMS.find(y=>y.id===x.id);return pr&&progNext(pr,x)}))it.push('program');
   if(contSaved(r).length)it.push('built');
+  if(progDoneList().some(x=>Date.now()-x.end<7*DAY))it.push('progdone');
   if(Object.keys(PATHS).some(eq=>pathStarted(eq)&&nextStep(eq)<PATHS[eq].steps.length))it.push('skills');
   return it;
 }
@@ -2974,6 +2993,11 @@ function renderContinue(){
       <span class="meter"><i class="s-ready" style="width:${Math.round(doneN/tot*100)}%"></i></span>
       <p class="hint">Next: <b>Week ${nx.w} · Day ${nx.d}</b>${when?' · '+dayWord(when.date):''} · ${esc(spec.label)} · ${spec.min} min</p>
       <div class="go">${progAvail(prog)?`<button class="btn" data-c="prog:${prog.id}">Open next session</button>`:'<span class="hint">Turn on the gear this program needs in your setup.</span>'}<button class="btn ghost small" data-c="progs">See program</button></div></article>`});
+  if(items.includes('progdone'))progDoneList().filter(x=>Date.now()-x.end<7*DAY).forEach(x=>{const p=PROGRAMS.find(q=>q.id===x.id);if(!p)return;
+    h+=`<article class="ccard">${artHTML(PROG_ART[p.id])}<div class="eyebrow">Program complete · ${fmtDate(x.end)}</div><h3>✓ ${esc(p.name)}</h3>
+      <span class="meter"><i class="s-ready" style="width:100%"></i></span>
+      <p class="hint">All ${p.weeks*p.days} sessions done. ${x.days&&x.days.length?esc(x.days.join(', '))+' are':'Its days are'} free on your schedule now.</p>
+      <div class="go"><button class="btn" data-c="progs">Pick a new program</button><button class="btn ghost small" data-c="tobuild">Build a workout or plan</button></div></article>`});
   if(items.includes('built')){const ws=contSaved(readResume());
     h+=`<article class="ccard"><div class="eyebrow">Workouts you built · not logged yet</div>${ws.map(w=>`<div class="trow"><span>${eqDots(w.eqs)}<b>${esc(GOALS[w.type]+' · '+w.minutes+' min')}</b><small>${ago(w.built||Date.now())}</small></span>
       <span class="go"><button class="btn small" data-c="built:${esc(w.id)}">Open</button><button class="btn ghost small" data-c="builtgo:${esc(w.id)}">▶ Start</button><button class="link" data-c="builtdrop:${esc(w.id)}">Remove</button></span></div>`).join('')}</article>`}
