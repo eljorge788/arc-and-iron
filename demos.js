@@ -1858,6 +1858,10 @@ Object.assign(FLOW_TL2,{
   // the club over; mirrored. One hand.
   'club:lunge cast & flag':()=>flowTL([[lungeArmCast(false),0],[lungeFlagPress(false),1],[switchShield(),2]],
     ['Reverse lunge arm cast','Forward lunge flag press','Switch shield cast']),
+  // Two-Hand Lunge Cast & Flag (Chris): the beginner, two-hand version; the H2H clean is the switch. Built
+  // from a right lead (right hand on top, right leg steps).
+  'club:two-hand lunge cast & flag':()=>flowTL([[mirrorKF(lungeArmCast(true)),0],[mirrorKF(lungeFlagPress(true)),1],[h2hClean(),2]],
+    ['Two-hand reverse lunge arm cast','Two-hand forward lunge flag press','H2H clean']),
   'club:rotational torch press to half reverse mill':()=>flowTL([[rotTorchPress(),0],[halfRevMillFront(),1],[switch180(),2]],
     ['Rotational torch press','Half reverse mill','Switch 180'])
 });
