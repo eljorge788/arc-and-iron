@@ -327,6 +327,13 @@ function handSwitches(){
   return seq;
 }
 
+// High ready, or seatbelt (Chris): the lead hand at the mace head, the other at the base; the mace across
+// the front of the body on a diagonal, head at the lead shoulder and base at the other hip. Left leads here.
+const HIGH_READY=()=>Object.assign(wide([-15,94,20],[19,138,16],'L'),{eL:[1,-1,0.2],eR:[-1,-0.6,0.2]});
+function highReady(){
+  const one=[[0,STAND],[0.4,{}],[1.0,HIGH_READY()],[2.4,{}],[3.0,Object.assign({},STAND)],[3.3,{}]];
+  return both(one);
+}
 function archerHold(){
   // Archer hold (Chris): the mace in line with the shoulders, the lead hand holding just below the head
   // straight out to the side, the other hand at the base by the chest. Prayer switch to the other side.
@@ -1865,6 +1872,8 @@ const MOVES={
     cue:'Wide grip, hands at the head and the base. The lead hand brings the head to the center while the base hand slides up to meet it in prayer, then the other hand carries the head out to the other side. Keep it fluid with the head at the same height.'},
   'mace:offset press':{kf:offsetPress(),
     cue:'Also called the mace overhead press. Offset hold: one hand on the base, the lead hand along the shaft (the closer to the head, the easier). Mace level with the head out to the lead side; press it from the rack straight overhead, keeping it level. Both sides.'},
+  'mace:high ready':{kf:highReady(),
+    cue:'Also called the seatbelt. Lead hand at the mace head, the other at the base. Hold the mace across the front of your body on a diagonal: head at the lead shoulder, base at the other hip. Both sides.'},
   'mace:archer hold':{kf:archerHold(),
     cue:'Mace in line with the shoulders: the lead hand holds just below the head, arm straight out to the side; the other hand at the base by the chest. Hold, prayer switch, hold the other side.'},
   'mace:shield press':{kf:shieldPress(),
@@ -1996,7 +2005,7 @@ const ALIAS={kb:{'bottoms-up press':'crush press','skull crushers':'tricep press
     'clean and press':'clean & press','start stop':'start-stop','two hand swing':'two-hand swing','2-hand swing':'two-hand swing','swing':'two-hand swing',
     'two hand deadlift':'two-hand deadlift','two-hand deadlift practice':'two-hand deadlift','2-hand deadlift':'two-hand deadlift','deadlift':'two-hand deadlift',
     'around the world':'around-the-world','halos':'halo','light halos':'halo','single-direction halo':'halo'},
-  mace:{'hand switch':'prayer switch','hand switches':'prayer switch','mace overhead press':'offset press','one-hand pendulum swing':'one-arm pendulum swing','single-arm pendulum swing':'one-arm pendulum swing','rotational uppercut':'uppercut','overhead press':'offset press',
+  mace:{'seatbelt':'high ready','seatbelt hold':'high ready','high ready position':'high ready','high ready hold':'high ready','hand switch':'prayer switch','hand switches':'prayer switch','mace overhead press':'offset press','one-hand pendulum swing':'one-arm pendulum swing','single-arm pendulum swing':'one-arm pendulum swing','rotational uppercut':'uppercut','overhead press':'offset press',
   'squat':'front squat','bent-over row':'offset bent-over row','offset row':'offset bent-over row','pendulum swings':'pendulum swing'},
   club:{'switch shield casts':'switch shield cast','switch 180s':'switch 180',"switch 180's":'switch 180','switch reverse mills':'switch reverse mill','half mill rotational torch press':'rotational torch press','side swipes':'side swipe','one-hand swipe':'swipe','one-arm swipe':'swipe','inside and outside circles':'inside circle','inside circles':'inside circle','outside circles':'outside circle','mills':'mill','reverse mills':'reverse mill','pullover':'two-hand arm cast','pullovers':'two-hand arm cast','club pullover':'two-hand arm cast','two-hand pullover':'two-hand arm cast','two-handed pullover':'two-hand arm cast','one-hand pullover':'arm cast','one-handed pullover':'arm cast','one-arm pullover':'arm cast','arm casts':'arm cast','two-handed flag press':'two-hand flag press','one-hand flag press':'flag press','two-handed torch press':'two-hand torch press','one-hand torch press':'torch press','side cleans':'side clean','two-hand side clean':'side clean','two-hand side swing':'side swing','two-handed side swing':'side swing','two-hand side swings':'side swing','side swings':'side swing','steel club side swing':'side swing','single-arm side swing':'single-arm side swing','single side swing':'single-arm side swing','one-arm side swing':'single-arm side swing','one-hand side swing':'single-arm side swing','single-arm side swings':'single-arm side swing','two-handed side rocker':'side rocker','two-hand side rocker':'side rocker','cross-body swing':'lateral swing','cross-body swings':'lateral swing','side rock-it':'side rocker','side rocket':'side rocker',
     'swing':'lateral swing','swings':'lateral swing','one-arm arm cast':'arm cast','two-hand swipe':'swipe','swipes':'swipe',
