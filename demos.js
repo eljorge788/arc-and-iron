@@ -827,6 +827,25 @@ function cleanPress(){
   return [[0,C_TWO],[0.25,{}]].concat(cleanKF()).concat([[2.65,top],[2.9,{}],[3.55,atOrder(TALL)],[3.75,{}],
     [4.1,Object.assign({},UPRIGHT,C_ORDER2)],[4.3,{}]]);
 }
+// Reverse lunge arm cast (Chris): the mace's reverse lunge with a club. Arm cast as you step back into the
+// lunge with the lead side leg (one hand: the working hand's leg; two hands: the top hand's leg), club hanging
+// behind at the bottom; pull it back over the shoulder to order as you stand and step back to the start.
+function lungeBody(leg,f){                         // f: 0 standing, 1 bottom of the reverse lunge (as the mace demo)
+  const back=leg==='L'?'L':'R',front=back==='L'?'R':'L',x=back==='L'?12:-12;
+  const feet={};feet[back]=[x,8+7*f,-94*f];feet[front]=[-x,8,6*f];
+  const o={P:[0,94-40*f,-36*f],pitch:5*f,yaw:0,hipYaw:0,roll:0,feet,turn:8,fyL:0,fyR:0,tL:0,tR:0};
+  o['t'+back]=f>0.5?1:0;return o;
+}
+function lungeArmCast(two){
+  const leg=two?'L':'R',base=two?C_TWO:C_ONE;
+  const H=two?{tip:AC2.tip,back:AC2.back,pull:AC2.pull,order:AC2.order}:{
+    tip:{G:[-15,150,10],D:norm([-0.05,0.3,-0.95]),eR:[-0.3,0.6,1]},
+    back:{G:[-15,160,-2],D:norm([0.1,-0.9,-0.42]),eR:[-0.3,0.6,1]},
+    pull:{G:[-15,154,10],D:norm([0,0.8,-0.6]),eR:[-0.3,0.6,1]},
+    order:C_ORDER1};
+  const at=(f,k,pass)=>{const src=Object.assign({},base,H[k],{W:[1,0,0]});const o=carry(lungeBody(leg,f),src);delete o.W;if(pass)o.pass=true;else delete o.pass;return o};
+  return [[0,base],[0.3,{}],[0.7,at(0.45,'tip',true)],[1.1,at(1,'back')],[1.4,{}],[1.85,at(0.55,'pull',true)],[2.3,at(0,'order')],[2.55,{}]];
+}
 function clubBarbarian(){
   // Start with the two-hand arm cast over the lead (left) shoulder. As the club is pulled back to the front,
   // sink into the squat and lock the arms out, club upright in front. Arm cast again as you stand, and
@@ -1273,6 +1292,10 @@ Object.assign(MOVES,{
     cue:'Also called a pullover. One hand, club in order at the shoulder. Arm cast up and over the shoulder with the elbow in and bent to 90 degrees, club hanging behind, then pull it back over the shoulder to order, keeping the bend. Both arms.'},
   'club:two-hand arm cast':{kf:both(twoArmCast()),label:'Two hands',alt:'club:arm cast',
     cue:'Also called a pullover. Two hands, club in order on the lead side. Arm cast up and over that shoulder: the lead elbow stays in at 90 degrees, and the supporting elbow goes up with the bicep by your ear and the forearm reaching over your head to the club. Pull the club back over the shoulder to order. Both sides.'},
+  'club:reverse lunge arm cast':{kf:both(lungeArmCast(false)),label:'One hand',alt:'club:two-hand reverse lunge arm cast',
+    cue:'One hand, club in order at the shoulder. Arm cast up and over the shoulder (elbow in, bent to 90 degrees) as you step back into a reverse lunge with the same side leg; the club hangs behind at the bottom. Pull it back over the shoulder to order as you stand and step back to your starting stance. Front shin near vertical. Both sides.'},
+  'club:two-hand reverse lunge arm cast':{kf:both(lungeArmCast(true)),label:'Two hands',alt:'club:reverse lunge arm cast',
+    cue:'Two hands, club in order on the lead side. Two-hand arm cast over that shoulder as you step back into a reverse lunge with the lead side leg; the club hangs behind at the bottom. Pull it back over the shoulder to order as you stand and step back to your starting stance. Front shin near vertical. Both sides.'},
   'club:one-arm shield cast':{kf:both(oneArmShield()),
     cue:'One hand, club in order at the shoulder. Cast it over the opposite ear, let it swing down behind your head and shoulders, then pull it over your lead shoulder back to the front and into order. Both arms.'},
   'club:two-hand clean':{kf:twoClean(),
