@@ -248,15 +248,47 @@ function gravedigger(){
     [2.65,Object.assign({},swing,{tR:0.3,fyR:15})],[3.05,Object.assign({},load,{tR:0,fyR:0})],[3.25,{}],
     [3.75,Object.assign({},STAND)],[3.95,{}]];
 }
+// Row position (Chris): split hold, the base hand on the base, the lead hand toward or at the head; the mace
+// level and held to the lead side, head facing behind and the shaft pointing out to the front. ROW_L has the
+// left hand leading (left side); ROW_R is its mirror. G is the base hand; the lead hand sits 60 cm up the shaft.
+const ROW_SPLIT=60;
+const ROW_L=()=>{const B=[6,112,38],D=norm([0.14,-0.04,-1]);
+  return Object.assign({},STAND,{P:[0,93,0],pitch:4,yaw:14,hipYaw:6,feet:{L:[16,8,0],R:[-16,8,0]},turn:12,tL:0,tR:0,fyL:0,fyR:0,
+    G:B,D,choke:6,gR:0,gL:ROW_SPLIT,offL:0,offR:0,eL:[1,-0.6,-0.4],eR:[-1,-0.6,0.3]})};
+const ROW_R=()=>mirror(ROW_L());
+// Sword switch (Chris): from the row position the base hand lets go; the lead hand drives the mace forward
+// like a sword thrust; the other hand takes it at the same spot and carries it down into the row position on
+// the other side. from: a row position with the right hand leading (head hand) or the left (by D side).
+function swordSwitch(from){
+  const right=from.gR>from.gL;                 // right hand is the lead (on the head side)
+  const L=right?mirror(from):from;              // build it for a left lead, mirror back if needed
+  const lead=add(L.G,mul(L.D,L.gL));
+  const tip=[6,120,48],dir=norm([0,-0.05,-1]),d=L.gL;
+  const thrust=Object.assign({},L,{P:[0,93,0],pitch:0,yaw:0,hipYaw:0,G:sub(tip,mul(dir,d)),D:dir,gL:d,gR:d,offR:1,offL:0,freeR:[-20,92,4],
+    eL:[1,-0.5,-0.2],eR:[-1,-0.5,-0.2],pass:false});
+  const let_=Object.assign({},L,{offR:1,freeR:[-20,92,4]});
+  const caught=Object.assign({},thrust,{offR:0});
+  const handed=Object.assign({},caught,{offL:1,freeL:[20,92,4]});
+  const to=mirror(Object.assign({},L));
+  const k=[[0,L],[0.2,let_],[0.7,thrust],[0.9,caught],[1.05,handed],[1.6,Object.assign({},mirror(let_),{offL:1,freeL:[20,92,4]})],[1.8,to]];
+  void lead;
+  return right?mirrorKF(k):k;
+}
+function swordSwitchMove(){
+  // order -> row position (left leads) -> sword switch to the right -> sword switch back -> order
+  const a=ROW_L(),b=ROW_R();
+  return chain([[0,STAND],[0.7,a],[1.0,{}]],swordSwitch(a),[[0,b],[0.4,{}]],swordSwitch(b),[[0,Object.assign({},a)],[0.3,{}],[1.0,Object.assign({},STAND)],[1.2,{}]]);
+}
 function uppercut(){
-  // Wide grip, right side working (right hand on the head). Horizontal along the right side with the head
+  // Starts in the row position (Chris): right hand (the lead) at the head, the mace level along the right side,
+  // head behind. Wide grip, right side working (right hand on the head). Horizontal along the right side with the head
   // toward the rear; the hips and shoulders turn it through a diagonal in front of the body (head up) to
   // horizontal along the left side; then back down the same way.
   const pose=(yaw,pitch,base,head,extra)=>Object.assign({P:[0,90,-2],pitch,yaw,hipYaw:yaw*0.5,feet:{L:[16,8,4],R:[-16,8,-4]},turn:12,
     eL:[1,-0.8,-0.2],eR:[-1,-0.8,-0.2]},wide(base,head,'R'),extra||{});
   // start low and level along the right side, head to the rear; through a diagonal in front with the
   // head low; finish level and high along the left side
-  const start=pose(-30,8,[-20,104,44],[-32,92,-36]);
+  const start=ROW_R();
   const mid=Object.assign(pose(-10,16,[16,136,22],[-20,84,30],{pass:true}),{P:[0,88,-3]});
   const end=Object.assign(pose(30,0,[30,162,-50],[18,164,20],{tR:0.4,fyR:24,eL:[1,0,-0.3],eR:[-0.6,-0.6,0.4]}),{P:[0,92,0]});
   const swing=Object.assign(pose(-22,12,[-4,122,40],[-30,88,-4],{pass:true}),{P:[0,89,-3]});
@@ -265,42 +297,28 @@ function uppercut(){
   const st=Object.assign({},start,{tR:0,fyR:0}),sw2=Object.assign({},swing,{tR:0,fyR:0});
   const reps=[[0,st],[0.2,{}],[0.4,swing],[0.6,mid],[0.95,end],[1.15,{}],[1.5,back],[1.7,sw2],[1.9,st],[2.1,{}],
     [2.3,swing],[2.5,mid],[2.85,end],[3.05,{}],[3.4,back],[3.6,sw2],[3.8,st],[4.0,{}]];
-  // sword switch: the base hand lets go; the head hand, overhand, drives the mace forward like a sword
-  // thrust; the other hand catches it at the head and carries it down to the start on the other side
-  const thrustAt=[0,118,46],baseFwd=[2,116,116];
-  const thrust=Object.assign({P:[0,92,0],pitch:0,yaw:0,hipYaw:0,tR:0,fyR:0,eL:[1,-0.5,-0.2],eR:[-1,-0.5,-0.2]},wide(baseFwd,thrustAt,'R',{offL:1}));
-  const caught=Object.assign({},thrust,{offL:0,gL:thrust.gR});
-  const handed=Object.assign({},caught,{offR:1});
-  const lowR=Object.assign({},st,{offL:1});
-  const lowL=mirror(Object.assign({},st,{offL:1}));
-  const sword=[[0,lowR],[0.5,thrust],[0.7,caught],[0.85,handed],[1.35,lowL],[1.55,mirror(st)]];
-  return chain([[0,STAND],[0.6,start]],reps.slice(1).map(([t,p])=>[t-0.2+0.2,p]),sword,mirrorKF(reps).slice(1),
+  const sword=swordSwitch(st);
+  return chain([[0,mirror(STAND)],[0.6,start],[0.9,{}]],reps.slice(1).map(([t,p])=>[t-0.2+0.2,p]),sword,mirrorKF(reps).slice(1),
     [[0,Object.assign({},home)],[0.25,{}]]);
 }
 
 function paddle(){
-  // Like an oar on the low-hand side only. Left hand low and overhand near the head, right hand on the
-  // end of the handle; three strokes front to back along the left, then a sword switch to the right side.
-  const grip={gR:0,gL:62,offL:0,offR:0};
-  const bend=[1,-0.6,0.2],bendR=[-1,-0.4,0.4];
-  const at=(pitch,yaw,G,tip,extra)=>Object.assign({P:[0,80,-pitch/3],pitch,yaw,G,D:shaft(G,tip),eL:bend,eR:bendR},extra||{});
-  const catchL=at(34,26,[6,126,16],[34,14,40],grip);
-  const finishL=at(10,-6,[0,126,16],[34,14,-24]);
-  const recoverL=at(22,10,[4,130,20],[30,40,10],{pass:true});
-  const strokes=K=>[[0,K.c],[0.8,K.f],[1.15,K.r],[1.5,K.c],[2.3,K.f],[2.65,K.r],[3.0,K.c],[3.8,K.f]];
-  const left=strokes({c:catchL,f:finishL,r:recoverL});
-  const right=mirrorKF(left);              // hands trade jobs: right hand low near the head, left on the end
-  // sword switch: top hand lets go, the low hand drives the mace forward like a sword thrust, the other
-  // hand catches it there and carries it down to the start on the other side
-  const thrustL=[6,118,46],dirL=norm([0,-0.05,-1]);
-  const lowL=at(22,4,[4,126,16],[34,16,4],{offR:1});
-  const thrust={P:[0,90,0],pitch:0,yaw:0,G:sub(thrustL,mul(dirL,62)),D:dirL,gL:62,gR:62,offR:1,offL:0,eL:[1,-0.5,-0.2],eR:[-1,-0.5,-0.2]};
-  const caught=Object.assign({},thrust,{offR:0});
-  const handed=Object.assign({},caught,{offL:1});
-  const sword=[[0,lowL],[0.55,thrust],[0.75,caught],[0.9,handed]];
-  const startR=mirror(catchL);
-  return chain([[0,STAND],[0.6,catchL]],left,sword.concat([[1.45,mirror(lowL)],[1.85,startR]]),right.slice(1).map(([t,p])=>[t-0.7,p]),
-    [[0,Object.assign({},STAND,{offL:0,offR:0})],[0.25,{}]]);
+  // Paddle (Chris), from the row position on the lead (left) side: the lead hand pushes the head out to the
+  // front while the support hand brings the shaft up to vertical (base up, head down in front, like a paddle
+  // blade in the water). The head is drawn down and back in a paddling arc as the support hand pushes the
+  // base down; the arc finishes with the lead hand bringing the head back up behind and the support hand
+  // settling the mace back into the row position. Three strokes, a sword switch, the other side.
+  const at=(B,D,pitch,yaw,pass)=>Object.assign({},ROW_L(),{G:B,D:norm(D),pitch,yaw,P:[0,93-pitch*0.15,-pitch*0.2],pass:!!pass});
+  const row=ROW_L();
+  const reach=at([8,150,24],[0.1,-1,0.15],8,10,true);          // shaft coming up, head swinging forward
+  const catch_=at([10,154,12],[0.1,-0.85,0.5],12,8);           // vertical-ish, head out in front, base up
+  const pull=at([9,144,30],[0.12,-1,-0.05],20,12,true);        // head down beside the leg
+  const back=at([8,128,42],[0.12,-0.6,-0.8],10,16,true);       // head coming back up behind
+  const stroke=t=>[[t+0.45,reach],[t+0.75,catch_],[t+0.95,{}],[t+1.4,pull],[t+1.75,back],[t+2.05,Object.assign({},row)],[t+2.25,{}]];
+  let left=[[0,row],[0.3,{}]];for(let i=0;i<3;i++)left=left.concat(stroke(0.3+2.25*i));
+  const right=mirrorKF(left);
+  return chain([[0,STAND],[0.7,row],[0.9,{}]],left.slice(1),swordSwitch(row),right.slice(1),
+    [[0,ROW_R()],[0.7,Object.assign({},mirror(STAND))],[0.95,{}]]);
 }
 
 function handSwitches(){
@@ -381,8 +399,29 @@ function curl(sw){
   const top=wide([50,128,22],[-20,132,26],'R',{eL:[1,-1,0],eR:[-0.4,-1,0.3]});
   const home={G:STAND.G,D:STAND.D,choke:6,gL:10,gR:0,eL:STAND.eL,eR:STAND.eR};
   if(!sw){
-    const one=[[0,STAND],[0.75,low],[0.95,{}],[1.25,top],[1.45,{}],[1.95,low],[2.1,{}],[2.4,top],[2.6,{}],[3.1,home],[3.3,{}]];
-    return both(one);
+    // Ballistic curl 360 (Chris): from order to the curl as before, but the curl throws the mace into a 360 as
+    // the curling (lead) hand slides down to the standard grip on top of the base hand. Back at the front,
+    // the bottom (support) hand lets go, the mace falls to that side and the same hand catches it at the
+    // head, ready to curl on that side; as it curls, the new support hand slides down to the base.
+    const g={gL:0,gR:10,choke:6};               // right hand slid down on top of the left
+    const o360=[
+      {G:[-14,170,6],D:norm([-0.45,0.6,-0.66]),eL:[1,0.3,0.4],eR:[-0.4,0.6,0.4],pass:true},
+      {G:[-7,172,-4],D:norm([-0.3,0.35,-0.88]),eL:[0.3,1,0.15],eR:[-0.3,1,0.15],pass:true},
+      {G:[-3,175,-6],D:norm([-0.45,-0.55,-0.7]),eL:[0.3,1,0.15],eR:[-0.3,1,0.15],pass:true},
+      {G:[0,176,-6],D:norm([0,-0.92,-0.38]),eL:[0.3,1,0.15],eR:[-0.3,1,0.15],pass:true},
+      {G:[3,175,-6],D:norm([0.45,-0.55,-0.7]),eL:[0.3,1,0.15],eR:[-0.3,1,0.15],pass:true},
+      {G:[7,172,-4],D:norm([0.3,0.35,-0.88]),eL:[0.3,1,0.15],eR:[-0.3,1,0.15],pass:true},
+      {G:[9,150,18],D:norm([0.1,1,0]),eL:[0.4,-1,0.4],eR:[-0.4,-1,0.4],pass:true}].map(p=>Object.assign(p,g));
+    const front=Object.assign({G:[0,116,24],D:[0,1,0],eL:[1,-0.8,-0.3],eR:[-1,-0.8,-0.3]},g);
+    // left hand lets go and the head falls to the left; the left hand catches it at the head while the
+    // right hand, still 10 cm up the shaft, slides down to the base during the curl
+    const fall=Object.assign({},front,{G:[2,118,26],D:norm([0.75,0.45,0.1]),offL:1,freeL:[22,110,18],pass:true});
+    const lowL=mirror(low),topL=mirror(top),catchL=Object.assign({},lowL,{G:sub(lowL.G,mul(lowL.D,10)),gR:10,gL:lowL.gL+10});
+    const side=[[0,low],[0.25,{}],[0.55,top]].concat(o360.map((p,k)=>[0.8+0.2*k,p]),[[2.25,front],[2.45,{}],[2.7,fall],[2.95,catchL],[3.15,{}],[3.45,topL]]);
+    // the left curl goes on into the mirrored 360 and back to the front with the left hand on top
+    const o360L=o360.map(p=>mirror(p)),frontL=mirror(front);
+    const rest=o360L.map((p,k)=>[3.7+0.2*k,p]).concat([[5.15,frontL],[5.35,{}],[5.9,Object.assign({},STAND)],[6.1,{}]]);
+    return [[0,STAND],[0.75,low]].concat(side.slice(1).map(([t,p])=>[t+0.75,p]),rest.map(([t,p])=>[t+0.75,p]));
   }
   // switch curl: keep the curl going up into an arc over the top; the hands meet at the head in the
   // middle of the arc and the left hand catches it into the low curl position on the left
@@ -1870,9 +1909,11 @@ const MOVES={
   'mace:gravedigger:right':{kf:mirrorKF(gravedigger()),
     cue:'Shovel grip. From the left shoulder, dig the head down and across to the floor by your right foot, pivoting the back foot, then return to the shoulder.'},
   'mace:uppercut':{kf:uppercut(),
-    cue:'Wide grip, working hand on the head. Start low and level along one side, head to the rear. Drive through a diagonal in front with the head low and finish level and high on the other side; back down the same way. Sword switch to change sides.'},
+    cue:'Start in the row position: lead hand at the head, the mace level along that side with the head behind you. Drive through a diagonal in front with the head low and finish level and high on the other side; back down the same way. Sword switch to change sides.'},
   'mace:paddle':{kf:paddle(),
-    cue:'Like an oar on the low-hand side: low hand overhand near the head, top hand on the end. Pull the head front to back along that side for your reps, then sword switch to the other side.'},
+    cue:'Start in the row position on the lead side. The lead hand pushes the head out to the front as the support hand brings the shaft up to vertical. Draw the head down and back in a paddling arc while the support hand pushes the base down; finish with the lead hand bringing the head back up and the support hand settling it into the row position. Sword switch to the other side.'},
+  'mace:sword switch':{kf:swordSwitchMove(),
+    cue:'From the row position, the base hand lets go and the lead hand drives the mace forward like a sword thrust. The other hand takes it at the same spot and carries it down into the row position on the other side.'},
   'mace:prayer switch':{kf:handSwitches(),
     cue:'Wide grip, hands at the head and the base. The lead hand brings the head to the center while the base hand slides up to meet it in prayer, then the other hand carries the head out to the other side. Keep it fluid with the head at the same height.'},
   'mace:offset press':{kf:offsetPress(),
@@ -1883,8 +1924,8 @@ const MOVES={
     cue:'From high ready, take the mace out in line with the shoulders: the lead hand holds just below the head, arm straight out to the side; the other hand at the base by the chest. Hold, prayer switch, hold the other side, then back through high ready to order.'},
   'mace:shield press':{kf:shieldPress(),
     cue:'From high ready (lead hand at the head, the other at the base), bring the mace vertical at the chest. Press it straight out in front to full extension, keeping the shaft vertical, then bring it back. Both sides.'},
-  'mace:ballistic curl':{kf:curl(false),
-    cue:'Wide grip: the curling hand holds the head, the other hand the base, shaft centered and head down. Curl the head hand nearly straight up to the shoulder. Both sides.'},
+  'mace:ballistic curl 360':{kf:curl(false),
+    cue:'From order to the curl: the curling hand holds the head, the other the base, head down. Curl and throw the mace into a 360 as the curling hand slides down to the standard grip on top. Back at the front, let go with the bottom hand; let the mace fall to that side and catch it at the head with the same hand, ready to curl that side. Slide the new support hand down to the base as you curl.'},
   'mace:switch curl':{kf:curl(true),
     cue:'Wide grip with the curling hand on the head. Curl up, keep the mace arcing over the top, meet the hands at the head mid-arc and catch it with the other hand in the low curl position.'},
   'mace:offset bent-over row':{kf:offsetRow(),
@@ -2010,7 +2051,7 @@ const ALIAS={kb:{'bottoms-up press':'crush press','skull crushers':'tricep press
     'clean and press':'clean & press','start stop':'start-stop','two hand swing':'two-hand swing','2-hand swing':'two-hand swing','swing':'two-hand swing',
     'two hand deadlift':'two-hand deadlift','two-hand deadlift practice':'two-hand deadlift','2-hand deadlift':'two-hand deadlift','deadlift':'two-hand deadlift',
     'around the world':'around-the-world','halos':'halo','light halos':'halo','single-direction halo':'halo'},
-  mace:{'seatbelt':'high ready','seatbelt hold':'high ready','high ready position':'high ready','high ready hold':'high ready','hand switch':'prayer switch','hand switches':'prayer switch','mace overhead press':'offset press','one-hand pendulum swing':'one-arm pendulum swing','single-arm pendulum swing':'one-arm pendulum swing','rotational uppercut':'uppercut','overhead press':'offset press',
+  mace:{'ballistic curl':'ballistic curl 360','ballistic curls':'ballistic curl 360','sword switches':'sword switch','seatbelt':'high ready','seatbelt hold':'high ready','high ready position':'high ready','high ready hold':'high ready','hand switch':'prayer switch','hand switches':'prayer switch','mace overhead press':'offset press','one-hand pendulum swing':'one-arm pendulum swing','single-arm pendulum swing':'one-arm pendulum swing','rotational uppercut':'uppercut','overhead press':'offset press',
   'squat':'front squat','bent-over row':'offset bent-over row','offset row':'offset bent-over row','pendulum swings':'pendulum swing'},
   club:{'switch shield casts':'switch shield cast','switch 180s':'switch 180',"switch 180's":'switch 180','switch reverse mills':'switch reverse mill','half mill rotational torch press':'rotational torch press','side swipes':'side swipe','one-hand swipe':'swipe','one-arm swipe':'swipe','inside and outside circles':'inside circle','inside circles':'inside circle','outside circles':'outside circle','mills':'mill','reverse mills':'reverse mill','pullover':'two-hand arm cast','pullovers':'two-hand arm cast','club pullover':'two-hand arm cast','two-hand pullover':'two-hand arm cast','two-handed pullover':'two-hand arm cast','one-hand pullover':'arm cast','one-handed pullover':'arm cast','one-arm pullover':'arm cast','arm casts':'arm cast','two-handed flag press':'two-hand flag press','one-hand flag press':'flag press','two-handed torch press':'two-hand torch press','one-hand torch press':'torch press','side cleans':'side clean','two-hand side clean':'side clean','two-hand side swing':'side swing','two-handed side swing':'side swing','two-hand side swings':'side swing','side swings':'side swing','steel club side swing':'side swing','single-arm side swing':'single-arm side swing','single side swing':'single-arm side swing','one-arm side swing':'single-arm side swing','one-hand side swing':'single-arm side swing','single-arm side swings':'single-arm side swing','two-handed side rocker':'side rocker','two-hand side rocker':'side rocker','cross-body swing':'lateral swing','cross-body swings':'lateral swing','side rock-it':'side rocker','side rocket':'side rocker',
     'swing':'lateral swing','swings':'lateral swing','one-arm arm cast':'arm cast','two-hand swipe':'swipe','swipes':'swipe',
