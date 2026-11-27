@@ -926,7 +926,7 @@ const X=[
 ['Double mill','club',3,'light','swing','d2','Alternating mills, one club in each hand.'],
 ['Torch press','club',2,'med','press','u1','One hand: club upright like a torch in order at the shoulder; press it up and a little out in front, then lower.'],
 ['Two-hand torch press','club',1,'med','press','','Two hands: club upright like a torch in order on the lead side; press it up and a little out in front, then lower.'],
-['Rotational torch press','club',2,'med','press','u1','One hand: from order, rotate through the hip and pivot the back foot, then press the club forward and up in the direction you turned to a forearm lock, club upright. Pull it down to order with the lat.'],
+['Rotational torch press','club',2,'med','press','u1','One hand, cross-body only: turn the torso a full 90 degrees in toward the other side, pivoting the back foot, pressing the club up to a forearm lock as you turn; turn back and bring it in to order.'],
 ['Flag press','club',2,'med','press','u1','One hand: from order at the shoulder, press the club straight out in front at shoulder height, club upright, then back to order.'],
 ['Two-hand flag press','club',1,'med','press','','Two hands: from order on the lead side, press the club straight out in front at shoulder height, club upright, then back to order.'],
 ['Club barbarian squat','club',1,'med','squat','','Start with a two-hand arm cast. As you pull the club back to the front, sink into the squat with the arms locked out; arm cast again as you stand. Both lead sides.'],
@@ -976,7 +976,8 @@ const FLOWS=[
 {name:'Warrior Flow',eq:'mace',lvl:3,sw:'mid',steps:['360','Lunge to 360','Uppercut','Offset march, 4 steps','Hand switches ×2','Mirror'],note:'Long cycle; keep breathing on every swing.'},
 {name:'Three-Club Mini Flow',eq:'club',lvl:2,sw:'end',steps:['Arm cast','Mill','Switch shield cast'],note:'One continuous flow: arm cast, push straight into a mill, then a switch shield cast hands the club to the other hand. Repeat with the new lead side.'},
 {name:'Club Foundations',eq:'club',lvl:1,sw:'end',steps:['Two-hand side swing','Two-hand arm cast','Two-hand shield cast','Two-hand torch press','H2H clean'],note:'One rep of each on the same lead side, then the H2H clean switches the lead and you go again on the other side.'},
-{name:'Half Mill to Rotational Torch Press',eq:'club',lvl:2,sw:'end',steps:['Rotational torch press, turned left','Half reverse mill','Rotational torch press, turned right','Half mill','Switch hands'],note:'One hand. Press turned one way, then a half reverse mill whips you round to press the other way, and a half mill brings you back. Let the club turn your hips and pivot your feet.'},
+{name:'Single-Arm Foundations',eq:'club',lvl:2,sw:'end',steps:['Single-arm side swing','Arm cast','One-arm shield cast','Torch press','Switch 180'],note:'The one-hand version of Club Foundations: one rep of each with the working hand, then a switch 180 hands the club over and you go again on the other side.'},
+{name:'Rotational Torch Press to Half Reverse Mill',eq:'club',lvl:2,sw:'end',steps:['Rotational torch press','Half reverse mill','Switch 180'],note:'Rotational torch press on the lead side, straight into a half reverse mill, then a switch 180 hands the club over. Repeat on the new lead side.'},
 {name:'Lunge Cast & Flag',eq:'club',lvl:2,sw:'end',steps:['Reverse lunge arm cast','Forward lunge flag press','Switch hands'],note:'Legs and shoulders together: arm cast as you step back into a reverse lunge and stand to order, then flag press as you step forward into a lunge and step back to order. Switch hands each cycle.'},
 {name:'Swing–Clean–Press–Squat',eq:'kb',lvl:2,steps:['One-arm swing','Clean','Press','Front squat','Switch hands'],note:'The bell never touches down; switch hands on the swing.'},
 {name:'Halo & Figure 8 Flow',eq:'kb',lvl:2,steps:['Around-the-world ×5 each way','Halo ×3 each way','Figure-8 ×5 each leg','Alternating halo ×4','Figure 8 back to front ×5 each leg'],note:'The coach\'s warm-up order: feet together for around the world, wider for the figure 8s. Stand all the way up between passes.'},
@@ -1474,7 +1475,7 @@ function eqBanner(eq,wt,opts={}){
 /* ---------- render output ---------- */
 function eqLabel(eqs){return eqs.map(k=>EQ[k].name).join(' + ')}
 // moves and flows that were renamed: old log name -> current name, so history and weights carry over
-const RENAMED={'club|Two-hand 180':'One-hand 180','club|Half Mill to Torch Press':'Half Mill to Rotational Torch Press','club|Two-hand swipe':'Swipe','club|Pullover':'Two-hand arm cast','club|One-hand pullover':'Arm cast'};
+const RENAMED={'club|Two-hand 180':'One-hand 180','club|Half Mill to Torch Press':'Rotational Torch Press to Half Reverse Mill','club|Half Mill to Rotational Torch Press':'Rotational Torch Press to Half Reverse Mill','club|Two-hand swipe':'Swipe','club|Pullover':'Two-hand arm cast','club|One-hand pullover':'Arm cast'};
 const sameMove=(logName,name,eq)=>logName===name||RENAMED[eq+'|'+logName]===name;
 function lastFor(name,eq){
   let best=null;
