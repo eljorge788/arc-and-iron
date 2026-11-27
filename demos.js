@@ -1288,6 +1288,20 @@ function kbBottomsUpSquat(){
   const bottom=carry(Object.assign({},UP_KB,{P:[0,46,-12],pitch:12,feet,turn:10,kneeOut:0.75}),BOTTOMS_UP);
   return kbSquatReps(top,bottom,2);
 }
+function kbRackLunge(){
+  // Pick the bell up to the rack in the lead (right) hand, free arm out to the side. Reverse lunge with the
+  // lead side leg: the foot lifts, steps back and lands softly, then the body lowers with the front shin near
+  // vertical; drive back up as the foot steps forward to the start. Twice, set it down, then the other side.
+  const arm=Object.assign({},RACK_R,{freeL:add(shoulderOf(UP_KB,'L'),[54,-1,4]),eL:[0,-1,0]});
+  const at=(f,pass)=>{const o=carry(lungeBody('R',f),arm);if(pass)o.pass=true;else delete o.pass;return o};
+  const top=at(0);
+  let kf=pickupToRack();
+  kf.push([endOf(kf)+0.45,top],[endOf(kf)+0.75,{}]);
+  for(let i=0;i<2;i++){const t=endOf(kf);
+    kf.push([t+0.3,at(0.3,true)],[t+0.6,at(0.6,true)],[t+1.0,at(1)],[t+1.3,{}],[t+1.65,at(0.6,true)],[t+1.95,at(0.3,true)],[t+2.3,top],[t+2.6,{}])}
+  kf=kf.concat(shift(setDownFromRack(),endOf(kf)+0.2));
+  return both(kf);
+}
 function kbFrontSquat(){
   // Two-hand pickup to the rack, free arm straight out to the side, feet straight ahead. Squat with the
   // racked elbow inside the knee, leaning back against the bell, head up; roll the shoulder back and drive
@@ -1337,6 +1351,8 @@ const MOVES={
     cue:'Bell upside down by the horns, arms at 90 degrees, elbows on your ribs, bell off your chest, shoulder blades down. Squat with your elbows inside your knees: push out with the elbows, squeeze in with the knees, chest up. Stand all the way up. If the horns are too much, hold the bell from underneath instead.'},
   'kb:hands-under goblet squat':{kf:kbGobletSquat(),label:'Hands under the bell',
     cue:'The alternative hold: hands under the bell, handle on top, looking through the window. Elbows together. Squat all the way down, lean back away from the bell, and drive straight up. Tuck the tailbone and squeeze at the top.'},
+  'kb:rack reverse lunge':{kf:kbRackLunge(),
+    cue:'Bell in the rack in your lead hand, free arm out to the side. Step back with the same side leg, land softly on the ball of the foot, and lower until the back knee is just off the floor, front shin near vertical. Drive through the front foot and step back to the start. Both sides.'},
   'kb:front squat':{kf:kbFrontSquat(),
     cue:'Bell in the rack, free arm straight out to the side, feet straight ahead. Squat with the racked elbow inside the knee, lean back against the bell, head up. Roll the shoulder back and drive all the way up. Both sides.'},
   'kb:halo':{kf:kbHalo(),
