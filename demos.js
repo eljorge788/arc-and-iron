@@ -1185,7 +1185,14 @@ const SWITCH_TOP=Object.assign(kbArms(Object.assign({},UP_KB,TWO),[0,-0.7,0.7]),
 const setOne=fl=>R1(Object.assign({},UP_KB,SET_P,fl,{eR:[-1,0.3,-0.3]}));
 const reachFree=fl=>Object.assign(free_(Object.assign({},UP_KB,SET_P,fl)),{freeL:[16,46,16],freeR:[-16,46,16]});
 const standFree=fl=>free_(Object.assign({},UP_KB,fl));
-const cleanRep=t=>[[t,PINNED_R],[t+0.3,HIKE_R],[t+0.62,FLOAT_R],[t+0.9,RACK_R],[t+1.25,{}]];
+// cleans (Chris): a one-hand swing that brings the bell up into the rack in one movement: hike, swing
+// through, the elbow pulls in so the bell rides up close, and it lands in the rack, all without a stop
+const cleanUp=t=>[[t+0.27,SWPASS_R],[t+0.48,FLOAT_R],[t+0.7,RACK_R],[t+1.05,{}]];
+const cleanRep=t=>[[t,PINNED_R],[t+0.3,HIKE_R]].concat(cleanUp(t+0.3));
+// start a set from the floor: bell ahead, reach in, hike it back and clean it straight up into the rack
+const cleanStart=()=>[[0,standFree(FLOOR_AHEAD)],[0.35,{}],[1.1,reachFree(FLOOR_AHEAD)],[1.35,setOne(FLOOR_AHEAD)],[1.55,{}],[2.0,HIKE_R]].concat(cleanUp(2.0));
+// finish from the rack: drop into the swing and park the bell where it started
+const cleanFinish=t=>[[t+0.3,PINNED_R],[t+0.6,HIKE_R],[t+1.05,setOne(FLOOR_AHEAD)],[t+1.25,{}],[t+1.45,reachFree(FLOOR_AHEAD)],[t+2.2,standFree(FLOOR_AHEAD)],[t+2.45,{}]];
 const pressRep=(t,fist)=>[[t,Object.assign({},PRESS_MID_R,fist)],[t+0.55,Object.assign({},LOCK_R,fist)],[t+0.9,{}],
   [t+1.3,Object.assign({},PRESS_MID_R,fist)],[t+1.75,Object.assign({},RACK_R,fist)],[t+2.05,{}]];
 const shift=(kf,dt)=>kf.map(([t,p])=>[t+dt,p]);
@@ -1289,23 +1296,22 @@ function kbClean(){
   // Swing clean: two-hand pickup to the rack. Pin the elbow, push back, thumb back, absorb with the hips;
   // snap the hips with the elbow pinned so the bell floats in close, and catch it in the rack, thumb at the
   // collarbone. Pause and check. To finish, the other hand grabs, both arms straighten, set it down.
-  let kf=pickupToRack();
-  for(let i=0;i<2;i++)kf=kf.concat(cleanRep(endOf(kf)+0.1));
-  kf=kf.concat(shift(setDownFromRack(),endOf(kf)+0.15));
+  let kf=cleanStart();
+  kf=kf.concat(cleanRep(endOf(kf)+0.1));
+  kf=kf.concat(cleanFinish(endOf(kf)));
   return both(kf);
 }
 function kbCleanTransitions(){
   // Swing cleans that change hands without setting the bell down: "down, up, down, up". Down into a swing,
   // up and switch hands at the top, down with the new hand, up into the rack on the new side.
   const HL=mirror(HIKE_R),PL=mirror(SWPASS_R),FL=mirror(FLOAT_R),RL=mirror(RACK_R),PNL=mirror(PINNED_R);
-  let kf=pickupToRack();
-  kf=kf.concat(cleanRep(endOf(kf)+0.1));
+  let kf=cleanStart();
   let t=endOf(kf);
   const add_=(...ps)=>{for(const [d,p] of ps){t+=d;kf.push([t,p])}};
-  add_([0.3,PINNED_R],[0.3,HIKE_R],[0.3,SWPASS_R],[0.3,SWITCH_TOP],[0.3,PL],[0.3,HL],[0.32,FL],[0.28,RL],[0.35,{}]);
-  add_([0.3,PNL],[0.3,HL],[0.32,FL],[0.28,RL],[0.35,{}]);
-  add_([0.3,PNL],[0.3,HL],[0.3,PL],[0.3,SWITCH_TOP],[0.3,SWPASS_R],[0.3,HIKE_R],[0.32,FLOAT_R],[0.28,RACK_R],[0.35,{}]);
-  return kf.concat(shift(setDownFromRack(),t+0.15));
+  add_([0.3,PINNED_R],[0.3,HIKE_R],[0.3,SWPASS_R],[0.3,SWITCH_TOP],[0.3,PL],[0.3,HL],[0.27,PL],[0.21,FL],[0.22,RL],[0.35,{}]);
+  add_([0.3,PNL],[0.3,HL],[0.27,PL],[0.21,FL],[0.22,RL],[0.35,{}]);
+  add_([0.3,PNL],[0.3,HL],[0.3,PL],[0.3,SWITCH_TOP],[0.3,SWPASS_R],[0.3,HIKE_R],[0.27,SWPASS_R],[0.21,FLOAT_R],[0.22,RACK_R],[0.35,{}]);
+  return kf.concat(cleanFinish(t));
 }
 function kbPress(){
   // Two-hand pickup to the rack; free arm out to the side with a tight fist. Open the shoulder and press to
@@ -1320,9 +1326,12 @@ function kbPress(){
 function kbCleanPress(){
   // Lessons 12 and 14 together: swing clean to the rack, pause, press to lockout, back to the rack.
   const fist={freeL:add(shoulderOf(UP_KB,'L'),[54,-2,4]),eL:[0,-1,0]};
-  let kf=pickupToRack();
-  for(let i=0;i<2;i++){kf=kf.concat(cleanRep(endOf(kf)+0.1));kf=kf.concat(pressRep(endOf(kf)+0.1,fist));}
-  kf=kf.concat(shift(setDownFromRack(),endOf(kf)+0.15));
+  let kf=cleanStart();
+  kf.push([endOf(kf)+0.2,Object.assign({},RACK_R,fist)]);
+  kf=kf.concat(pressRep(endOf(kf)+0.1,fist));
+  kf=kf.concat(cleanRep(endOf(kf)+0.1));kf.push([endOf(kf)+0.2,Object.assign({},RACK_R,fist)]);
+  kf=kf.concat(pressRep(endOf(kf)+0.1,fist));
+  kf=kf.concat(cleanFinish(endOf(kf)));
   return both(kf);
 }
 function kbStartStop(){
@@ -1330,7 +1339,7 @@ function kbStartStop(){
   // the handle nearest you, hike it back, stand up into the clean and catch soft in the rack; push it back
   // and set it down exactly where it started.
   const kf=[[0,standFree(FLOOR_AHEAD)],[0.35,{}],[1.1,reachFree(FLOOR_AHEAD)],[1.35,setOne(FLOOR_AHEAD)],[1.55,{}],
-    [2.0,HIKE_R],[2.32,FLOAT_R],[2.6,RACK_R],[3.2,{}],[3.5,PINNED_R],[3.8,HIKE_R],[4.25,setOne(FLOOR_AHEAD)],[4.45,{}],
+    [2.0,HIKE_R],[2.27,SWPASS_R],[2.48,FLOAT_R],[2.7,RACK_R],[3.2,{}],[3.5,PINNED_R],[3.8,HIKE_R],[4.25,setOne(FLOOR_AHEAD)],[4.45,{}],
     [4.65,reachFree(FLOOR_AHEAD)],[5.4,standFree(FLOOR_AHEAD)],[5.6,{}]];
   return both(kf);
 }
