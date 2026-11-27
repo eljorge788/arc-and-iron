@@ -346,17 +346,20 @@ function archerHold(){
     return o};
   const sw=(t0,dir)=>{const o=[];for(let i=1;i<=4;i++)o.push([t0+0.15*i,at(i/4,dir,i<4)]);return o};
   const back=(t0,dir)=>{const o=[];for(let i=3;i>=0;i--)o.push([t0+0.15*(4-i),at(i/4,dir,i>0)]);return o};
-  return [[0,STAND],[0.8,at(0,1)],[2.3,{}]].concat(sw(2.3,1),back(2.9,-1),[[4.9,{}]],sw(4.9,-1),back(5.5,1),[[6.6,{}]],
-    [[7.3,Object.assign({},STAND)],[7.5,{}]]);
+  // starts from high ready and returns through it to the order position
+  const hr=HIGH_READY(),T=1.1;
+  return [[0,STAND],[0.6,hr],[0.9,{}],[0.8+T,at(0,1)],[2.3+T,{}]].concat(sw(2.3+T,1),back(2.9+T,-1),[[4.9+T,{}]],sw(4.9+T,-1),back(5.5+T,1),[[6.6+T,{}]],
+    [[7.2+T,Object.assign({},hr)],[7.5+T,{}],[8.1+T,Object.assign({},STAND)],[8.3+T,{}]]);
 }
 function shieldPress(){
   // Shield press (Chris): the lead hand holds at the head, the other at the base; press the mace straight out
   // in front to full extension with the shaft vertical, like pushing out a shield, and bring it back.
   const g=(b,h,el,er,pass)=>Object.assign(wide(b,h,'L'),{eL:el,eR:er,pass:!!pass});
   const rack=g([0,92,24],[0,156,24],[0.7,-1,0.1],[-0.7,-1,0.1]),out=g([0,108,42],[0,172,42],[0.6,-0.6,0],[-0.6,-0.6,0]);
-  const one=[[0,STAND],[0.6,rack],[0.8,{}]];let t=0.8;
+  // starts from high ready and returns through it to the order position
+  const hr=HIGH_READY(),one=[[0,STAND],[0.6,hr],[0.9,{}],[1.4,rack],[1.6,{}]];let t=1.6;
   for(let i=0;i<3;i++){one.push([t+0.55,out],[t+0.85,{}],[t+1.4,Object.assign({},rack)],[t+1.6,{}]);t+=1.6}
-  one.push([t+0.5,Object.assign({},STAND)],[t+0.7,{}]);
+  one.push([t+0.5,Object.assign({},hr)],[t+0.8,{}],[t+1.4,Object.assign({},STAND)],[t+1.6,{}]);
   return both(one);
 }
 function offsetPress(){
@@ -1875,9 +1878,9 @@ const MOVES={
   'mace:high ready':{kf:highReady(),
     cue:'Also called the seatbelt. Lead hand at the mace head, the other at the base. Hold the mace across the front of your body on a diagonal: head at the lead shoulder, base at the other hip. Both sides.'},
   'mace:archer hold':{kf:archerHold(),
-    cue:'Mace in line with the shoulders: the lead hand holds just below the head, arm straight out to the side; the other hand at the base by the chest. Hold, prayer switch, hold the other side.'},
+    cue:'From high ready, take the mace out in line with the shoulders: the lead hand holds just below the head, arm straight out to the side; the other hand at the base by the chest. Hold, prayer switch, hold the other side, then back through high ready to order.'},
   'mace:shield press':{kf:shieldPress(),
-    cue:'Lead hand at the head, the other at the base, mace vertical at the chest. Press it straight out in front to full extension, keeping the shaft vertical, then bring it back. Both sides.'},
+    cue:'From high ready (lead hand at the head, the other at the base), bring the mace vertical at the chest. Press it straight out in front to full extension, keeping the shaft vertical, then bring it back. Both sides.'},
   'mace:ballistic curl':{kf:curl(false),
     cue:'Wide grip: the curling hand holds the head, the other hand the base, shaft centered and head down. Curl the head hand nearly straight up to the shoulder. Both sides.'},
   'mace:switch curl':{kf:curl(true),
