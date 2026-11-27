@@ -862,6 +862,42 @@ function lungeFlagPress(two){
   const at=(f,k)=>{const o=carry(fwdLungeBody(leg,f),Object.assign({},base,H[k],{W:[1,0,0]}));delete o.W;delete o.pass;return o};
   return [[0,base],[0.3,{}],[1.1,at(1,'out')],[1.45,{}],[2.25,at(0,'order')],[2.5,{}]];
 }
+// Clock squat (Chris), one hand or two. Built for a right lead (two hands: mirrored to a left lead, top hand
+// on the lead side). From order, cast out into an outside circle and bring the club to rest across the
+// opposite shoulder, close to horizontal and behind the head so the weight is centred; squat. As you stand,
+// cast it out from that side into another circle and rest it across the lead shoulder; squat again. Stand
+// and return to order.
+function clockSquat(two){
+  const B=(yaw,extra)=>Object.assign({},TALL,{yaw,hipYaw:yaw*0.35},extra||{});
+  const eLof=e=>[-e[0],e[1],e[2]];
+  const hands=o=>{if(two){o.offL=0;o.offR=0;o.eL=o.eL||eLof(o.eR)}else o.freeL=[21,87,3];return o};
+  const anchor=b=>two?mul(add(shoulderOf(b,'R'),shoulderOf(b,'L')),0.5):shoulderOf(b,'R');
+  const armR=(b,u,D,extra)=>hands(Object.assign({},b,{G:add(anchor(b),mul(norm(u),two?35:55)),D:norm(D),eR:[-1,-0.3,-0.2]},extra||{}));
+  // resting across a shoulder: handle on top of that shoulder, club pointing across and behind the neck
+  const restL={G:two?[20,146,8]:[15,147,1],D:norm([-0.92,0.03,-0.4]),eR:[0.1,-0.4,1]};
+  const restR={G:two?[-21,146,9]:[-16,148,2],D:norm([0.92,0.03,-0.4]),eR:[-0.6,-0.2,1]};
+  const onTall=src=>hands(Object.assign({},TALL,src));
+  const onSquat=src=>{const h=hands(Object.assign({},TALL,src,{W:[1,0,0]}));const o=carry(SQUAT,Object.assign({eL:eLof(h.eR)},h));delete o.W;if(!two)delete o.eL;return o};
+  const start=hands(Object.assign({},STAND,CB2,two?{G:[-7,124,22],D:[0,1,0],eR:[-1,-1,-0.25]}:C_ORDER1));
+  if(!two)Object.assign(start,{offL:1});
+  // first circle: out to the lead side, down, across the front, up the far side, onto the far shoulder
+  const c1=[armR(B(10),[-0.95,-0.05,0.3],[-0.75,0.6,0.2],{pass:true}),
+    armR(B(-2),[-0.6,-0.72,0.35],[-0.55,-0.8,0.25],{pass:true}),
+    armR(B(-4,{P:[0,90,-2],pitch:6}),[0.1,-0.92,0.38],[0.05,-1,0.15],{pass:true}),
+    armR(B(-10),[0.6,-0.55,0.58],[0.7,-0.6,0.3],{pass:true}),
+    armR(B(-8),[0.55,0.1,0.82],[0.3,0.85,-0.2],{pass:true})];
+  // second circle: from the far shoulder out to that side, down, across, up the lead side, onto the lead shoulder
+  const c2=[armR(B(-10),[0.8,0.05,0.6],[0.75,0.6,0.2],{pass:true}),
+    armR(B(2),[0.55,-0.7,0.48],[0.55,-0.8,0.25],{pass:true}),
+    armR(B(4,{P:[0,90,-2],pitch:6}),[-0.05,-0.92,0.38],[-0.05,-1,0.15],{pass:true}),
+    armR(B(10),[-0.65,-0.55,0.5],[-0.7,-0.6,0.3],{pass:true}),
+    armR(B(8),[-0.75,0.15,0.62],[-0.3,0.85,-0.2],{pass:true})];
+  const kf=[[0,start],[0.3,{}],[0.6,c1[0]],[0.85,c1[1]],[1.05,c1[2]],[1.25,c1[3]],[1.45,c1[4]],[1.75,onTall(restL)],[1.95,{}],
+    [2.8,onSquat(restL)],[3.05,{}],[3.85,onTall(restL)],
+    [4.15,c2[0]],[4.4,c2[1]],[4.6,c2[2]],[4.8,c2[3]],[5.0,c2[4]],[5.15,onTall({G:two?[-14,148,16]:[-14,152,10],D:norm([0.55,0.6,-0.55]),eR:[-0.7,-0.3,1],pass:true})],[5.3,onTall(restR)],[5.5,{}],
+    [6.35,onSquat(restR)],[6.6,{}],[7.4,onTall(restR)],[7.55,{}],[7.8,onTall({G:[-13,136,12],D:norm([0.45,0.75,-0.45]),eR:[-0.8,-0.7,0.5],pass:true})],[8.05,Object.assign({},start)],[8.25,{}]];
+  return two?mirrorKF(kf,false):kf;
+}
 function clubBarbarian(){
   // Start with the two-hand arm cast over the lead (left) shoulder. As the club is pulled back to the front,
   // sink into the squat and lock the arms out, club upright in front. Arm cast again as you stand, and
@@ -1316,6 +1352,10 @@ Object.assign(MOVES,{
     cue:'One hand, club in order at the shoulder. Step forward into a lunge with the same side leg as you press the club straight out in front at shoulder height, club upright. Come back to order as you step back to your starting stance. Front shin near vertical. Both sides.'},
   'club:two-hand forward lunge flag press':{kf:both(lungeFlagPress(true)),label:'Two hands',alt:'club:forward lunge flag press',
     cue:'Two hands, club in order on the lead side. Step forward into a lunge with the lead side leg as you press the club straight out in front at shoulder height, club upright. Come back to order as you step back to your starting stance. Front shin near vertical. Both sides.'},
+  'club:clock squat':{kf:both(clockSquat(false)),label:'One hand',alt:'club:two-hand clock squat',
+    cue:'One hand, from order. Cast out into an outside circle and bring the club to rest across the opposite shoulder, as close to horizontal as you can and behind your head so the weight is centred. Squat. As you stand, cast it out from that side into another circle and rest it across your lead shoulder, then squat again. Stand and return to order. Both sides.'},
+  'club:two-hand clock squat':{kf:both(clockSquat(true)),label:'Two hands',alt:'club:clock squat',
+    cue:'Two hands, from order on the lead side. Cast out into an outside circle and bring the club to rest across the opposite shoulder, as close to horizontal as you can and behind your head so the weight is centred. Squat. As you stand, cast it out from that side into another circle and rest it across your lead shoulder, then squat again. Stand and return to order. Both sides.'},
   'club:one-arm shield cast':{kf:both(oneArmShield()),
     cue:'One hand, club in order at the shoulder. Cast it over the opposite ear, let it swing down behind your head and shoulders, then pull it over your lead shoulder back to the front and into order. Both arms.'},
   'club:two-hand clean':{kf:twoClean(),
