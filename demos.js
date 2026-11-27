@@ -1381,6 +1381,74 @@ function kbBottomsUpSquat(){
   const bottom=carry(Object.assign({},UP_KB,{P:[0,46,-12],pitch:12,feet,turn:10,kneeOut:0.75}),BOTTOMS_UP);
   return kbSquatReps(top,bottom,2);
 }
+
+/* horn hold, goblet hold and crush grip (Chris, 2026-11-27)
+   horn hold: hands on the sides of the handle (the horns), bell reversed, above the hands
+   goblet hold: hands on the horns, bell facing down
+   crush grip: the ball of the bell squeezed between the palms */
+const hornHands={hR:-6.5,hL:6.5,hD:2,offL:0,offR:0};
+const GOBLET_HOLD=Object.assign({},UP_KB,hornHands,{G:[0,136,24],D:[0,-1,0],W:[1,0,0],eL:[-0.25,-1,-0.25],eR:[0.25,-1,-0.25]});
+const crushAt=(c,extra)=>Object.assign({},UP_KB,{hR:-12,hL:12,hD:15,offL:0,offR:0,G:sub(c,[0,-15,0]),D:[0,-1,0],W:[1,0,0],eL:[1,-0.6,0],eR:[-1,-0.6,0]},extra||{});
+const CRUSH_CHEST=crushAt([0,128,26]),CRUSH_TOP=crushAt([0,190,8],{eL:[1,0,0],eR:[-1,0,0]});
+// horn hold through a curl: forearms pivot on elbows held at the ribs (theta 0 = hanging straight down)
+function hornCurlAt(theta,pass){
+  const a=theta*Math.PI/180,E=[0,110,2],hand=add(E,mul([0,-Math.cos(a),Math.sin(a)],27));
+  const D=norm([0,1,0.35-0.55*theta/150]);
+  return Object.assign({},UP_KB,hornHands,{G:sub(hand,mul(D,2)),D,W:[1,0,0],eL:[0.3,-1,-0.6],eR:[-0.3,-1,-0.6],pass:!!pass});
+}
+// horn hold over and behind the head: elbows at 90 degrees by the ears, bell hanging behind
+const HORN_OVER=Object.assign({},UP_KB,hornHands,{G:[0,184,12],D:norm([0,0.6,-0.8]),W:[1,0,0],eL:[0.4,0.8,0.4],eR:[-0.4,0.8,0.4],pass:true});
+const HORN_BEHIND=Object.assign({},UP_KB,hornHands,{G:[0,164,-8],D:norm([0,-0.85,-0.5]),W:[1,0,0],eL:[0.25,1,0.25],eR:[-0.25,1,0.25]});
+const HORN_UP=Object.assign({},UP_KB,hornHands,{G:[0,194,-2],D:[0,1,0],W:[1,0,0],eL:[0.25,1,0.25],eR:[-0.25,1,0.25]});
+function kbHornCurl(){
+  // horn hold, bell in front on straight arms; elbows locked to the ribs, curl it to the chest, forearms
+  // pivoting on the elbows; lower under control
+  const kf=[[0,hornCurlAt(8)],[0.4,{}]];let t=0.4;
+  for(let i=0;i<3;i++){kf.push([t+0.45,hornCurlAt(75,true)],[t+0.9,hornCurlAt(145)],[t+1.15,{}],[t+1.65,hornCurlAt(75,true)],[t+2.15,hornCurlAt(8)],[t+2.35,{}]);t+=2.35}
+  return kf;
+}
+function kbPullover(){
+  // horn hold at the chest: take the bell over the head and behind the back with the elbows at 90 degrees,
+  // then bring it back over to the front
+  const chest=hornCurlAt(145);
+  const kf=[[0,chest],[0.4,{}]];let t=0.4;
+  for(let i=0;i<2;i++){kf.push([t+0.5,HORN_OVER],[t+0.95,HORN_BEHIND],[t+1.2,{}],[t+1.65,Object.assign({},HORN_OVER)],[t+2.1,Object.assign({},chest)],[t+2.35,{}]);t+=2.35}
+  return kf;
+}
+function kbTricepPress(){
+  // the pullover, but once the bell is behind the back keep the biceps by the ears and straighten the arms
+  // so the bell rotates up over the head, then lower it behind again (skull crushers); bring it back over
+  const chest=hornCurlAt(145);
+  const kf=[[0,chest],[0.4,{}],[0.9,HORN_OVER],[1.35,HORN_BEHIND],[1.55,{}]];let t=1.55;
+  for(let i=0;i<3;i++){kf.push([t+0.55,HORN_UP],[t+0.8,{}],[t+1.35,Object.assign({},HORN_BEHIND)],[t+1.55,{}]);t+=1.55}
+  kf.push([t+0.45,Object.assign({},HORN_OVER)],[t+0.9,Object.assign({},chest)],[t+1.15,{}]);
+  return kf;
+}
+function kbCrushPress(){
+  // crush grip: squeeze the ball of the bell between the palms, then press it overhead and lower
+  const kf=[[0,CRUSH_CHEST],[0.4,{}]];let t=0.4;
+  for(let i=0;i<3;i++){kf.push([t+0.8,CRUSH_TOP],[t+1.05,{}],[t+1.85,Object.assign({},CRUSH_CHEST)],[t+2.1,{}]);t+=2.1}
+  return kf;
+}
+const KSQ={P:[0,47,-12],pitch:8,feet:{L:[18,8,0],R:[-18,8,0]},turn:6,kneeOut:0.6};
+function kbThruster(){
+  // a front squat holding the bell (crush grip here; horn or goblet hold work too), and the drive up
+  // carries straight into a push press overhead; lower to the chest and go again
+  const feet=KSQ.feet,top=Object.assign({},CRUSH_CHEST,{feet,turn:6,kneeOut:0.45});
+  const bottom=carry(Object.assign({},UP_KB,KSQ),Object.assign({},CRUSH_CHEST));
+  const rise=Object.assign(carry(Object.assign({},UP_KB,{P:[0,80,-5],pitch:4,feet,turn:6,kneeOut:0.5}),crushAt([0,140,22])),{pass:true});
+  const press=Object.assign({},CRUSH_TOP,{feet,turn:6,kneeOut:0.45});
+  const kf=[[0,top],[0.4,{}]];let t=0.4;
+  for(let i=0;i<2;i++){kf.push([t+0.95,bottom],[t+1.15,{}],[t+1.5,rise],[t+1.8,press],[t+2.1,{}],[t+2.8,Object.assign({},top)],[t+3.0,{}]);t+=3.0}
+  return kf;
+}
+function kbGobletHoldSquat(){
+  // goblet hold: hands on the horns, bell facing down at the chest; squat all the way down and drive up
+  const feet={L:[18,8,0],R:[-18,8,0]};
+  const top=carry(Object.assign({},UP_KB,{feet,turn:6,kneeOut:0.45}),GOBLET_HOLD);
+  const bottom=carry(Object.assign({},UP_KB,{P:[0,47,-12],pitch:8,feet,turn:6,kneeOut:0.6}),GOBLET_HOLD);
+  return kbSquatReps(top,bottom,2);
+}
 function kbRackLunge(){
   // Pick the bell up to the rack in the lead (right) hand, free arm out to the side. Reverse lunge with the
   // lead side leg: the foot lifts, steps back and lands softly, then the body lowers with the front shin near
@@ -1618,8 +1686,20 @@ const MOVES={
     cue:'Swing clean to the rack, pause and check, then press to lockout and fold it back to the rack. Elbow pinned on the way down and up; glutes on for the press.'},
   'kb:start-stop':{kf:kbStartStop(),
     cue:'Same start, same stop, every set. Bell a foot or so ahead. Reach in thumb down to the corner of the handle nearest you, hike it back, stand up into the clean and catch soft in the rack. Push it back and set it down right where it started.'},
-  'kb:goblet squat':{kf:kbBottomsUpSquat(),label:'By the horns',alt:'kb:hands-under goblet squat',
-    cue:'Bell upside down by the horns, arms at 90 degrees, elbows on your ribs, bell off your chest, shoulder blades down. Squat with your elbows inside your knees: push out with the elbows, squeeze in with the knees, chest up. Stand all the way up. If the horns are too much, hold the bell from underneath instead.'},
+  'kb:goblet squat':{kf:kbGobletHoldSquat(),label:'Goblet hold',alt:'kb:horn hold goblet squat',
+    cue:'Goblet hold: hands on the horns, bell facing down at your chest, elbows in. Squat all the way down, chest up, and drive straight up. Squeeze at the top.'},
+  'kb:horn hold goblet squat':{kf:kbBottomsUpSquat(),label:'Horn hold',alt:'kb:goblet squat',
+    cue:'Horn hold: bell reversed, upside down by the horns, elbows on your ribs, bell off your chest. Squat with your elbows inside your knees: push out with the elbows, squeeze in with the knees, chest up. Stand all the way up.'},
+  'kb:horn curl':{kf:kbHornCurl(),
+    cue:'Horn hold: hands on the sides of the handle, bell reversed. Stand with the bell in front on straight arms. Keep the elbows locked to your ribs and curl the bell up to your chest, the forearms pivoting on the elbows. Lower it under control.'},
+  'kb:pullover':{kf:kbPullover(),
+    cue:'Horn hold at the chest. Take the bell over your head and down behind your back with the elbows at 90 degrees, then bring it back over to the front.'},
+  'kb:tricep press':{kf:kbTricepPress(),
+    cue:'Also called skull crushers. Like the pullover, but once the bell is behind your back keep the biceps by your ears and straighten the arms so the bell rotates up over your head, then lower it behind again. Bring it back over to the front to finish.'},
+  'kb:crush press':{kf:kbCrushPress(),
+    cue:'Crush grip: squeeze the ball of the bell between your palms, hands pressing together. Press it straight overhead and lower it to the chest under control.'},
+  'kb:thrusters':{kf:kbThruster(),
+    cue:'Hold the bell in a crush grip, horn hold or goblet hold at the chest. Front squat, and as you drive up carry the momentum straight into a push press overhead. Lower to the chest and go again.'},
   'kb:hands-under goblet squat':{kf:kbGobletSquat(),label:'Hands under the bell',
     cue:'The alternative hold: hands under the bell, handle on top, looking through the window. Elbows together. Squat all the way down, lean back away from the bell, and drive straight up. Tuck the tailbone and squeeze at the top.'},
   'kb:rack reverse lunge':{kf:kbRackLunge(),
@@ -1791,7 +1871,7 @@ MOVES['mace:reverse lunge']={kf:join([MOVES['mace:reverse lunge:left'],MOVES['ma
   cue:'Alternate legs. Front shin stays near vertical; the mace stays in the upright hold.'};
 
 /* ---------- names ---------- */
-const ALIAS={kb:{'goblet':'goblet squat','bottoms-up goblet squat':'goblet squat','bottoms-up goblet':'goblet squat','goblet squat by the horns':'goblet squat',
+const ALIAS={kb:{'bottoms-up press':'crush press','skull crushers':'tricep press','skull crusher':'tricep press','tricep press/skull crushers':'tricep press','thruster':'thrusters','horn hold squat':'horn hold goblet squat','goblet':'goblet squat','bottoms-up goblet squat':'goblet squat','bottoms-up goblet':'goblet squat','goblet squat by the horns':'goblet squat',
     'goblet squat, hands under the bell':'hands-under goblet squat','hands under goblet squat':'hands-under goblet squat',
     'single kettlebell front squat':'front squat','kettlebell front squat':'front squat','single front squat':'front squat','figure 8':'figure-8','figure 8 front to back':'figure-8','figure-8 front to back':'figure-8','figure 8s':'figure-8',
     'figure 8 back to front':'figure-8 back to front','alternating-direction halo':'alternating halo','alternating halos':'alternating halo',
