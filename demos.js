@@ -1386,6 +1386,106 @@ function kbRackLunge(){
   kf=kf.concat(shift(setDownFromRack(),endOf(kf)+0.2));
   return both(kf);
 }
+
+/* kettlebell moves from Chris's descriptions (2026-11-27) */
+// a right-hand kettlebell pose with the same bell mirrored into the left hand (double moves), body square
+function dblBell(p){
+  if(!Object.keys(p).length)return {};
+  const m=mirror(p),o=Object.assign({},p,{offL:0,offR:0});
+  if('yaw' in p||'P' in p){o.yaw=0;o.hipYaw=0;o.roll=0}
+  if(p.P)o.P=[0,p.P[1],p.P[2]];
+  if(p.G){o.G2=m.G;o.D2=m.D;o.W2=m.W}
+  if(p.eR)o.eL=m.eL;
+  return o;
+}
+// the bell on the floor beside the outside of the right (lead) foot, handle running front to back
+const SUITCASE_FLOOR={G:[-27,25.5,4],D:[0,-1,0],W:[0,0,1]};
+const SC_BOTTOM={P:[0,52,-28],pitch:53,feet:KFEET,kneeOut:0.5};
+// standing tall with the bell hanging at the side on a straight arm, shoulders level
+const suitcaseTop=b=>R1(Object.assign({},UP_KB,b||{},{G:add(shoulderOf(Object.assign({},UP_KB,b||{}),'R'),[-6,-54,2]),D:[0,-1,0],W:[0,0,1],eR:[-1,0,0]}));
+function suitcaseKF(reps){
+  // bell outside the lead foot; shoulders square, hips back, hinge down and take it with the lead hand;
+  // stand up with the arm still straight down; lower the same way, tap and go again, then set it down
+  const grip=R1(Object.assign({},UP_KB,SC_BOTTOM,SUITCASE_FLOOR,{eR:[-1,0,-0.3]}));
+  const tap=Object.assign({},grip,{G:add(SUITCASE_FLOOR.G,[0,1,0])});
+  const mid=Object.assign(suitcaseTop({P:[0,74,-17],pitch:27,feet:KFEET}),{pass:true});   // half way: arm still hanging straight
+  const kf=[[0,standFree(SUITCASE_FLOOR)],[0.35,{}],[1.15,grip],[1.35,{}],[1.75,mid],[2.15,suitcaseTop()],[2.45,{}]];
+  let t=2.45;for(let i=1;i<reps;i++){kf.push([t+0.4,Object.assign({},mid)],[t+0.75,tap],[t+0.85,{}],[t+1.2,Object.assign({},mid)],[t+1.6,suitcaseTop()],[t+1.9,{}]);t+=1.9}
+  kf.mid=mid;
+  return {kf,t,grip};
+}
+function kbSuitcaseDeadlift(){
+  const {kf,t,grip}=suitcaseKF(2);
+  kf.push([t+0.4,Object.assign({},kf.mid)],[t+0.75,grip],[t+0.95,{}],[t+1.15,free_(Object.assign({},UP_KB,SC_BOTTOM,SUITCASE_FLOOR))],[t+1.9,standFree(SUITCASE_FLOOR)],[t+2.15,{}]);
+  return both(kf);
+}
+function kbFarmerCarry(){
+  // suitcase deadlift to standing, then walk forward: body tall, shoulders even, the bell steady at the side
+  const {kf,t}=suitcaseKF(1);
+  let z=0,tt=t;const step=26,top=suitcaseTop();
+  for(let i=0;i<4;i++){const s=i%2?'L':'R',o=s==='L'?'R':'L';
+    const mid=moveZ(top,z+step/2),feetMid={};feetMid[s]=[top.feet[s][0],18,z+step];feetMid[o]=[top.feet[o][0],8,z];
+    mid.feet=feetMid;mid.pass=true;
+    const land=moveZ(top,z+step/2);land.feet={};land.feet[s]=[top.feet[s][0],8,z+step];land.feet[o]=[top.feet[o][0],8,z];
+    kf.push([tt+0.3,mid],[tt+0.55,land]);tt+=0.55;
+    // the back foot comes through on the next step
+    const mid2=moveZ(top,z+step),f2={};f2[o]=[top.feet[o][0],18,z+step];f2[s]=[top.feet[s][0],8,z+step];mid2.feet=f2;mid2.pass=true;
+    if(i===3){kf.push([tt+0.3,mid2],[tt+0.55,moveZ(top,z+step)]);tt+=0.55}
+    z+=step;}
+  kf.push([tt+0.4,{}]);
+  const grip=moveZ(R1(Object.assign({},UP_KB,SC_BOTTOM,SUITCASE_FLOOR,{eR:[-1,0,-0.3]})),z);
+  kf.push([tt+1.2,grip],[tt+1.4,{}],[tt+1.6,moveZ(free_(Object.assign({},UP_KB,SC_BOTTOM,SUITCASE_FLOOR)),z)],[tt+2.35,moveZ(standFree(SUITCASE_FLOOR),z)],[tt+2.6,{}]);
+  return both(kf);
+}
+function kbPushPress(){
+  // from the rack: a slight squat (dip), then drive up through the legs and carry that into the press,
+  // more explosive than the strict press; ease the bell back down to the rack under control
+  const fist={freeL:add(shoulderOf(UP_KB,'L'),[54,-2,4]),eL:[0,-1,0]};
+  const rack=Object.assign({},RACK_R,fist);
+  const dipB=Object.assign({},UP_KB,{P:[0,84,-5],pitch:6,feet:KFEET,kneeOut:0.5});
+  const dip=Object.assign(carry(dipB,rack),{freeL:fist.freeL});
+  const drive=Object.assign({},rack,{G:add(rack.G,[-2,10,-2]),pass:true});
+  let kf=pickupToRack();kf.push([endOf(kf)+0.45,rack],[endOf(kf)+0.75,{}]);
+  for(let i=0;i<2;i++){const t=endOf(kf);
+    kf.push([t+0.45,dip],[t+0.6,{}],[t+0.78,drive],[t+0.92,Object.assign({},PRESS_MID_R,fist)],[t+1.08,Object.assign({},LOCK_R,fist)],[t+1.5,{}],
+      [t+2.15,Object.assign({},PRESS_MID_R,fist)],[t+2.75,rack],[t+3.0,{}])}
+  kf=kf.concat(shift(setDownFromRack(),endOf(kf)+0.15));
+  return both(kf);
+}
+function kbDoubleFrontSquat(){
+  // the front squat with a bell in each hand in the rack
+  const rack=dblBell(Object.assign({},RACK_R,{feet:KFEET,turn:4,kneeOut:0.45}));
+  const bottom=dblBell(carry(Object.assign({},UP_KB,{P:[0,48,-12],pitch:8,feet:KFEET,turn:4,kneeOut:0.6}),RACK_R));
+  const kf=[[0,rack],[0.5,{}]];let t=0.5;
+  for(let i=0;i<2;i++){kf.push([t+0.95,bottom],[t+1.2,{}],[t+2.0,rack],[t+2.3,{}]);t+=2.3}
+  return kf;
+}
+function kbDoubleSwing(){
+  // the one-arm swing with a bell in each hand, feet a little wider; the bells travel side by side between
+  // the legs, apart enough that they never knock together
+  const W2F={L:[24,8,0],R:[-24,8,0]};
+  const B=x=>Object.assign({},UP_KB,x||{},{feet:W2F});
+  const at=(b,dir)=>dblBell(R1(armR(B(b),dir)));
+  const hang=at(null,[0.02,-1,0.12]),hike=Object.assign(at(HIKE_P,[0.06,-0.8,-0.55]),{eR:[-1,0,-0.5]});
+  const pass=Object.assign(at(PASS_P,[0.04,-1,0.3]),{pass:true}),top=at(null,[-0.04,-0.7,0.7]);
+  hike.eL=mx(hike.eR);
+  const kf=[[0,hang],[0.4,{}],[0.9,hike]];let t=0.9;
+  for(let i=0;i<3;i++){kf.push([t+0.27,pass],[t+0.55,top],[t+0.82,pass],[t+1.1,hike]);t+=1.1}
+  kf.push([t+0.5,Object.assign({},pass,{pass:false})],[t+0.8,hang],[t+1.1,{}]);
+  return kf;
+}
+function kbSnatch(){
+  // one-arm swing, then in one explosive move drive the bell up close to the body and punch through so it
+  // turns to sit behind the wrist (like the rack) with the arm straight up overhead, biceps by the ear,
+  // bell high. Drop it back into the swing.
+  const pull=Object.assign(R1(Object.assign({},UP_KB,{G:[-14,146,18],D:norm([0,-0.9,-0.2]),W:[1,0,0],eR:[-1,0.6,0]})),{pass:true});
+  const over=Object.assign(R1(armR(Object.assign({},UP_KB),[0.1,0.35,0.93])),{pass:true});
+  let kf=[[0,standFree(FLOOR_AHEAD)],[0.35,{}],[1.1,reachFree(FLOOR_AHEAD)],[1.35,setOne(FLOOR_AHEAD)],[1.55,{}],[2.0,HIKE_R]];
+  let t=2.0;
+  for(let i=0;i<2;i++){kf.push([t+0.27,SWPASS_R],[t+0.48,pull],[t+0.7,LOCK_R],[t+1.15,{}],[t+1.45,over],[t+1.72,SWPASS_R],[t+2.0,HIKE_R]);t+=2.0}
+  kf.push([t+0.45,setOne(FLOOR_AHEAD)],[t+0.65,{}],[t+0.85,reachFree(FLOOR_AHEAD)],[t+1.6,standFree(FLOOR_AHEAD)],[t+1.85,{}]);
+  return both(kf);
+}
 function kbFrontSquat(){
   // Two-hand pickup to the rack, free arm straight out to the side, feet straight ahead. Squat with the
   // racked elbow inside the knee, leaning back against the bell, head up; roll the shoulder back and drive
@@ -1437,6 +1537,18 @@ const MOVES={
     cue:'The alternative hold: hands under the bell, handle on top, looking through the window. Elbows together. Squat all the way down, lean back away from the bell, and drive straight up. Tuck the tailbone and squeeze at the top.'},
   'kb:rack reverse lunge':{kf:kbRackLunge(),
     cue:'Bell in the rack in your lead hand, free arm out to the side. Step back with the same side leg, land softly on the ball of the foot, and lower until the back knee is just off the floor, front shin near vertical. Drive through the front foot and step back to the start. Both sides.'},
+  'kb:suitcase deadlift':{kf:kbSuitcaseDeadlift(),
+    cue:'Bell beside the outside of your lead foot. Shoulders square and level, push the hips back and hinge down to take the handle with the lead hand. Stand up with the arm still straight down holding the bell. Lower it the same way: tap it down for more reps, or set it down to finish. Both sides.'},
+  'kb:farmer carry':{kf:kbFarmerCarry(),
+    cue:'Suitcase deadlift the bell to standing, arm straight down at your side. Walk forward with short steps, body tall, shoulders even and the bell steady the whole time. Set it down with the same hinge. Both sides.'},
+  'kb:push press':{kf:kbPushPress(),
+    cue:'From the rack: a slight squat, then drive up through the legs and carry that power straight into the press, more explosive than the strict press. Finish locked out, biceps by the ear. Ease the bell back down to the rack under control. Both sides.'},
+  'kb:double front squat':{kf:kbDoubleFrontSquat(),
+    cue:'The front squat with a bell in each hand in the rack, wrists straight, elbows in. Sit down between your heels, chest up, and drive all the way up.'},
+  'kb:double swing':{kf:kbDoubleSwing(),
+    cue:'The one-arm swing with a bell in each hand, feet a little wider. Hike both back between the legs and snap the hips; the bells move together, side by side, without knocking into each other.'},
+  'kb:snatch':{kf:kbSnatch(),
+    cue:'From a one-arm swing, drive the bell up in one explosive move, close to the body, and punch through so it turns to sit behind the wrist (like the rack) with the arm straight up overhead, biceps by the ear and the bell high. Drop it back into the swing. Both sides.'},
   'kb:front squat':{kf:kbFrontSquat(),
     cue:'Bell in the rack, free arm straight out to the side, feet straight ahead. Squat with the racked elbow inside the knee, lean back against the bell, head up. Roll the shoulder back and drive all the way up. Both sides.'},
   'kb:halo':{kf:kbHalo(),
@@ -1694,7 +1806,8 @@ function poseAt(kf,t){
     for(const k of ['P','G','eL','eR','freeL','freeR'])o[k]=vl(a[k],b[k],u);
     for(const k of ['pitch','yaw','roll','hipYaw','turn','fyL','fyR','tL','tR','gR','gL','choke','offL','offR','kneeOut','len','kb','hR','hL','hD'])o[k]=lerp(a[k],b[k],u);
     o.W=norm(vl(a.W,b.W,u));
-    if(a.G2&&b.G2){o.G2=vl(a.G2,b.G2,u);o.D2=norm(vl(a.D2,b.D2,u))}   // a club in the left hand too (two clubs)
+    if(a.G2&&b.G2){o.G2=vl(a.G2,b.G2,u);o.D2=norm(vl(a.D2,b.D2,u))}
+    if(a.W2&&b.W2)o.W2=norm(vl(a.W2,b.W2,u));   // a club in the left hand too (two clubs)
     if(a.lock&&a.lock===b.lock)armArc(a,b,o,u);
     return o;
   }
@@ -1735,12 +1848,12 @@ function skeleton(p){
   if(p.kb>0.5){const g=add(p.G,mul(p.D,p.hD));
     sk.hand={R:vl(add(g,mul(p.W,p.hR)),p.freeR,p.offR),L:vl(add(g,mul(p.W,p.hL)),p.freeL,p.offL)};}
   else sk.hand={R:vl(add(p.G,mul(p.D,p.gR)),p.freeR,p.offR),L:vl(add(p.G,mul(p.D,p.gL)),p.freeL,p.offL)};
-  if(p.G2)sk.hand.L=add(p.G2,mul(p.D2,p.gR||0));
+  if(p.G2)sk.hand.L=p.kb>0.5?add(p.G2,mul(p.D2,p.hD||0)):add(p.G2,mul(p.D2,p.gR||0));
   for(const s of ['L','R']){const [elb,wr]=ik(sk.sh[s],sk.hand[s],UARM,FARM,norm(s==='L'?p.eL:p.eR));sk['elb'+s]=elb;sk['wr'+s]=wr}
   sk.len=p.len;sk.butt=sub(p.G,mul(p.D,p.choke));sk.tip=add(sk.butt,mul(p.D,p.len));
   sk.gripTop=add(sk.butt,mul(p.D,p.len<80?16:22));
-  if(p.G2){sk.butt2=sub(p.G2,mul(p.D2,p.choke));sk.tip2=add(sk.butt2,mul(p.D2,p.len));sk.gripTop2=add(sk.butt2,mul(p.D2,16))}
-  if(p.kb>0.5){sk.kb=true;sk.bell=bellOf(p);sk.tip=sk.bell.C}
+  if(p.G2&&!(p.kb>0.5)){sk.butt2=sub(p.G2,mul(p.D2,p.choke));sk.tip2=add(sk.butt2,mul(p.D2,p.len));sk.gripTop2=add(sk.butt2,mul(p.D2,16))}
+  if(p.kb>0.5){sk.kb=true;sk.bell=bellOf(p);sk.tip=sk.bell.C;if(p.G2)sk.bell2=bellOf({G:p.G2,D:p.D2,W:p.W2})}
   return sk;
 }
 
@@ -1782,9 +1895,9 @@ function scene(cam,sk,trail){
   const hid=(a,b)=>((dz(a)+dz(b))/2<body-6?' dm-hid':'');
   if(sk.kb){
     // kettlebell: a handle with two horns over a round bell
-    const B=sk.bell;
-    seg(B.a,B.b,4,'dm-kbh'+hid(B.a,B.b));seg(B.a,B.ha,4,'dm-kbh'+hid(B.a,B.ha));seg(B.b,B.hb,4,'dm-kbh'+hid(B.b,B.hb));
-    const C=pr(B.C);items.push({z:dz(B.C),s:`<circle cx="${f1(C[0])}" cy="${f1(C[1])}" r="${f1(BELL_R*S)}" class="dm-bell${hid(B.C,B.C)||' dm-ring'}"/>`});
+    for(const B of [sk.bell,sk.bell2]){if(!B)continue;     // a second bell in the left hand for double moves
+      seg(B.a,B.b,4,'dm-kbh'+hid(B.a,B.b));seg(B.a,B.ha,4,'dm-kbh'+hid(B.a,B.ha));seg(B.b,B.hb,4,'dm-kbh'+hid(B.b,B.hb));
+      const C=pr(B.C);items.push({z:dz(B.C),s:`<circle cx="${f1(C[0])}" cy="${f1(C[1])}" r="${f1(BELL_R*S)}" class="dm-bell${hid(B.C,B.C)||' dm-ring'}"/>`});}
   }else if(sk.len<80){
     // club: knob, handle, then a body that swells toward a rounded end (two clubs: one in each hand)
     const club=(butt,neck,tip)=>{const N=7;
