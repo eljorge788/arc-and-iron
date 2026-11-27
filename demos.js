@@ -1495,6 +1495,84 @@ function kbSnatch(){
   kf.push([t+0.45,setOne(FLOOR_AHEAD)],[t+0.65,{}],[t+0.85,reachFree(FLOOR_AHEAD)],[t+1.6,standFree(FLOOR_AHEAD)],[t+1.85,{}]);
   return both(kf);
 }
+
+// shift a pose (body, feet and anything in hand) along the floor so a body point lands over a target x/z
+function overXZ(p,pt,target){const dx=target[0]-pt[0],dz=target[2]-pt[2],f=v=>v&&[v[0]+dx,v[1],v[2]+dz];
+  const o=Object.assign({},p,{P:f(p.P)});if(p.feet)o.feet={L:f(p.feet.L),R:f(p.feet.R)};return o}
+function kbSingleLegDeadlift(){
+  // Single-leg (Romanian) deadlift (Chris): bell on the floor outside the lead (right) foot. Hinge at the
+  // waist with the other leg straight in line with the body, lifting back as you tip forward. Low enough to
+  // reach, take it like the suitcase deadlift and reverse the hinge, the free leg staying off the floor
+  // while you repeat; then set the bell back down.
+  const floor={G:[-22,25.5,16],D:[0,-1,0],W:[0,0,1]};
+  const leg=(P,pitch,lift)=>{const F=torsoFrame(P,pitch,0,0),hipL=add(P,mul(F.l,9));
+    return add(hipL,mul(F.u,-(lift?84:86)))};
+  const body=(P,pitch,lift,extra)=>{const L=lift?leg(P,pitch,lift):[10,8,0];
+    return Object.assign({},UP_KB,{P,pitch,feet:{L:[L[0],Math.max(8,L[1]),L[2]],R:[-10,8,0]},turn:4,kneeOut:0.2,tL:lift?1:0},extra||{})};
+  const bottom=body([0,72,-6],82,true),mid=body([0,84,-3],40,true),up=body([0,93,0],6,true),stand=body([0,94,0],0,false);
+  const grip=R1(Object.assign({},bottom,floor,{eR:[-1,0,-0.3]}));
+  const tap=Object.assign({},grip,{G:add(floor.G,[0,1.5,0])});
+  const hang=(b,pass)=>Object.assign(R1(Object.assign({},b,{G:add(shoulderOf(b,'R'),mul(norm([-0.05,-1,0.02]),54)),D:[0,-1,0],W:[0,0,1],eR:[-1,0,0]})),{pass:!!pass});
+  const free=(b,pass)=>Object.assign(free_(Object.assign({},b,floor)),{pass:!!pass});
+  const kf=[[0,free(stand)],[0.35,{}],[0.9,free(mid,true)],[1.4,Object.assign(free_(Object.assign({},bottom,floor)),{offR:0.6})],[1.55,grip],[1.75,{}],
+    [2.25,hang(mid,true)],[2.75,hang(up)],[3.05,{}],[3.55,hang(mid,true)],[4.05,tap],[4.2,{}],[4.7,hang(mid,true)],[5.2,hang(up)],[5.5,{}],
+    [6.0,hang(mid,true)],[6.5,grip],[6.7,{}],[6.9,free(bottom)],[7.45,free(mid,true)],[7.95,free(stand)],[8.2,{}]];
+  return both(kf);
+}
+function kbBentOverRow(){
+  // Bent-over row (Chris): bell on the floor between the legs. Pivot to one side and hinge forward with a
+  // straight back, the free forearm resting on the front thigh. Reach down with the working (right) arm and
+  // take the bell; keeping everything else still, row it up toward the chest, elbow to the hip pocket, and
+  // lower it under control. both() pivots the other way for the left arm.
+  const B=Object.assign({},UP_KB,{P:[0,62,-10],pitch:68,yaw:28,hipYaw:22,feet:{L:[16,8,22],R:[-18,8,-16]},turn:8,kneeOut:0.4,fyR:24,fyL:18});
+  const bellAt=FLOOR_IN.G,sR=shoulderOf(B,'R');
+  const body=overXZ(B,sR,bellAt);
+  const F=torsoFrame(body.P,body.pitch,body.yaw,0),hipL=add(body.P,mul(F.l,9)),kneeL=vl(hipL,body.feet.L,0.45);
+  const brace={freeL:add(kneeL,[0,6,0]),eL:[1,0.2,-0.4]};
+  const grip=R1(Object.assign({},body,FLOOR_IN,{W:[0,0,1],eR:[-1,0,-0.3]},brace));
+  const rowTop=R1(Object.assign({},body,{G:onBody(body,-15,24,-10),D:[0,-1,0],W:norm([0.4,0,0.9]),eR:[-0.6,1,-0.2]},brace));
+  const low=Object.assign({},grip,{G:add(FLOOR_IN.G,[0,6,0])});
+  const st=standFree(FLOOR_IN),turned=Object.assign(free_(Object.assign({},body,FLOOR_IN)),brace,{offL:1});
+  const kf=[[0,st],[0.35,{}],[1.2,turned],[1.45,grip],[1.65,{}]];let t=1.65;
+  for(let i=0;i<2;i++){kf.push([t+0.55,rowTop],[t+0.8,{}],[t+1.5,low],[t+1.6,{}]);t+=1.6}
+  kf.push([t+0.3,grip],[t+0.45,{}],[t+0.65,turned],[t+1.5,st],[t+1.75,{}]);
+  return both(kf);
+}
+function kbGorillaRow(){
+  // Gorilla row (Chris): two bells on the floor, a deep hinge forward with feet wide and no pivot, back
+  // straight. Rest on one bell while the other rows to the chest like the bent-over row and comes back down
+  // under control; set it down and row the other side.
+  const W2F={L:[26,8,0],R:[-26,8,0]};
+  const B=Object.assign({},UP_KB,{P:[0,64,-16],pitch:66,feet:W2F,turn:12,kneeOut:0.6});
+  const sR=shoulderOf(B,'R'),sL=shoulderOf(B,'L');
+  const bR={G:[sR[0]+2,25.5,sR[2]],D:[0,-1,0],W:[0,0,1]},bL={G:[sL[0]-2,25.5,sL[2]],D:[0,-1,0],W:[0,0,1]};
+  const two=(b,r,l,extra)=>Object.assign({},b,{G:r.G,D:r.D,W:r.W,G2:l.G,D2:l.D,W2:l.W,hR:0,hL:0,hD:0,eR:[-1,0,-0.3],eL:[1,0,-0.3]},extra||{});
+  const rowR={G:onBody(B,-15,24,-10),D:[0,-1,0],W:[0,0,1]},rowL={G:onBody(B,15,24,-10),D:[0,-1,0],W:[0,0,1]};
+  const hold=two(B,bR,bL,{offL:0,offR:0,freeL:[20,86,2],freeR:[-20,86,2]});
+  const standF=two(Object.assign({},UP_KB,{feet:W2F,turn:12}),bR,bL,{offL:1,offR:1,freeL:add(shoulderOf(UP_KB,'L'),[4,-52,6]),freeR:add(shoulderOf(UP_KB,'R'),[-4,-52,6])});
+  const reach=two(B,bR,bL,{offL:1,offR:1,freeL:add(bL.G,[0,14,0]),freeR:add(bR.G,[0,14,0])});
+  const upR=Object.assign({},hold,{G:rowR.G,eR:[-0.6,1,-0.2]}),upL=Object.assign({},hold,{G2:rowL.G,eL:[0.6,1,-0.2]});
+  const kf=[[0,standF],[0.35,{}],[1.2,reach],[1.45,hold],[1.65,{}]];let t=1.65;
+  for(const up of [upR,upR,upL,upL]){kf.push([t+0.55,up],[t+0.8,{}],[t+1.45,hold],[t+1.6,{}]);t+=1.6}
+  kf.push([t+0.25,reach],[t+1.1,standF],[t+1.35,{}]);
+  return kf;
+}
+function kbHighPull(){
+  // High pull (Chris): a two-hand swing that brings the handle up under the chin with the elbows as high as
+  // they go, then swings back down under control.
+  const floorG=[0,23.6,32.8],floorD=norm([0,-0.876,0.482]);
+  const standF=Object.assign({},KB,{G:floorG,D:floorD,offL:1,offR:1,freeL:[20,86,2],freeR:[-20,86,2],eL:[1,-0.4,-0.6],eR:[-1,-0.4,-0.6]});
+  const setup=Object.assign({},KB,{P:[0,62,-32],pitch:74,G:floorG,D:floorD,eL:[1,0.3,-0.3],eR:[-1,0.3,-0.3]});
+  const hike=kbArms(Object.assign({},KB,{P:[0,74,-20],pitch:48}),[0,-0.766,-0.643]);
+  const pass=Object.assign(kbArms(Object.assign({},KB,{P:[0,88,-8],pitch:18}),[0,-1,0.35]),{pass:true});
+  const rise=Object.assign(kbArms(Object.assign({},KB,{P:[0,94,0],pitch:0}),[0,-0.55,0.85]),{pass:true});
+  const chin=Object.assign({},KB,{P:[0,94,0],pitch:0,G:[0,146,16],D:norm([0,-1,0.15]),W:[1,0,0],hR:-4,hL:4,eL:[1,0.7,-0.3],eR:[-1,0.7,-0.3]});
+  const reach=Object.assign({},setup,{offL:1,offR:1,freeL:[16,46,16],freeR:[-16,46,16]});
+  let kf=[[0,standF],[0.35,{}],[1.15,reach],[1.4,setup],[1.6,{}],[2.05,hike]];let t=2.05;
+  for(let i=0;i<3;i++){kf.push([t+0.28,pass],[t+0.46,rise],[t+0.64,chin],[t+0.85,{}],[t+1.1,Object.assign({},rise)],[t+1.32,Object.assign({},pass)],[t+1.6,hike]);t+=1.6}
+  kf.push([t+0.45,setup],[t+0.65,{}],[t+0.85,reach],[t+1.65,standF],[t+1.95,{}]);
+  return kf;
+}
 function kbFrontSquat(){
   // Two-hand pickup to the rack, free arm straight out to the side, feet straight ahead. Squat with the
   // racked elbow inside the knee, leaning back against the bell, head up; roll the shoulder back and drive
@@ -1558,6 +1636,14 @@ const MOVES={
     cue:'The one-arm swing with a bell in each hand, feet a little wider. Hike both back between the legs and snap the hips; the bells move together, side by side, without knocking into each other.'},
   'kb:snatch':{kf:kbSnatch(),
     cue:'From a one-arm swing, drive the bell up in one explosive move, close to the body, and punch through so it turns to sit behind the wrist (like the rack) with the arm straight up overhead, biceps by the ear and the bell high. Drop it back into the swing. Both sides.'},
+  'kb:single-leg deadlift':{kf:kbSingleLegDeadlift(),
+    cue:'Also called the single-leg RDL. Bell on the floor outside your lead foot. Hinge at the waist and let the other leg rise straight behind you, in line with your body. When you can reach the bell, take it like the suitcase deadlift and reverse the hinge. Keep the free leg off the floor while you repeat, or set the bell down to finish. Both sides.'},
+  'kb:bent-over row':{kf:kbBentOverRow(),
+    cue:'Bell on the floor between your legs. Pivot to one side and hinge forward with a straight back; rest or brace the free forearm on that leg. Reach down with the working arm and take the bell. Keeping everything else still, row it toward the chest, elbow to the hip pocket, then lower it under control. Pivot the other way to switch sides.'},
+  'kb:gorilla row':{kf:kbGorillaRow(),
+    cue:'Two bells on the floor, feet wide, a deep hinge forward with no pivot and a straight back. Rest on one bell and row the other to the chest like the bent-over row, then lower it under control. Set it down and row the other side.'},
+  'kb:high pull':{kf:kbHighPull(),
+    cue:'A two-hand swing that brings the handle up under the chin with the elbows as high as they go, then swings back down under control.'},
   'kb:front squat':{kf:kbFrontSquat(),
     cue:'Bell in the rack, free arm straight out to the side, feet straight ahead. Squat with the racked elbow inside the knee, lean back against the bell, head up. Roll the shoulder back and drive all the way up. Both sides.'},
   'kb:halo':{kf:kbHalo(),
@@ -1857,7 +1943,7 @@ function skeleton(p){
   if(p.kb>0.5){const g=add(p.G,mul(p.D,p.hD));
     sk.hand={R:vl(add(g,mul(p.W,p.hR)),p.freeR,p.offR),L:vl(add(g,mul(p.W,p.hL)),p.freeL,p.offL)};}
   else sk.hand={R:vl(add(p.G,mul(p.D,p.gR)),p.freeR,p.offR),L:vl(add(p.G,mul(p.D,p.gL)),p.freeL,p.offL)};
-  if(p.G2)sk.hand.L=p.kb>0.5?add(p.G2,mul(p.D2,p.hD||0)):add(p.G2,mul(p.D2,p.gR||0));
+  if(p.G2)sk.hand.L=p.kb>0.5?vl(add(p.G2,mul(p.D2,p.hD||0)),p.freeL,p.offL||0):add(p.G2,mul(p.D2,p.gR||0));
   for(const s of ['L','R']){const [elb,wr]=ik(sk.sh[s],sk.hand[s],UARM,FARM,norm(s==='L'?p.eL:p.eR));sk['elb'+s]=elb;sk['wr'+s]=wr}
   sk.len=p.len;sk.butt=sub(p.G,mul(p.D,p.choke));sk.tip=add(sk.butt,mul(p.D,p.len));
   sk.gripTop=add(sk.butt,mul(p.D,p.len<80?16:22));
