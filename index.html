@@ -535,6 +535,19 @@ textarea{min-height:70px;resize:vertical}
 .tbl td:first-child{white-space:normal}
 .up{color:var(--good)}
 .musc{list-style:none;margin:0;padding:0;display:grid;gap:2px;border-top:1px solid var(--line)}
+.bodymap{display:grid;gap:6px;margin:4px 0 12px}
+.bodymap svg{width:100%;max-width:440px;margin:0 auto;display:block;height:auto}
+.bm-body{fill:var(--surface);stroke:var(--line);stroke-width:1.5;stroke-linejoin:round}
+.bm-fill{fill:var(--surface);stroke:none}
+.bm-edge{fill:none;stroke:var(--line);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+.bm-n{fill:var(--line);fill-opacity:.55;stroke:none}
+.bm-m{stroke:var(--surface);stroke-width:1;cursor:pointer;transition:fill-opacity .15s}
+.bm-m.bm-sel{stroke:var(--ink);stroke-width:1.6}
+.bm-cap{font-family:var(--mono);font-size:11px;fill:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.bm-key{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;font-size:.82rem;color:var(--muted)}
+.bm-key i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.bm-key .bm-kn{background:var(--line)}
+.musc li.m-sel{background:var(--accent-soft)}
 .musc li{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:10px 0;border-bottom:1px solid var(--line);align-items:center}
 .meter{grid-column:1/-1;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
 .meter i{display:block;height:100%;border-radius:3px}
@@ -862,6 +875,7 @@ html.guiding,html.guiding body{overflow:hidden}
     <section aria-labelledby="rc-h">
       <h2 id="rc-h">Muscle recovery</h2>
       <p class="note">An estimate built from what you logged (which muscles each move works, how long, how hard) and your soreness check-ins. Most groups bounce back in one to three days. Your body's signals win over this chart.</p>
+      <div id="bodyMap"></div>
       <ul class="musc" id="musc"></ul>
     </section>
     <section aria-labelledby="ci-h">
@@ -2561,6 +2575,49 @@ function recoveryState(){
   return out;
 }
 const LVL=[['Ready','s-ready'],['Recovering','s-rec'],['Rest it','s-rest']];
+/* ---------- body map (Recovery tab) ----------
+   An original, stylised front and back figure. Each muscle region is tagged with a GROUPS key and filled by its
+   recovery level (ready / recovering / rest it); regions with no group (chest, calves) stay neutral. Shapes are
+   drawn for the figure's right side (screen left) and mirrored. */
+// the outline is filled as a closed half and stroked without its centre seam
+const BODY_EDGE=()=>BODY_OUTLINE.replace(/ L0 220 L0 56 Z$/,'');
+const BODY_OUTLINE='M-9 56 C-20 62 -34 64 -42 70 C-52 76 -55 92 -56 108 C-58 128 -59 146 -61 160 C-63 180 -66 200 -67 222 C-69 234 -71 248 -66 262 C-61 266 -56 258 -56 246 C-55 236 -53 228 -52 220 C-50 200 -46 182 -44 164 C-42 146 -40 128 -38 114 C-36 136 -34 158 -33 176 C-34 190 -38 200 -40 214 C-42 240 -41 266 -36 290 C-34 302 -33 312 -34 328 C-35 350 -27 372 -23 386 C-26 392 -31 396 -28 400 L-8 400 C-8 394 -10 388 -11 382 C-13 366 -14 344 -13 326 C-12 312 -12 302 -12 292 C-10 268 -6 240 -3 222 L0 220 L0 56 Z';
+const BODY_PARTS={
+  front:[
+    ['shoulders','M-36 70 C-46 72 -54 82 -56 98 C-56 106 -54 112 -50 114 C-46 104 -40 94 -33 88 C-32 80 -33 74 -36 70 Z'],
+    ['','M-31 78 C-22 74 -10 74 -4 76 L-4 110 C-14 114 -26 112 -32 104 C-36 96 -36 86 -31 78 Z'],
+    ['arms','M-49 117 C-55 120 -58 136 -58 150 C-56 156 -50 158 -45 154 C-42 142 -41 128 -43 118 Z'],
+    ['grip','M-47 163 C-56 164 -62 178 -64 200 C-64 210 -61 218 -56 219 C-53 204 -50 186 -47 172 Z'],
+    ['core','M-14 118 L-3 118 L-3 204 C-7 206 -11 204 -13 198 C-15 170 -15 140 -14 118 Z'],
+    ['core','M-18 120 C-25 120 -31 124 -33 132 C-34 150 -33 166 -33 178 C-31 190 -26 200 -18 202 C-17 172 -17 146 -18 120 Z'],
+    ['quads','M-37 214 C-28 216 -16 222 -7 230 C-6 254 -9 278 -13 294 C-20 298 -28 298 -33 292 C-39 268 -41 240 -37 214 Z'],
+    ['','M-31 308 C-26 306 -17 306 -14 310 C-13 330 -14 350 -16 366 C-21 368 -25 366 -27 362 C-31 346 -33 326 -31 308 Z']],
+  back:[
+    ['back','M-3 54 C-10 60 -22 66 -32 72 C-28 80 -20 88 -12 96 C-8 102 -5 108 -3 114 Z'],
+    ['shoulders','M-36 70 C-46 72 -54 82 -56 98 C-56 106 -54 112 -50 114 C-46 104 -40 94 -33 88 C-32 80 -33 74 -36 70 Z'],
+    ['back','M-14 100 C-22 94 -30 92 -35 96 C-36 118 -35 140 -33 160 C-28 168 -20 172 -11 172 C-9 150 -9 124 -14 100 Z'],
+    ['back','M-10 174 L-3 174 L-3 204 C-6 206 -9 205 -11 202 C-12 192 -12 182 -10 174 Z'],
+    ['core','M-31 164 C-26 172 -20 176 -14 178 C-14 188 -15 198 -18 204 C-26 202 -32 196 -34 186 C-34 178 -33 170 -31 164 Z'],
+    ['arms','M-49 117 C-55 120 -58 136 -58 150 C-56 156 -50 158 -45 154 C-42 142 -41 128 -43 118 Z'],
+    ['grip','M-47 163 C-56 164 -62 178 -64 200 C-64 210 -61 218 -56 219 C-53 204 -50 186 -47 172 Z'],
+    ['glutes','M-37 208 C-28 206 -12 208 -3 212 L-3 244 C-12 250 -26 250 -34 242 C-39 232 -40 218 -37 208 Z'],
+    ['glutes','M-36 252 C-27 254 -15 256 -6 256 C-6 272 -9 286 -13 296 C-20 300 -28 300 -33 294 C-37 280 -38 264 -36 252 Z'],
+    ['','M-31 308 C-26 306 -17 306 -14 310 C-13 330 -14 350 -16 366 C-21 368 -25 366 -27 362 C-31 346 -33 326 -31 308 Z']]
+};
+const BODY_FILL=['var(--good)','var(--warn)','var(--bad)'];
+function bodyFigure(view,rs,dx){
+  const part=([g,d])=>{const r=g&&rs[g],lab=g?`${GROUPS[g]}: ${LVL[r.lvl][0]}`:'';
+    const a=g?`class="bm-m" data-g="${g}" fill="${BODY_FILL[r.lvl]}" fill-opacity="${r.last||r.sore?0.85:0.45}"`:`class="bm-n"`;
+    return `<path ${a} d="${d}">${lab?`<title>${esc(lab)}</title>`:''}</path><path ${a} d="${d}" transform="scale(-1 1)">${lab?`<title>${esc(lab)}</title>`:''}</path>`};
+  return `<g transform="translate(${dx} 6)"><ellipse class="bm-body" cx="0" cy="28" rx="18" ry="22"/><path class="bm-fill" d="${BODY_OUTLINE}"/><path class="bm-fill" d="${BODY_OUTLINE}" transform="scale(-1 1)"/><path class="bm-edge" d="${BODY_EDGE()}"/><path class="bm-edge" d="${BODY_EDGE()}" transform="scale(-1 1)"/>
+    <path class="bm-edge" d="M-9 56 L9 56"/>
+    ${BODY_PARTS[view].map(part).join('')}<text x="0" y="418" text-anchor="middle" class="bm-cap">${view==='front'?'Front':'Back'}</text></g>`}
+function bodyMapHTML(rs){
+  return `<div class="bodymap"><svg viewBox="0 0 340 430" role="img" aria-label="Muscle recovery map, front and back. ${esc(Object.entries(GROUPS).map(([g,l])=>l+' '+LVL[rs[g].lvl][0].toLowerCase()).join(', '))}">
+    ${bodyFigure('front',rs,85)}${bodyFigure('back',rs,255)}</svg>
+    <div class="bm-key">${LVL.map(([l],i)=>`<span><i style="background:${BODY_FILL[i]}"></i>${l}</span>`).join('')}<span><i class="bm-kn"></i>Not tracked</span></div>
+    <p class="hint">Paler colors mean that area hasn't been worked in the last 10 days. Tap a muscle to see its details below.</p></div>`}
+
 function restingGroups(){try{const rs=recoveryState();return Object.keys(rs).filter(g=>rs[g].lvl===2)}catch(e){return[]}}
 function recoveryTip(w){
   if(!Store.logs.length&&!Store.checks.length)return '';
@@ -3118,7 +3175,10 @@ function renderTrack(){
   const rs=recoveryState();
   $('musc').innerHTML=Object.entries(GROUPS).map(([g,l])=>{const r=rs[g],[lab,cls]=LVL[r.lvl];
     const ago=r.last?Math.floor((now-r.last)/DAY):null;
-    return `<li><span><b>${l}</b><br><small class="unit">${ago==null?'Not worked in the last 10 days':ago===0?'Worked today':ago===1?'Worked yesterday':'Worked '+ago+' days ago'}${r.sore?` · soreness ${r.sore}/3`:''}</small></span><span class="pill ${cls}">${lab}</span><div class="meter" aria-hidden="true"><i class="${cls}" style="width:${Math.max(r.pct,3)}%"></i></div></li>`}).join('');
+    return `<li data-g="${g}"><span><b>${l}</b><br><small class="unit">${ago==null?'Not worked in the last 10 days':ago===0?'Worked today':ago===1?'Worked yesterday':'Worked '+ago+' days ago'}${r.sore?` · soreness ${r.sore}/3`:''}</small></span><span class="pill ${cls}">${lab}</span><div class="meter" aria-hidden="true"><i class="${cls}" style="width:${Math.max(r.pct,3)}%"></i></div></li>`}).join('');
+  {const bm=$('bodyMap');if(bm){bm.innerHTML=bodyMapHTML(rs);
+    bm.querySelectorAll('.bm-m').forEach(p=>p.addEventListener('click',()=>{const g=p.dataset.g;bm.querySelectorAll('.bm-m').forEach(q=>q.classList.toggle('bm-sel',q.dataset.g===g));
+      const li=document.querySelector(`#musc li[data-g="${g}"]`);if(li){document.querySelectorAll('#musc li').forEach(x=>x.classList.toggle('m-sel',x===li));try{li.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(e){}}}))}}
   // build-view nudge
   const resting=Object.keys(rs).filter(g=>rs[g].lvl===2).map(g=>GROUPS[g].toLowerCase());
   $('buildTip').hidden=!resting.length;if(resting.length)$('buildTip').innerHTML=`<b>Recovery check:</b> ${esc(resting.join(', '))} ${resting.length>1?'need':'needs'} rest today. A Flow & mobility session is a good fit.`;
