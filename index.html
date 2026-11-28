@@ -1343,7 +1343,7 @@ function upTag(o,eq){if(!o||!o.up)return '';const f=esc(wTxt(o.up.from,eq));
   return o.up.dir==='up'?`<span class="upt up">▲ Up from ${f}</span>`:`<span class="upt dn">▼ Lighter week · usually ${f}</span>`}
 const fromWt=(f,eq)=>typeof f==='number'?f+' '+unitOf(eq):String(f);
 // once per implement, size and pair: a coach note that a heavier one would keep a move progressing (kind gear)
-function noteGear(w){if(!w||!progOn()||!Store.state)return;const c=coachState(),seen=c.gearSeen||(c.gearSeen={});let ch=false;
+function noteGear(w){if(!w||!progOn()||!Store.loaded)return;const c=coachState(),seen=c.gearSeen||(c.gearSeen={});let ch=false;
   gearNeeds(w).filter(n=>n.next).forEach(n=>{const key=n.eq+'|'+n.next+n.unit+(n.dbl?'|2':'');if(seen[key])return;seen[key]=Date.now();ch=true;
     coachNote({kind:'gear',eq:n.eq,next:n.next,unit:n.unit,cur:typeof n.cur==='number'?n.cur+' '+n.unit:n.cur,dbl:!!n.dbl,moves:n.moves.slice(0,3)})});
   if(ch)try{Store.saveState()}catch(e){}}
@@ -2333,7 +2333,7 @@ function skillLocked(x,n){if(!followPaths()||!PATHS[x.eq])return false;return !l
    Undo holds that implement at the level below until its path moves up again. coach.pwl remembers the last level seen
    per implement (first seen silently), S.lvlHold the holds. */
 function pathLvlFor(eq){const l=pathWorkLvl(eq),h=(S.lvlHold||{})[eq];return h?Math.min(l,h):l}
-function notePathLevels(){if(!followPaths()||!Store.state)return;const c=coachState(),pwl=c.pwl||(c.pwl={});let ch=false;
+function notePathLevels(){if(!followPaths()||!Store.loaded)return;const c=coachState(),pwl=c.pwl||(c.pwl={});let ch=false;
   for(const eq in PATHS){const l=pathWorkLvl(eq),prev=pwl[eq];
     if(prev==null){pwl[eq]=l;ch=true;continue}
     if(l>prev){pwl[eq]=l;ch=true;if(S.lvlHold&&S.lvlHold[eq]){delete S.lvlHold[eq];save()}coachNote({kind:'plevel',eq,from:prev,to:l})}
@@ -2515,6 +2515,7 @@ function renderPrograms(){
     const lvls=PATH_LVLS.map((ln,l)=>{const ls=lvlSteps(eq,l),req=lvlReq(eq,l),dn=req.filter(x=>pDone(x.id)).length,all=dn===req.length,aside=ls.length-req.length;
       return `<details class="plvl${all?' pl-done':''}" ${(openLvl[eq]!=null?openLvl[eq]===l:l===Math.min(cur,3))?'open':''} data-pl="${eq}:${l}"><summary><span class="badge-mini t${l}">${TIERS[l]}</span><b>${ln}</b><small>${dn} of ${req.length}${all?' · complete ✓':''}${aside?` · ${aside} set aside`:''}</small></summary>
         ${l===0?`<p class="hint">How to pick up, set down and hold the ${esc(EQWORD[eq])}. ${pathLock()?'Finish these to unlock weekly plans and programs with it.':''}</p>`:''}
+        ${!all?`<p class="go"><button class="link" type="button" data-lvall="${eq}:${l}">I already know this level: mark it all mastered</button></p>`:''}
         <ol class="steps">${ls.map(x=>{const st=pDone(x.id)?'done':limitedStep(x)?'aside':open.has(x.id)?'now':'locked',n=P.steps.indexOf(x)+1;
           const dm=x.kind==='flow'?(hasFlowAnim(x.flow)?flowDemoBtn(x.flow):''):x.kind==='basic'?(x.demo?demo(x.demo,eq):''):demo(x.m,eq);
           return `<li class="st-${st}"><span class="num">${st==='done'?'✓':n}</span><div><b>${esc(x.t)}</b>${x.kind==='flow'?' <span class="tag">Flow</span>':x.kind==='basic'?' <span class="tag">Basics</span>':''}<p>${esc(x.goal)}</p>
@@ -2527,6 +2528,8 @@ function renderPrograms(){
   sp.querySelectorAll('[data-sk]').forEach(b=>b.onclick=()=>{const v=b.dataset.sk,id=v.slice(0,v.lastIndexOf(':')),on=v.endsWith(':1');
     const eq=id.split(':')[0],before=pathLevel(eq);setStep(id,on);if(!on){const c=coachState();c.noAuto=Object.assign({},c.noAuto,{[id]:1})}
     if(on&&pathLevel(eq)>before)openLvl[eq]=Math.min(3,pathLevel(eq));renderPrograms();try{renderTrack();renderContinue();renderRec()}catch(e){}});
+  sp.querySelectorAll('[data-lvall]').forEach(b=>b.onclick=()=>{if(!armTap(b,'Tap again to mark every step in this level mastered'))return;const[eq,l]=b.dataset.lvall.split(':');
+    lvlReq(eq,+l).forEach(x=>{if(!pDone(x.id))PS()[x.id]=Date.now()});Store.saveState();syncPathLevel();renderPrograms();try{renderTrack();renderContinue();renderRec()}catch(e){}});
   sp.querySelectorAll('[data-pp]').forEach(b=>b.onclick=()=>startPractice(b.dataset.pp));
   $('pathLock').checked=pathLock();
   $('useSkills').checked=S.useSkills!==false;
@@ -2658,9 +2661,11 @@ function musclesFor(moves,type){
 
 /* ---- storage: private per-person store when available, else this browser ---- */
 const Store={mode:'local',logs:[],checks:[],logRef:null,chkRef:null,stateRef:null,state:{skills:{},program:null},_sq:Promise.resolve(),
-  loadLocal(){try{this.logs=JSON.parse(localStorage.getItem('ironflow-logs')||'[]');this.checks=JSON.parse(localStorage.getItem('ironflow-checks')||'[]');const st=JSON.parse(localStorage.getItem('ironflow-state')||'null');if(st)this.state=Object.assign({skills:{},program:null},st)}catch(e){this.logs=[];this.checks=[]}},
-  saveLocal(){try{localStorage.setItem('ironflow-logs',JSON.stringify(this.logs));localStorage.setItem('ironflow-checks',JSON.stringify(this.checks));localStorage.setItem('ironflow-state',JSON.stringify(this.state))}catch(e){}},
-  saveState(){try{localStorage.setItem('ironflow-state',JSON.stringify(this.state))}catch(e){}
+  // loaded: nothing may write saved state until it has been read (an early write once wiped everyone's progress)
+  loaded:false,
+  loadLocal(){this.loaded=true;try{this.logs=JSON.parse(localStorage.getItem('ironflow-logs')||'[]');this.checks=JSON.parse(localStorage.getItem('ironflow-checks')||'[]');const st=JSON.parse(localStorage.getItem('ironflow-state')||'null');if(st)this.state=Object.assign({skills:{},program:null},st)}catch(e){this.logs=[];this.checks=[]}},
+  saveLocal(){if(!this.loaded)return;try{localStorage.setItem('ironflow-logs',JSON.stringify(this.logs));localStorage.setItem('ironflow-checks',JSON.stringify(this.checks));localStorage.setItem('ironflow-state',JSON.stringify(this.state))}catch(e){}},
+  saveState(){if(!this.loaded)return;try{localStorage.setItem('ironflow-state',JSON.stringify(this.state))}catch(e){}
     if(this.mode==='cloud'&&this.stateRef){const data=JSON.parse(JSON.stringify(this.state));this._sq=this._sq.then(()=>this.stateRef.set(data)).catch(e=>{if(e&&['invalid_argument','not_granted','revoked'].includes(e.code))this.toLocal()})}},
   async init(){
     this.loadLocal();renderTrack();
@@ -2691,6 +2696,32 @@ const Store={mode:'local',logs:[],checks:[],logRef:null,chkRef:null,stateRef:nul
   }
 };
 
+/* ---- recovering progress from the workout log ----
+   Version d39afe0 (Nov 27-28, 2026) saved an empty state before loading the real one, so opening the app wiped skill paths,
+   programs, the weekly plan, saved workouts, the weekly goal and badges (logs, check-ins and settings were untouched).
+   Once, after loading, this rebuilds what the log can show: programs (from program log titles and keys), path steps
+   (practice ratings, and three solid logs of a move or flow) and badges (re-credited quietly with their original dates).
+   It only adds; Store.state.recovered marks it done. */
+function recoverFromLogs(){const st=Store.state;if(st.recovered)return;const logs=Store.logs.slice().sort((a,b)=>a.ts-b.ts);
+  // programs
+  PROGRAMS.forEach(p=>{const done={};logs.forEach(l=>{if(l.program&&/^w\d+d\d+$/.test(l.program)&&String(l.title||'').startsWith(p.name+' · Week'))done[l.program]=done[l.program]||l.ts});
+    const n=Object.keys(done).length;if(!n)return;const tot=p.weeks*p.days,ts=Object.values(done);
+    if(!Array.isArray(st.progDone))st.progDone=[];if(!Array.isArray(st.programs))st.programs=[];
+    if(st.progDone.some(x=>x.id===p.id))return;const run=st.programs.find(x=>x.id===p.id);
+    if(run){run.done=Object.assign({},done,run.done||{});return}
+    if(n>=tot)st.progDone.unshift({id:p.id,start:Math.min(...ts),end:Math.max(...ts),done,days:[]});
+    else if(Date.now()-Math.max(...ts)<60*DAY)st.programs.push({id:p.id,start:Math.min(...ts),done,days:suggestDays(p.days,p.id)})});
+  // practice ratings
+  const P=st.practice||(st.practice={});
+  logs.forEach(l=>{if(l.practice&&Array.isArray(l.practice.solid))l.practice.solid.forEach(id=>{const a=P[id]||(P[id]=[]);if(!a.includes(l.date))a.push(l.date)})});
+  const path=st.path||(st.path={});
+  for(const id in P)if(new Set(P[id]).size>=2&&!path[id])path[id]=Date.now();
+  // moves and flows logged solidly three times
+  for(const eq in PATHS)PATHS[eq].steps.forEach(stp=>{if(stp.kind==='basic'||path[stp.id])return;
+    const hits=logs.filter(l=>(l.moves||[]).some(m=>m.eq===eq&&sameMove(m.name,stp.m,eq)&&m.feel!=='h'));if(hits.length>=3)path[stp.id]=hits[2].ts});
+  // badges: credit again quietly, with the dates they were first earned
+  if(!st.ach||Object.keys(st.ach).length<5)delete st.ach;
+  st.recovered=Date.now();Store.saveState()}
 /* ---- recovery model ---- */
 function recoveryState(){
   const now=Date.now(),f={},last={},sore={};
@@ -3585,6 +3616,8 @@ $('todayReset').onclick=()=>{S.today=null;save();renderSetupBar();renderPick()};
 {let setup=false;try{setup=localStorage.getItem('ironflow-setup')==='1'}catch(e){}$('gearBox').open=!setup&&!fromStore}
 applyLook();renderRack();renderSettings();renderLib();renderSoreForm();renderLook();paintViewArt();
 Store.loadLocal();
+try{recoverFromLogs()}catch(e){}
+try{renderSettings();renderPrograms()}catch(e){}
 {const p=planNorm();
   if(S.mode==='week'&&p){const m=planNext(p);current={week:[]};selWk=m?m.k:p.plan.length-1;selDay=m?m.i:0;render()}
   else if(savedList().length){const w=savedList()[0];current={single:w,sid:w.id};render()}
