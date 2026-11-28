@@ -563,6 +563,22 @@ textarea{min-height:70px;resize:vertical}
 .link.swap{margin-left:4px}
 .startbtn{width:100%;font-size:1.05rem;padding:14px}
 .tip.good{border-left-color:var(--good)}
+.limits,.onb-goals{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px}
+.limchip{font:inherit;text-align:left;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);padding:8px 10px;cursor:pointer;display:grid;gap:2px}
+.limchip small{color:var(--muted);font-size:.78rem}
+.limchip[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.prrate{display:grid;gap:6px;margin-bottom:12px}
+.st-aside{opacity:.55}
+.onb{position:fixed;inset:0;z-index:60;background:var(--bg);overflow:auto;padding:24px 16px 40px}
+.onb[hidden]{display:none}
+.onb-in{max-width:560px;margin:0 auto;display:grid;gap:12px}
+.onb h2{font-family:var(--display);text-transform:uppercase;font-size:1.7rem;margin:0}
+.onb p{margin:0}
+.onb-eq{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:6px;background:var(--surface)}
+.onb-eq.on{border-color:var(--accent)}
+.onb-dots{display:flex;gap:6px}.onb-dots i{width:28px;height:4px;border-radius:2px;background:var(--line)}.onb-dots i.on{background:var(--accent)}
+.onb-nav{margin-top:8px}
+html.onboarding body{overflow:hidden}
 .planend{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;border-top:1px solid var(--line);padding-top:10px;margin-top:6px}
 /* programs */
 .progs,.paths{display:grid;gap:12px}
@@ -707,6 +723,7 @@ html.guiding,html.guiding body{overflow:hidden}
         <div class="range vol"><span class="unit">Volume</span><input type="range" id="voiceVol" min="10" max="100" step="10" aria-label="Voice volume"><output id="voiceVolOut"></output><button class="btn ghost small" id="voiceTest" type="button">Test</button></div></div>
       <div class="prepset"><label class="pairrow check"><input type="checkbox" id="warmSet"> Include a warm-up</label><label class="pairrow check"><input type="checkbox" id="coolSet"> Include a cool-down</label><span class="hint">When one is off, its minutes go to the main workout. You can also skip either on any single workout.</span></div>
       <label class="pairrow check"><input type="checkbox" id="recov"> Work around muscles that need rest (from your Recovery tab)</label>
+      <div class="field"><span>Movement limits</span><div id="limBox"></div></div>
       <div class="field"><span>Pause between sections (guided)</span><div class="seg" id="prepSeg"></div><span class="hint">Time to read the next section and set up your equipment. Sections themselves are never split.</span></div>
       <label class="pairrow check"><input type="checkbox" id="progSet"> Progress automatically: raise weights, reps and level from what you log. Every change is shown, and you can undo it.</label>
       <div class="field" id="minField"><span>Time for this workout</span>
@@ -719,6 +736,7 @@ html.guiding,html.guiding body{overflow:hidden}
         <button class="btn ghost" id="copy">Copy as text</button>
       </div>
       <p class="msg" id="msg" hidden></p>
+      <p class="hint"><button class="link" type="button" id="onbAgain">Run the setup walkthrough again</button></p>
     </div>
   </section>
 
@@ -1062,6 +1080,7 @@ const DEFAULT={eq:{kb:{on:true,w:[16],pair:false,unit:'kg'},mace:{on:true,w:[10,
   week:{Mon:30,Tue:0,Wed:30,Thu:0,Fri:45,Sat:0,Sun:0}};
 let S=JSON.parse(JSON.stringify(DEFAULT)), fromStore=false;
 try{const raw=localStorage.getItem('ironflow');if(raw){const p=JSON.parse(raw);delete p.days;S=Object.assign(S,p);if(!S.week)S.week=JSON.parse(JSON.stringify(DEFAULT.week));fromStore=true}}catch(e){}
+const FIRST_RUN=!fromStore;   // nothing saved on this device when the app opened
 const DAYOPTS=[0,10,15,20,30,45,60];
 function renderDays(){
   const el=$('days');el.innerHTML='';
@@ -1172,6 +1191,7 @@ function seg(id,opts,key,after){
     b.onclick=()=>{S[key]=v;save();seg(id,opts,key,after);after&&after()};el.appendChild(b)});
 }
 function renderSettings(){
+  {const lb=$('limBox');if(lb){lb.innerHTML=limitsHTML('limSet');bindLimits(lb,()=>{renderPrograms();renderRec(true)})}}
   syncPathLevel();
   seg('level',LEVELS.map((l,i)=>[i+1,l]),'level',()=>{S.levelAt=Date.now();save();if(followPaths()&&syncPathLevel())renderSettings()});
   {const f=$('level').parentNode;let h=f.querySelector('.lvlnote');if(!h){h=document.createElement('span');h.className='hint lvlnote';f.appendChild(h)}
@@ -1309,10 +1329,11 @@ let BUILD_CTX=null;
 function pool(eqs,maxLvl,noGate){
   const base=x=>eqs.includes(x.eq)&&(x.lvl<=maxLvl||masteredMove(x.name,x.eq))&&(!x.d||effEq(x.eq).pair);
   let p;
-  if(!noGate&&followPaths()){const ok=x=>eqs.includes(x.eq)&&(!x.d||effEq(x.eq).pair);
+  if(!noGate&&followPaths()){const ok=x=>eqs.includes(x.eq)&&(!x.d||effEq(x.eq).pair)&&!limitedX(x);
     // mastered moves plus the next few you are learning; open a few more steps if that is too few to build from
     for(const n of [PATH_WIN,6,10,16]){p=X.filter(x=>ok(x)&&!skillLocked(x,n));if(p.length>=3)break}}
-  if(!p||p.length<3)p=X.filter(base);
+  if(!p||p.length<3)p=X.filter(x=>base(x)&&!limitedX(x));
+  if(p.length<3&&!myLimits().length)p=X.filter(base);
   const ctx=BUILD_CTX;
   if(ctx&&ctx.rest.length){const q=p.filter(x=>!ctx.rest.some(g=>(PAT_MUSCLES[x.pat]||{})[g]===2));if(q.length>=5&&q.length<p.length){ctx.avoided=true;p=q}}
   return p;
@@ -1369,7 +1390,7 @@ const stepLink=(s,eq)=>PLAIN_STEP.test(s)?esc(s):hasAnim(s,eq)?`<button type="bu
 
 function warmBlock(eqs,min){
   // up to three equipment drills, taken from each piece of equipment in turn
-  const pools=eqs.map(k=>(WARM[k]||[]).map(n=>[n,k])),own=[];
+  const pools=eqs.map(k=>(WARM[k]||[]).filter(n=>!limitedName(n,k)).map(n=>[n,k])),own=[];
   for(let i=0;own.length<3&&pools.some(p=>p.length>i);i++)pools.forEach(p=>{if(p[i]&&own.length<3)own.push(p[i])});
   const items=[...WARM.gen.slice(0,3).map(n=>[n,'']),...own];
   return{kind:'Warm-up',title:'Warm-up',min,fmt:'Easy pace. 30–45 s each, move straight to the next.'+(own.some(([n,k])=>k==='club'||k==='mace')?' Club and mace drills: switch lead side halfway.':''),moves:items.map(([n,k])=>({name:n,dose:WDOSE[n]||'30–45 s',eq:k}))};
@@ -1377,15 +1398,15 @@ function warmBlock(eqs,min){
 function coolBlock(min){return{kind:'Cool-down',title:'Cool-down',min,fmt:'Hold each stretch, breathing slowly through the nose.',moves:shuffle(COOL).slice(0,Math.max(3,Math.min(5,Math.round(min/1.2)))).map(n=>({name:n,dose:'45–60 s'}))}}
 
 function flowBlock(eqs,min,used,pref){
-  let f=pref?FLOWS.find(x=>x.name===pref&&eqs.includes(x.eq)):null;
+  let f=pref?FLOWS.find(x=>x.name===pref&&eqs.includes(x.eq)&&!limitedFlow(x)):null;
   if(!f){
-    let fe=eqs;const ctx=BUILD_CTX;
+    let fe=eqs;const ctx=BUILD_CTX,FL=FLOWS.filter(x=>!limitedFlow(x));
     if(ctx&&ctx.rest.length){const safe=eqs.filter(k=>!ctx.rest.some(g=>(FLOW_MUSCLES[k]||{})[g]===2));if(safe.length){if(safe.length<eqs.length)ctx.avoided=true;fe=safe}}
     let opts=[];
-    if(followPaths()){for(const n of [PATH_WIN,6,10,40]){opts=FLOWS.filter(x=>fe.includes(x.eq)&&!skillLocked(x,n)&&!used.has(x.name));if(opts.length)break}
-      if(!opts.length)opts=FLOWS.filter(x=>fe.includes(x.eq)&&!skillLocked(x,40))}
-    if(!opts.length)opts=FLOWS.filter(x=>fe.includes(x.eq)&&x.lvl<=S.level&&!used.has(x.name));
-    if(!opts.length)opts=FLOWS.filter(x=>fe.includes(x.eq)&&x.lvl<=S.level);
+    if(followPaths()){for(const n of [PATH_WIN,6,10,40]){opts=FL.filter(x=>fe.includes(x.eq)&&!skillLocked(x,n)&&!used.has(x.name));if(opts.length)break}
+      if(!opts.length)opts=FL.filter(x=>fe.includes(x.eq)&&!skillLocked(x,40))}
+    if(!opts.length)opts=FL.filter(x=>fe.includes(x.eq)&&x.lvl<=S.level&&!used.has(x.name));
+    if(!opts.length)opts=FL.filter(x=>fe.includes(x.eq)&&x.lvl<=S.level);
     if(!opts.length)return null;
     const top=opts.filter(x=>x.lvl===S.level);f=(top.length&&Math.random()<.6)?rnd(top):rnd(opts);
   }
@@ -1397,7 +1418,7 @@ function flowBlock(eqs,min,used,pref){
 }
 function forced(p,names){
   if(!names)return null;
-  const out=names.map(n=>X.find(x=>x.name===n)).filter(x=>x&&effEq(x.eq).on&&effEq(x.eq).w.length);
+  const out=names.map(n=>X.find(x=>x.name===n)).filter(x=>x&&effEq(x.eq).on&&effEq(x.eq).w.length&&!limitedX(x));
   return out.length?out:null;
 }
 const repBase=()=>S.level===1?6:S.level===2?8:10;
@@ -1823,6 +1844,7 @@ function guidedSteps(w){
       }
       return;
     }
+    if(b.kind==='Practice'){practiceGuided(b,base,steps);return}
     if(b.kind==='Strength'){
       const pairs=[];for(let i=0;i<b.moves.length;i+=2)pairs.push(b.moves.slice(i,i+2));
       pairs.forEach((pr,pi)=>{for(let s=1;s<=b.sets;s++){
@@ -1960,7 +1982,7 @@ function startGuided(w,fromBlock,resume){
   snapGuided();
   $('guide').hidden=false;document.documentElement.classList.add('guiding');
   G.iv=setInterval(gTick,1000);gDraw();beep(880,.15);
-  if(voiceOn())say(spoken((resume?'Picking up '+GOALS[w.type]+'.':'Starting '+GOALS[w.type]+', '+w.minutes+' minutes.')),{interrupt:true});announceStep();
+  if(voiceOn())say(spoken((resume?'Picking up '+(w.label||GOALS[w.type])+'.':'Starting '+(w.label||GOALS[w.type])+', '+w.minutes+' minutes.')),{interrupt:true});announceStep();
   try{$('gDone').focus()}catch(e){}
 }
 function gTick(){
@@ -2014,7 +2036,7 @@ function gDraw(){
   $('gWt').innerHTML=(!s.rest&&s.eq&&!s.list)?eqBanner(s.eq,s.wt,{big:true,flow:!!s.flow,light:!s.wt})+(gmi!=null?gMoveCtl(s.bi,gmi):''):'';
   $('gLast').textContent=s.lastKey?lastTxt(s.lastKey[0],s.lastKey[1]):'';
   $('gCue').textContent=s.cue||'';
-  $('gDemo').innerHTML=(!s.rest&&s.eq&&!s.list)?(s.flow&&hasFlowAnim(s.flow)?flowDemoBtn(s.flow):demo(s.flow?s.flow.steps[0]:s.name,s.eq)):'';
+  $('gDemo').innerHTML=(!s.rest&&s.eq&&!s.list)?(s.flow&&hasFlowAnim(s.flow)?flowDemoBtn(s.flow):demo(s.demoName||(s.flow?s.flow.steps[0]:s.name),s.eq)):'';
   gClock();
   let ex='';
   if(s.flow)ex=`<ol class="flowsteps">${s.flow.steps.map(t=>`<li>${stepLink(t,s.flow.eq)}</li>`).join('')}</ol>`;
@@ -2079,6 +2101,49 @@ $('gLater').onclick=()=>{if(!G)return;snapGuided();say('Saved. Pick it up from t
 document.addEventListener('keydown',e=>{if(!G)return;if(e.key==='Escape'){$('gEnd').click()}});
 
 /* ---------- skill paths ---------- */
+/* ---------- movement limits ----------
+   S.limits lists kinds of movement to leave out (LIMITS keys). Workouts, flows, warm-ups and the skill paths skip
+   anything tagged with one; a path step that is set aside does not count toward finishing its level. */
+const LIMITS=[
+  ['overhead','Overhead and behind the head','Presses, snatches, halos, 360s, casts and mills'],
+  ['knee','Deep squats and lunges','Squats, lunges and anything that sits deep'],
+  ['ballistic','Fast swings and throws','Swings, cleans, snatches and other ballistic moves'],
+  ['twist','Twisting with weight','Rotations, gravediggers, uppercuts and figure 8s'],
+  ['hinge','Bending forward to lift','Deadlifts, swings, rows and cleans'],
+  ['floor','Getting down to the floor','Get-ups and planks']];
+const OH_MOVES=new Set(['kb:Overhead press','kb:Push press','kb:Crush press','kb:Thrusters','kb:Clean & press','kb:Snatch','kb:Windmill','kb:Turkish get-up','kb:Halo','kb:Alternating halo','kb:Pullover','kb:Tricep press',
+  'mace:10-to-2','mace:360','mace:Offset press','mace:Ballistic curl 360','mace:Lunge to 360','mace:Barbarian squat',
+  'club:Two-hand arm cast','club:Arm cast','club:Two-hand shield cast','club:One-arm shield cast','club:Switch shield cast','club:Mill','club:Reverse mill','club:Switch reverse mill','club:Double mill',
+  'club:Torch press','club:Two-hand torch press','club:Rotational torch press','club:Club barbarian squat','club:Gamma cast','club:Bullwhip','club:Clock squat','club:Two-hand clock squat',
+  'club:Two-hand arm cast to flag press','club:Two-hand clean to torch press','club:Reverse lunge arm cast','club:Two-hand reverse lunge arm cast']);
+const FLOOR_MOVES=new Set(['kb:Turkish get-up','mace:Plank pull-through']);
+const NO_TWIST=new Set(['kb:Halo','kb:Alternating halo']);
+const tagMemo=new Map();
+function moveTags(x){const k=x.eq+':'+x.name;if(tagMemo.has(k))return tagMemo.get(k);const t=new Set();
+  if(OH_MOVES.has(k))t.add('overhead');
+  if(x.pat==='squat'||x.pat==='lunge'||/squat|lunge/i.test(x.name))t.add('knee');
+  if(x.b)t.add('ballistic');
+  if((x.pat==='rotate'&&!NO_TWIST.has(k))||/gravedigger|uppercut|180/i.test(x.name))t.add('twist');
+  if(x.pat==='hinge'||/deadlift|row$|clean|high pull/i.test(x.name))t.add('hinge');
+  if(FLOOR_MOVES.has(k))t.add('floor');
+  tagMemo.set(k,t);return t}
+// loose match from a name used in a flow or warm-up ("Reverse lunge", "Press", "Light halos") to library moves
+function looseTags(name,eq){const s=String(name).toLowerCase().replace(/\(.*?\)/g,'').replace(/^(light|slow)\s+/,'').replace(/\s+practice$/,'').replace(/s$/,'').trim(),t=new Set();
+  X.filter(x=>!eq||x.eq===eq).forEach(x=>{const a=x.name.toLowerCase();if(a===s||(s.length>4&&a.includes(s))||(a.length>4&&s.includes(a)))moveTags(x).forEach(g=>t.add(g))});return t}
+function flowTags(f){const k='flow:'+f.eq+':'+f.name;if(tagMemo.has(k))return tagMemo.get(k);const t=new Set();f.steps.forEach(st=>looseTags(st,f.eq).forEach(g=>t.add(g)));tagMemo.set(k,t);return t}
+const myLimits=()=>Array.isArray(S.limits)?S.limits:[];
+const hitLimit=t=>myLimits().some(k=>t.has(k));
+const limitedX=x=>!!x&&myLimits().length>0&&hitLimit(moveTags(x));
+const limitedFlow=f=>!!f&&myLimits().length>0&&hitLimit(flowTags(f));
+const limitedName=(n,eq)=>{if(!myLimits().length||!eq)return false;const x=X.find(z=>z.name===n&&z.eq===eq);return x?limitedX(x):hitLimit(looseTags(n,eq))};
+const BASIC_TAGS={'kb:basic:overhead':'overhead'};
+function limitedStep(s){if(!s||!myLimits().length)return false;if(s.kind==='basic')return myLimits().includes(BASIC_TAGS[s.id]);
+  if(s.kind==='flow')return limitedFlow(s.flow);return limitedX(X.find(x=>x.name===s.m&&x.eq===s.id.split(':')[0]))}
+function limitsHTML(id){return `<div class="limits" id="${id}" role="group" aria-label="Movement limits">${LIMITS.map(([k,l,d])=>`<button type="button" class="limchip" data-lim="${k}" aria-pressed="${myLimits().includes(k)}"><b>${l}</b><small>${d}</small></button>`).join('')}</div>
+  <p class="hint">Workouts, flows and your skill paths leave these out. This is a training aid, not medical advice: if a movement hurts, stop and check with a doctor or physiotherapist.</p>`}
+function bindLimits(box,after){box.querySelectorAll('[data-lim]').forEach(b=>b.onclick=()=>{const k=b.dataset.lim,l=myLimits().slice(),i=l.indexOf(k);i<0?l.push(k):l.splice(i,1);S.limits=l;save();
+  b.setAttribute('aria-pressed',String(i<0));if(after)after()})}
+
 /* ---------- skill paths ----------
    Four levels per implement: Basics (picking the gear up and setting it down, holds and positions), then Beginner,
    Intermediate and Advanced, where every move and every flow is its own step, in learning order. A flow sits at its
@@ -2173,11 +2238,13 @@ const PS=()=>Store.state.path||(Store.state.path={});
 const pDone=id=>!!PS()[id];
 const pSteps=eq=>PATHS[eq]?PATHS[eq].steps:[];
 // the open steps: the first PATH_WIN not yet mastered, in order
-function pOpen(eq,n){const out=[];for(const s of pSteps(eq)){if(!pDone(s.id)){out.push(s);if(out.length>=(n||PATH_WIN))break}}return out}
+function pOpen(eq,n){const out=[];for(const s of pSteps(eq)){if(!pDone(s.id)&&!limitedStep(s)){out.push(s);if(out.length>=(n||PATH_WIN))break}}return out}
 // open to practice and mark: the next few steps in order, plus the moves and flows workouts are teaching you right now
-function pOpenAll(eq){const a=pOpen(eq),ids=new Set(a.map(x=>x.id));let n=0;for(const st of pSteps(eq)){if(st.kind==='basic'||pDone(st.id))continue;if(n++>=PATH_WIN)break;if(!ids.has(st.id)){ids.add(st.id);a.push(st)}}return a}
+function pOpenAll(eq){const a=pOpen(eq),ids=new Set(a.map(x=>x.id));let n=0;for(const st of pSteps(eq)){if(st.kind==='basic'||pDone(st.id)||limitedStep(st))continue;if(n++>=PATH_WIN)break;if(!ids.has(st.id)){ids.add(st.id);a.push(st)}}return a}
 const lvlSteps=(eq,l)=>pSteps(eq).filter(s=>s.lvl===l);
-const lvlDone=(eq,l)=>{const s=lvlSteps(eq,l);return s.length>0&&s.every(x=>pDone(x.id))};
+// steps set aside for your movement limits don't count toward finishing a level
+const lvlReq=(eq,l)=>lvlSteps(eq,l).filter(x=>!limitedStep(x));
+const lvlDone=(eq,l)=>lvlSteps(eq,l).length>0&&lvlReq(eq,l).every(x=>pDone(x.id));
 const basicsDone=eq=>lvlDone(eq,0);
 function pathStarted(eq){return pSteps(eq).some(s=>pDone(s.id))}
 // the level you are working on (0 basics .. 3 advanced, 4 when the path is complete)
@@ -2187,7 +2254,7 @@ function pathWorkLvl(eq){return lvlDone(eq,1)?(lvlDone(eq,2)?3:2):1}
 const followPaths=()=>S.useSkills!==false;
 const pathLock=()=>S.pathLock!==false;
 // moves and flows a workout may use: everything mastered plus the next n unlearned moves and flows
-function learnSet(eq,n){const s=new Set(),open=[];for(const st of pSteps(eq)){if(st.kind==='basic')continue;if(pDone(st.id))s.add(st.m);else if(open.length<(n||PATH_WIN)){open.push(st);s.add(st.m)}}return s}
+function learnSet(eq,n){const s=new Set(),open=[];for(const st of pSteps(eq)){if(st.kind==='basic'||limitedStep(st))continue;if(pDone(st.id))s.add(st.m);else if(open.length<(n||PATH_WIN)){open.push(st);s.add(st.m)}}return s}
 function masteredMove(name,eq){return pSteps(eq).some(s=>s.m===name&&pDone(s.id))}
 function skillLocked(x,n){if(!followPaths()||!PATHS[x.eq])return false;return !learnSet(x.eq,n).has(x.name)}
 // keep the workout level in step with the paths for the gear in use (the lowest of them, to stay safe)
@@ -2218,6 +2285,77 @@ function migrateKbPath(st){
   if(had)try{Store.saveState()}catch(e){}
 }
 const KS=()=>{migrateKbPath(Store.state);return Store.state.skills||{}};
+
+/* ---------- path practice ----------
+   A guided session built from a path's open steps (Basics included), two rounds of each with the step's goal as the
+   target, using your lightest weight. Logging it asks how each step went; a step rated solid in practice on two
+   different days is marked mastered. Store.state.practice maps step id to the dates it was rated solid. */
+function practiceSteps(eq){return pOpenAll(eq).slice(0,6)}
+function buildPractice(eq){
+  const steps=practiceSteps(eq);if(!steps.length)return null;
+  const rl=rackList(eq),light=rl[0]?wLab(rl[0]):'';
+  const moves=steps.map(s=>{const x=s.kind==='move'&&X.find(z=>z.name===s.m&&z.eq===eq);
+    const o={name:s.t,dose:s.goal,eq,pid:s.id,basic:s.kind==='basic',cue:x?x.cue:s.kind==='flow'?s.flow.note:'',wt:light?((x&&x.d?'2 × ':'')+light):''};
+    if(s.kind==='flow')o.fl=s.flow.name;if(s.demo)o.demo=s.demo;if(x&&x.u)o.u=true;return o});
+  const min=Math.max(8,Math.min(25,steps.length*4)),blocks=[];
+  if(S.warm!==false&&steps.some(s=>s.kind!=='basic'))blocks.push(warmBlock([eq],4));
+  blocks.push({kind:'Practice',title:PATHS[eq].name+' practice',min,fmt:`Two rounds of each step, with your lightest ${EQWORD[eq]}. Go slowly and stop a round early if your form slips.`,moves});
+  return{id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),type:'mixed',label:PATHS[eq].name+' practice',practice:{eq,ids:steps.map(s=>s.id)},eqs:[eq],
+    minutes:min+(blocks.length>1?4:0),blocks,opts:{},built:Date.now()};
+}
+function startPractice(eq){if(!activeEq().includes(eq)){goPaths(eq);return}const w=buildPractice(eq);if(w)startGuided(w,0)}
+function practiceGuided(b,base,steps){
+  b.moves.forEach((m,mi)=>{const fl=m.fl?FLOWS.find(f=>f.name===m.fl&&f.eq===m.eq):null;
+    for(let r=1;r<=2;r++){
+      steps.push(Object.assign({},base,{name:m.name,detail:`Practice · round ${r} of 2 · ${m.dose}`,wt:m.wt,eq:m.eq,cue:m.cue,secs:fl?120:null,flow:fl,demoName:m.demo||null,one:!!m.u,lastKey:m.basic?null:[m.fl||m.name,m.eq]}));
+      if(!(mi===b.moves.length-1&&r===2))steps.push(Object.assign({},base,{name:'Rest',detail:r<2?'Next: '+m.name+', round 2':'Next: '+b.moves[mi+1].name,rest:true,secs:45}))}})}
+// from the log form: {stepId: true (solid) | false (not yet)}; returns the step titles that became mastered
+function applyPractice(pr,map,date){const P=Store.state.practice||(Store.state.practice={}),out=[];
+  for(const id in map){if(!map[id])continue;const a=(P[id]||[]).filter(d=>d!==date);a.push(date);P[id]=a.slice(-6);
+    if(new Set(a).size>=2&&!pDone(id)){const st=pSteps(pr.eq).find(x=>x.id===id);if(!st)continue;setStep(id,true);coachNote({kind:'skill',eq:pr.eq,id,via:'practice'});out.push(st.t)}}
+  Store.saveState();return out}
+
+/* ---------- first-run walkthrough ----------
+   Shown once on a new device with nothing saved (no settings, no logs). Gear and weights, focus, experience (mark
+   Basics done if you already know them), movement limits, then straight into a first practice or workout.
+   localStorage 'ironflow-onboard' = '1' once done or skipped; the Session settings can open it again. */
+const ONB_KEY='ironflow-onboard';
+let onb=null;
+function maybeOnboard(){try{if(localStorage.getItem(ONB_KEY))return}catch(e){return}if(!FIRST_RUN||Store.logs.length)return;openOnboard()}
+function openOnboard(){onb={step:0,know:{},unit:{}};let el=$('onb');if(!el){el=document.createElement('div');el.id='onb';el.className='onb';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-labelledby','onbH');document.body.appendChild(el)}
+  el.hidden=false;document.documentElement.classList.add('onboarding');drawOnboard()}
+function closeOnboard(){try{localStorage.setItem(ONB_KEY,'1')}catch(e){}const el=$('onb');if(el)el.hidden=true;document.documentElement.classList.remove('onboarding');onb=null;
+  fromStore=true;save();renderRack();renderSettings();renderPrograms();renderContinue();try{renderRec(true)}catch(e){}}
+function onbGear(){return Object.keys(EQ).filter(k=>S.eq[k].on&&S.eq[k].w.length)}
+function drawOnboard(){const el=$('onb');if(!el||!onb)return;const N=5,st=onb.step;let body='',next='Next',canNext=true;
+  if(st===0){body=`<h2 id="onbH">Welcome to Arc &amp; Iron</h2><p>Kettlebell, steel mace and steel club workouts built from the gear you own, with guided sessions and skill paths that teach each piece of gear step by step.</p>
+      <p class="hint">A few quick questions and you'll be training. It takes about a minute.</p>`;next='Get started'}
+  if(st===1){body=`<h2 id="onbH">What gear do you have?</h2><p class="hint">Turn on each piece you own and tap its weights. You can mix kg and lb, and change all of this later under Build › Edit setup.</p>`+
+      Object.keys(EQ).map(k=>{const e=EQ[k],s=S.eq[k],u=onb.unit[k]||unitOf(k),own=new Set(s.w);
+        return `<div class="onb-eq${s.on?' on':''}"><label class="pairrow"><input type="checkbox" data-oeq="${k}" ${s.on?'checked':''}> <b>${e.name}</b></label>
+          ${s.on?`<div class="rk-browse"><span class="unit">Sizes listed in</span><div class="seg unitseg"><button type="button" data-ou="${k}:kg" aria-pressed="${u==='kg'}">kg</button><button type="button" data-ou="${k}:lb" aria-pressed="${u==='lb'}">lb</button></div></div>
+          <div class="weights">${[...new Set([...e.lists[u].map(v=>v+u),...s.w])].map(x=>wP(x)).sort((a,b)=>a.kg-b.kg).map(p=>`<button type="button" class="chip" data-ow="${k}:${p.key}" aria-pressed="${own.has(p.key)}">${p.v}<i>${p.u}</i></button>`).join('')}</div>`:''}</div>`}).join('');
+    canNext=onbGear().length>0;if(!canNext)body+=`<p class="hint">Pick at least one piece of gear and one weight.</p>`}
+  if(st===2){body=`<h2 id="onbH">What do you want most?</h2><div class="onb-goals">${Object.entries(GOALS).map(([k,l])=>`<button type="button" class="limchip" data-og="${k}" aria-pressed="${S.goal===k}"><b>${l}</b><small>${{flow:'Smooth, mobile, coordinated',conditioning:'Heart rate up, sweat',strength:'Heavier, stronger',mixed:'A bit of everything'}[k]}</small></button>`).join('')}</div>`}
+  if(st===3){const g=onbGear();body=`<h2 id="onbH">Have you used this gear before?</h2><p>Each skill path starts with <b>Basics</b>: how to pick the gear up, set it down and hold it. Weekly plans and programs open once you've done them.</p>
+      ${g.map(k=>`<label class="pairrow check"><input type="checkbox" data-ok="${k}" ${onb.know[k]?'checked':''}> I already know the ${esc(EQWORD[k])} basics: mark them done</label>`).join('')}
+      <p class="hint">Not sure? Leave it unticked. The first practice session walks you through them.</p>`}
+  if(st===4){body=`<h2 id="onbH">Anything to go easy on?</h2><p class="hint">Optional. Pick any kinds of movement you want left out for now, for example while an old injury settles. You can change this any time under Build › Session.</p>${limitsHTML('onbLim')}`;next='Finish'}
+  if(st===5){const g=onbGear(),nb=g.filter(k=>!basicsDone(k));body=`<h2 id="onbH">You're set</h2><p>${nb.length?`Start with a short guided practice of the ${esc(EQWORD[nb[0]])} basics. You'll learn to pick it up, set it down and hold it, and the app will mark steps mastered as you go.`:'Your Basics are done, so everything is open. Build your first workout, or start a program.'}</p>
+      <div class="go">${nb.length?`<button class="btn" type="button" data-oend="practice:${nb[0]}">▶ Start my first practice</button>`:''}<button class="btn${nb.length?' ghost':''}" type="button" data-oend="build">Build my first workout</button><button class="link" type="button" data-oend="look">Look around first</button></div>`}
+  el.innerHTML=`<div class="onb-in">${st>0&&st<N?`<div class="onb-dots" aria-label="Step ${st} of ${N-1}">${Array.from({length:N-1},(_,i)=>`<i class="${i<st?'on':''}"></i>`).join('')}</div>`:''}${body}
+    ${st<N?`<div class="go onb-nav">${st>0?'<button class="btn ghost" type="button" data-onav="-1">Back</button>':''}<button class="btn" type="button" data-onav="1" ${canNext?'':'disabled'}>${next}</button>${st===0?'<button class="link" type="button" data-oend="skip">Skip setup</button>':''}</div>`:''}</div>`;
+  el.querySelectorAll('[data-onav]').forEach(b=>b.onclick=()=>{const d=+b.dataset.onav;if(onb.step===4&&d>0){Object.keys(onb.know).forEach(k=>{if(onb.know[k])lvlSteps(k,0).forEach(x=>{if(!pDone(x.id))setStep(x.id,true)})})}
+    onb.step=Math.max(0,Math.min(N,onb.step+d));drawOnboard();try{el.scrollTop=0}catch(e){}});
+  el.querySelectorAll('[data-oeq]').forEach(c=>c.onchange=()=>{const k=c.dataset.oeq;S.eq[k].on=c.checked;save();drawOnboard()});
+  el.querySelectorAll('[data-ou]').forEach(b=>b.onclick=()=>{const[k,u]=b.dataset.ou.split(':');onb.unit[k]=u;S.eq[k].unit=u;save();drawOnboard()});
+  el.querySelectorAll('[data-ow]').forEach(b=>b.onclick=()=>{const[k,key]=b.dataset.ow.split(':'),s=S.eq[k],i=s.w.indexOf(key);i<0?s.w.push(key):s.w.splice(i,1);sortRack(s);save();drawOnboard()});
+  el.querySelectorAll('[data-og]').forEach(b=>b.onclick=()=>{S.goal=b.dataset.og;save();drawOnboard()});
+  el.querySelectorAll('[data-ok]').forEach(c=>c.onchange=()=>{onb.know[c.dataset.ok]=c.checked});
+  const lb=el.querySelector('#onbLim');if(lb)bindLimits(lb);
+  el.querySelectorAll('[data-oend]').forEach(b=>b.onclick=()=>{const[a,k]=b.dataset.oend.split(':');closeOnboard();
+    if(a==='practice')startPractice(k);else if(a==='build'){S.mode='single';save();renderSettings();go('build');generate(true)}else if(a==='look')go('programs')});
+}
 
 /* ---------- multi-week programs ---------- */
 const PROGRAMS=[
@@ -2266,6 +2404,9 @@ function closeProg(x){const end=Math.max(0,...Object.values(x.done||{}))||Date.n
 function progState(id){return progList().find(x=>x.id===id)||null}
 function progAvail(p){const a=activeEq();return p.needs==='any2'?a.length>=2:p.needs.every(k=>a.includes(k))}
 function progNeedBasics(p){const a=activeEq();return needBasics(p.needs==='any2'?a:p.needs.filter(k=>a.includes(k)))}
+function progLimited(p){const hit=new Set();for(let w=1;w<=p.weeks;w++)for(let d=1;d<=p.days;d++){const sp=p.day(w,d);(sp.force||[]).forEach(n=>{const x=X.find(z=>z.name===n);if(x&&limitedX(x))hit.add(n.toLowerCase())});
+    if(sp.flow){const f=FLOWS.find(z=>z.name===sp.flow);if(f&&limitedFlow(f))hit.add(f.name)}}return [...hit]}
+const progLimHTML=p=>{const l=progLimited(p);return l.length?`<p class="hint">Some sessions use ${esc(listJoin(l))}, which your movement limits leave out. Those parts are swapped for other moves.</p>`:''};
 const progLockHTML=p=>{const nb=progNeedBasics(p);return nb.length?`<span class="hint">Finish the Basics on your ${esc(eqNames(nb))} path to start this. <button class="link" type="button" data-gopath="${nb[0]}">Go to Basics</button></span>`:''};
 function progEqs(p){const a=activeEq();return p.needs==='any2'?a:p.needs.filter(k=>a.includes(k))}
 const progKey=(w,d)=>`w${w}d${d}`;
@@ -2290,21 +2431,22 @@ function renderPrograms(){
   syncPathLevel();
   sp.innerHTML=Object.entries(PATHS).map(([eq,P])=>{
     const cur=pathLevel(eq),cnt=P.steps.filter(x=>pDone(x.id)).length,open=new Set(pOpenAll(eq).map(x=>x.id)),nx=pOpen(eq,1)[0];
-    const lvls=PATH_LVLS.map((ln,l)=>{const ls=lvlSteps(eq,l),dn=ls.filter(x=>pDone(x.id)).length,all=dn===ls.length;
-      return `<details class="plvl${all?' pl-done':''}" ${(openLvl[eq]!=null?openLvl[eq]===l:l===Math.min(cur,3))?'open':''} data-pl="${eq}:${l}"><summary><span class="badge-mini t${l}">${TIERS[l]}</span><b>${ln}</b><small>${dn} of ${ls.length}${all?' · complete ✓':''}</small></summary>
+    const lvls=PATH_LVLS.map((ln,l)=>{const ls=lvlSteps(eq,l),req=lvlReq(eq,l),dn=req.filter(x=>pDone(x.id)).length,all=dn===req.length,aside=ls.length-req.length;
+      return `<details class="plvl${all?' pl-done':''}" ${(openLvl[eq]!=null?openLvl[eq]===l:l===Math.min(cur,3))?'open':''} data-pl="${eq}:${l}"><summary><span class="badge-mini t${l}">${TIERS[l]}</span><b>${ln}</b><small>${dn} of ${req.length}${all?' · complete ✓':''}${aside?` · ${aside} set aside`:''}</small></summary>
         ${l===0?`<p class="hint">How to pick up, set down and hold the ${esc(EQWORD[eq])}. ${pathLock()?'Finish these to unlock weekly plans and programs with it.':''}</p>`:''}
-        <ol class="steps">${ls.map(x=>{const st=pDone(x.id)?'done':open.has(x.id)?'now':'locked',n=P.steps.indexOf(x)+1;
+        <ol class="steps">${ls.map(x=>{const st=pDone(x.id)?'done':limitedStep(x)?'aside':open.has(x.id)?'now':'locked',n=P.steps.indexOf(x)+1;
           const dm=x.kind==='flow'?(hasFlowAnim(x.flow)?flowDemoBtn(x.flow):''):x.kind==='basic'?(x.demo?demo(x.demo,eq):''):demo(x.m,eq);
           return `<li class="st-${st}"><span class="num">${st==='done'?'✓':n}</span><div><b>${esc(x.t)}</b>${x.kind==='flow'?' <span class="tag">Flow</span>':x.kind==='basic'?' <span class="tag">Basics</span>':''}<p>${esc(x.goal)}</p>
             ${x.kind==='flow'?`<p class="hint">Moves: ${x.flow.steps.map(n2=>stepLink(n2,eq)).join(', ')}</p>`:''}
-            <div class="go">${dm}${st==='done'?`<button class="link" data-sk="${esc(x.id)}:0">Undo</button>`:st==='now'?`<button class="btn small" data-sk="${esc(x.id)}:1">Mark mastered</button>`:'<span class="hint">Opens as you master the steps before it</span>'}</div></div></li>`}).join('')}</ol></details>`}).join('');
+            <div class="go">${dm}${st==='done'?`<button class="link" data-sk="${esc(x.id)}:0">Undo</button>`:st==='now'?`<button class="btn small" data-sk="${esc(x.id)}:1">Mark mastered</button>`:st==='aside'?'<span class="hint">Set aside for your movement limits</span>':'<span class="hint">Opens as you master the steps before it</span>'}</div></div></li>`}).join('')}</ol></details>`}).join('');
     return `<details class="pathcard" ${openPath===eq?'open':''} data-path="${eq}"><summary>${artHTML(PATH_ART[eq])}<span><b>${P.name} path</b><small>${cur>3?'Complete':PATH_LVLS[cur]+' · '}${nx?'Next: '+esc(nx.t):''} · ${cnt} of ${P.steps.length} mastered</small></span><span class="meter"><i class="s-ready" style="width:${Math.round(cnt/P.steps.length*100)}%"></i></span></summary>
-      <p class="hint">The next ${PATH_WIN} steps are open at a time, plus the next ${PATH_WIN} moves and flows${followPaths()?', which workouts mix in with what you have mastered':''}. Logging three solid sessions with an open move marks it mastered for you.</p>${lvls}</details>`}).join('');
+      ${activeEq().includes(eq)&&pOpenAll(eq).length?`<div class="go"><button class="btn small" type="button" data-pp="${eq}">▶ Practice the next steps</button><span class="hint">${pOpenAll(eq).slice(0,6).length} steps · about ${Math.max(8,Math.min(25,pOpenAll(eq).slice(0,6).length*4))} min, guided</span></div>`:''}<p class="hint">The next ${PATH_WIN} steps are open at a time, plus the next ${PATH_WIN} moves and flows${followPaths()?', which workouts mix in with what you have mastered':''}. Logging three solid sessions with an open move marks it mastered for you.</p>${lvls}</details>`}).join('');
   sp.querySelectorAll('details.pathcard').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)openPath=d.dataset.path;else if(openPath===d.dataset.path)openPath=null}));
   sp.querySelectorAll('details.plvl').forEach(d=>d.addEventListener('toggle',()=>{const[eq,l]=d.dataset.pl.split(':');if(d.open)openLvl[eq]=+l}));
   sp.querySelectorAll('[data-sk]').forEach(b=>b.onclick=()=>{const v=b.dataset.sk,id=v.slice(0,v.lastIndexOf(':')),on=v.endsWith(':1');
     const eq=id.split(':')[0],before=pathLevel(eq);setStep(id,on);if(!on){const c=coachState();c.noAuto=Object.assign({},c.noAuto,{[id]:1})}
     if(on&&pathLevel(eq)>before)openLvl[eq]=Math.min(3,pathLevel(eq));renderPrograms();try{renderTrack();renderContinue();renderRec()}catch(e){}});
+  sp.querySelectorAll('[data-pp]').forEach(b=>b.onclick=()=>startPractice(b.dataset.pp));
   $('pathLock').checked=pathLock();
   $('useSkills').checked=S.useSkills!==false;
   // programs (several can run at once, each on its own weekdays)
@@ -2325,7 +2467,7 @@ function renderPrograms(){
   });
   const fin=[];progDoneList().forEach(x=>{if(!fin.some(y=>y.id===x.id)&&PROGRAMS.some(p=>p.id===x.id))fin.push(x)});
   html+=PROGRAMS.filter(p=>!acts.some(a=>a.p.id===p.id)&&!fin.some(x=>x.id===p.id)).map(p=>{const ok=progAvail(p);
-    return `<div class="progcard">${artHTML(PROG_ART[p.id])}<div class="block-head"><b>${esc(p.name)}</b><span class="tag">${p.level}</span></div><p>${esc(p.blurb)}</p><p class="hint">${p.weeks} weeks · ${p.days} days a week · ${p.needs==='any2'?'any two implements':p.needs.map(k=>EQ[k].name).join(', ')}</p>
+    return `<div class="progcard">${artHTML(PROG_ART[p.id])}<div class="block-head"><b>${esc(p.name)}</b><span class="tag">${p.level}</span></div><p>${esc(p.blurb)}</p><p class="hint">${p.weeks} weeks · ${p.days} days a week · ${p.needs==='any2'?'any two implements':p.needs.map(k=>EQ[k].name).join(', ')}</p>${progLimHTML(p)}
       ${ok&&progNeedBasics(p).length?progLockHTML(p):ok?`<button class="btn ghost small" data-ps="${p.id}">${acts.length?'Add this program':'Start program'}</button>${acts.length?'<span class="hint">Runs alongside your current program and plan. You pick its days next.</span>':''}`:`<span class="hint">Needs ${p.needs==='any2'?'two implements':p.needs.map(k=>EQ[k].name.toLowerCase()).join(', ')} turned on in your gear.</span>`}</div>`}).join('');
   if(fin.length){html+=`<h3 class="progsec">Completed</h3>`+fin.map(x=>{const p=PROGRAMS.find(q=>q.id===x.id),runs=progDoneList().filter(y=>y.id===x.id).length,
       running=acts.some(a=>a.p.id===p.id),fresh=Date.now()-x.end<3*DAY;
@@ -2436,28 +2578,32 @@ function workoutMoves(w){
     const pw=(wt,eq)=>{const p=wP(wt,unitOf(eq));return p?{wt:p.v,unit:p.u}:{wt:NaN,unit:unitOf(eq)}};
     if(b.flow){out.push(Object.assign({name:b.flow.name,eq:b.flow.eq,flow:true},pw(b.wt,b.flow.eq)));return}
     if(b.kind==='Warm-up'||b.kind==='Cool-down')return;
+    if(b.kind==='Practice'){b.moves.forEach(m=>{if(!m.basic)out.push(Object.assign({name:m.fl||m.name,eq:m.eq,flow:!!m.fl},pw(m.wt,m.eq)))});return}
     b.moves.forEach(m=>{if(m.eq&&!out.find(o=>o.name===m.name&&o.eq===m.eq))out.push(Object.assign({name:m.name,eq:m.eq,dbl:/^2 ×/.test(m.wt)},pw(m.wt,m.eq)))});
   });
   return out;
 }
 function prefillLog(w,extra){
   extra=extra||{};
-  pendingLog=w?{type:w.type,eqs:w.eqs.slice(),minutes:extra.minutes||w.minutes,moves:workoutMoves(w),kinds:[...new Set(w.blocks.map(b=>b.kind).filter(k=>k&&k!=='Warm-up'&&k!=='Cool-down'))],emom:(w.blocks.find(b=>b.kind==='EMOM')||{}).repBase||null,counts:extra.counts||[],guided:!!extra.guided,program:w.program||null,wid:w.id||null,weekRef:w.weekRef||null,title:w.program?w.program.label:`${GOALS[w.type]} · ${w.minutes} min${w.day?(w.weekRef&&w.weekRef.wk&&planNorm()&&planNorm().plan.length>1?' (Week '+w.weekRef.wk+' · '+w.day+')':' ('+w.day+' plan)'):''}`}:null;
-  lgFeel={};
+  pendingLog=w?{type:w.type,eqs:w.eqs.slice(),minutes:extra.minutes||w.minutes,moves:workoutMoves(w),kinds:[...new Set(w.blocks.map(b=>b.kind).filter(k=>k&&k!=='Warm-up'&&k!=='Cool-down'))],emom:(w.blocks.find(b=>b.kind==='EMOM')||{}).repBase||null,counts:extra.counts||[],guided:!!extra.guided,program:w.program||null,wid:w.id||null,weekRef:w.weekRef||null,practice:w.practice||null,title:w.program?w.program.label:w.label?w.label:`${GOALS[w.type]} · ${w.minutes} min${w.day?(w.weekRef&&w.weekRef.wk&&planNorm()&&planNorm().plan.length>1?' (Week '+w.weekRef.wk+' · '+w.day+')':' ('+w.day+' plan)'):''}`}:null;
+  lgFeel={};lgPrac={};
   if(extra.notes)$('lgNotes').value=extra.notes;
   $('lgMin').value='';
   renderLogForm();
 }
-let lgEqSel=[],lgFeel={};
+let lgEqSel=[],lgFeel={},lgPrac={};
 function renderLogForm(){
   $('lgDate').value=$('lgDate').value||todayStr();
   $('lgType').innerHTML=Object.entries(GOALS).map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
   if(pendingLog){
     $('logSource').textContent='Logging: '+pendingLog.title+'. Adjust anything that changed.'+(pendingLog.counts.length?' Saved with it: '+pendingLog.counts.map(c=>`${c.title} ${c.n} ${COUNT_WORD[c.kind]||'rounds'}`).join(', ')+'.':'');
     $('lgMin').value=pendingLog.minutes;$('lgType').value=pendingLog.type;
-    $('lgWtField').hidden=!pendingLog.moves.length;$('lgEqField').hidden=true;
-    $('lgWts').innerHTML=`<p class="hint">Optional: tap how each move felt. Easy and Right move the weight up after a couple of sessions; Hard holds it.</p>`+pendingLog.moves.map((m,i)=>`<div class="wtrow"><span id="lgn-${i}">${esc(m.name)}${m.flow?' <small>flow</small>':''}${m.dbl?' <small>pair</small>':''}</span><span class="lwin"><button type="button" class="lwb" data-lw="${i}:-1" aria-label="Lighter ${esc(m.name)}">−</button><input type="number" id="lgw-${i}" min="0" step="0.5" value="${isNaN(m.wt)?'':m.wt}" aria-label="Weight for ${esc(m.name)}"><button type="button" class="lwb" data-lw="${i}:1" aria-label="Heavier ${esc(m.name)}">+</button></span><small id="lgu-${i}">${m.unit}</small><small class="lwplan" id="lgp-${i}"></small>
-      ${m.flow?'':handSeg('lh',i,m.name,m.eq,true)}<div class="feel" role="group" aria-label="How ${esc(m.name)} felt">${[['e','Easy'],['r','Right'],['h','Hard']].map(([v,l])=>`<button type="button" data-feel="${i}:${v}" aria-pressed="${lgFeel[i]===v}">${l}</button>`).join('')}</div></div>`).join('');
+    $('lgWtField').hidden=!pendingLog.moves.length&&!pendingLog.practice;$('lgEqField').hidden=true;
+    const pr=pendingLog.practice,prSteps=pr?pr.ids.map(id=>pSteps(pr.eq).find(x=>x.id===id)).filter(Boolean):[];
+    $('lgWts').innerHTML=(prSteps.length?`<div class="prrate"><b>How did each step go?</b><p class="hint">Solid means you met the goal with clean form. A step that's solid on two different days is marked mastered.</p>${prSteps.map(x=>`<div class="wtrow"><span>${esc(x.t)}</span><div class="feel" role="group" aria-label="How ${esc(x.t)} went"><button type="button" data-pr="${esc(x.id)}:1" aria-pressed="${lgPrac[x.id]===true}">Solid</button><button type="button" data-pr="${esc(x.id)}:0" aria-pressed="${lgPrac[x.id]===false}">Not yet</button></div></div>`).join('')}</div>`:'')+(pendingLog.moves.length?`<p class="hint">Optional: tap how each move felt. Easy and Right move the weight up after a couple of sessions; Hard holds it.</p>`+pendingLog.moves.map((m,i)=>`<div class="wtrow"><span id="lgn-${i}">${esc(m.name)}${m.flow?' <small>flow</small>':''}${m.dbl?' <small>pair</small>':''}</span><span class="lwin"><button type="button" class="lwb" data-lw="${i}:-1" aria-label="Lighter ${esc(m.name)}">−</button><input type="number" id="lgw-${i}" min="0" step="0.5" value="${isNaN(m.wt)?'':m.wt}" aria-label="Weight for ${esc(m.name)}"><button type="button" class="lwb" data-lw="${i}:1" aria-label="Heavier ${esc(m.name)}">+</button></span><small id="lgu-${i}">${m.unit}</small><small class="lwplan" id="lgp-${i}"></small>
+      ${m.flow?'':handSeg('lh',i,m.name,m.eq,true)}<div class="feel" role="group" aria-label="How ${esc(m.name)} felt">${[['e','Easy'],['r','Right'],['h','Hard']].map(([v,l])=>`<button type="button" data-feel="${i}:${v}" aria-pressed="${lgFeel[i]===v}">${l}</button>`).join('')}</div></div>`).join(''):'');
+    $('lgWts').querySelectorAll('[data-pr]').forEach(b=>b.onclick=()=>{const v=b.dataset.pr,id=v.slice(0,v.lastIndexOf(':'));lgPrac[id]=v.endsWith(':1');
+      b.parentNode.querySelectorAll('button').forEach(z=>z.setAttribute('aria-pressed',String(z===b)))});
     pendingLog.moves.forEach(m=>{if(m.pu==null){m.pu=m.unit;m.pwt=m.wt}});
     const planNote=i=>{const m=pendingLog.moves[i],v=parseFloat($('lgw-'+i).value),el=$('lgp-'+i);if(!el)return;
       const cv=!isNaN(v)&&m.unit!==unitOf(m.eq)?wTxt(v+' '+m.unit,m.eq,{plain:1}):'';
@@ -2497,10 +2643,12 @@ $('lgSave').onclick=async()=>{
   if(pendingLog){if(pendingLog.kinds.length)rec.kinds=pendingLog.kinds;if(pendingLog.counts.length)rec.counts=pendingLog.counts;if(pendingLog.guided)rec.guided=true;if(pendingLog.emom)rec.emom=pendingLog.emom}
   if(type==='flow'&&date===todayStr()&&restingGroups().length)rec.restFlow=true;
   $('lgSave').disabled=true;
-  const prg=pendingLog&&pendingLog.program,wref=pendingLog&&pendingLog.weekRef,wid=pendingLog&&pendingLog.wid;
+  const prg=pendingLog&&pendingLog.program,wref=pendingLog&&pendingLog.weekRef,wid=pendingLog&&pendingLog.wid,prac=pendingLog&&pendingLog.practice,pmap=Object.assign({},lgPrac);
+  if(prac)rec.practice={eq:prac.eq,solid:Object.keys(pmap).filter(k=>pmap[k])};
   const gBefore=goalStats(),gAfter=goalStats([rec]),gHit=gBefore&&mondayOf(date)===gAfter.mon&&!gBefore.met&&gAfter.met;
   const recs=recordsIn(rec),recMsg=(recs.list.length?` <b>New best:</b> ${esc(recs.list.join(', '))}.${recs.list.some(x=>/ (kg|lb)$/.test(x))?' Keep every rep clean as the weight climbs.':''}`:'')+(recs.longest?` Your longest session yet.`:'');
-  try{await Store.add('log',rec);calSel=date;calMonth=date.slice(0,7);const pFin=prg?markProgDay(prg.id,prg.key,true):false,pNm=pFin&&(PROGRAMS.find(x=>x.id===prg.id)||{}).name;finishedWorkout(wid,wref);lgFeel={};msg.innerHTML=(pFin?`<b>Program complete: ${esc(pNm)}.</b> Its days are free on your schedule for a new program or plan. `:'')+(gHit?`<b>Weekly goal met.</b> ${gAfter.streak>1?gAfter.streak+'-week streak. ':''}`:'Saved. Nice work. ')+(recMsg?recMsg+' ':'')+'<button class="link" type="button" onclick="go(\'progress\')">See your progress</button>';pendingLog=null;$('lgNotes').value='';$('lgMin').value='';renderLogForm()}
+  try{await Store.add('log',rec);calSel=date;calMonth=date.slice(0,7);const pFin=prg?markProgDay(prg.id,prg.key,true):false,pNm=pFin&&(PROGRAMS.find(x=>x.id===prg.id)||{}).name;finishedWorkout(wid,wref);const pMast=prac?applyPractice(prac,pmap,date):[];lgFeel={};lgPrac={};if(prac){renderPrograms();renderContinue()}
+    msg.innerHTML=(pMast.length?`<b>Mastered: ${esc(listJoin(pMast))}.</b> `:'')+(pFin?`<b>Program complete: ${esc(pNm)}.</b> Its days are free on your schedule for a new program or plan. `:'')+(gHit?`<b>Weekly goal met.</b> ${gAfter.streak>1?gAfter.streak+'-week streak. ':''}`:'Saved. Nice work. ')+(recMsg?recMsg+' ':'')+'<button class="link" type="button" onclick="go(\'progress\')">See your progress</button>';pendingLog=null;$('lgNotes').value='';$('lgMin').value='';renderLogForm()}
   catch(e){msg.textContent=e&&e.code==='quota_exceeded'?'Your log is full. Delete a few old entries, then save again.':'That did not save. Check your connection and try again.'}
   $('lgSave').disabled=false;msg.hidden=false;setTimeout(()=>msg.hidden=true,8000);
 };
@@ -2652,7 +2800,7 @@ ACH.push(
 Object.entries(PATHS).forEach(([eq,P])=>ACH.push({id:'path-'+eq,g:'finish',tier:2,icon:'path',legacy:true,t:P.name+' path (original)',d:`Learned every step of the original ${P.name.toLowerCase()} skill path.`,check:()=>hit(Object.keys(KS()).filter(k=>k.split(':')[0]===eq).length,OLD_PATH_N[eq])}));
 Object.entries(PATHS).forEach(([eq,P])=>PATH_LVLS.forEach((ln,l)=>ACH.push({id:'pl-'+eq+'-'+l,g:'paths',tier:l,icon:'path',t:`${P.name} ${ln}`,
   d:l?`Master every ${ln.toLowerCase()} step on the ${P.name.toLowerCase()} path.`:`Master the ${P.name.toLowerCase()} basics: picking it up, setting it down, and the holds and positions.`,
-  check:()=>{const ls=lvlSteps(eq,l),ts=ls.map(x=>PS()[x.id]).filter(Boolean);return hit(ts.length,ls.length,ts.length===ls.length?Math.max(...ts):null)}})));
+  check:()=>{const ls=lvlReq(eq,l),ts=ls.map(x=>PS()[x.id]).filter(Boolean);return hit(ts.length,ls.length,ts.length===ls.length&&ls.length?Math.max(...ts):null)}})));
 ACH.push(
   {id:'guided-1',g:'finish',tier:1,icon:'play',t:'Start to finish',d:'Follow a guided workout all the way to the last step and log it.',check:c=>hit(c.guided.length,1,nthTs(c.guided,1))},
   {id:'guided-10',g:'finish',tier:2,icon:'play',t:'Ten guided',d:'Finish and log ten guided workouts.',check:c=>hit(c.guided.length,10,nthTs(c.guided,10))},
@@ -2793,7 +2941,7 @@ function noteText(n){
   if(n.kind==='level')return n.to>n.from?`<b>Moved you up to ${LEVELS[n.to-1]}.</b> Your last four weeks were steady at moderate effort, so new workouts have more reps, longer work periods and harder flows.`
     :`<b>Eased you back to ${LEVELS[n.to-1]} for now.</b> Your last few sessions were rated 9 or 10 out of 10. It moves back up once training feels steady again.`;
   if(n.kind==='skill'){const P=PATHS[n.eq],st=n.id&&P&&P.steps.find(x=>x.id===n.id);if(!st)return '';const nx=pOpen(n.eq,1)[0];
-    return `<b>Marked “${esc(st.t)}” mastered</b> on your ${esc(P.name.toLowerCase())} path after three solid sessions with it.${nx?` Next up: ${esc(nx.t)}.`:' That finishes the path.'}`}
+    return `<b>Marked “${esc(st.t)}” mastered</b> on your ${esc(P.name.toLowerCase())} path after ${n.via==='practice'?'two solid practice sessions':'three solid sessions with it'}.${nx?` Next up: ${esc(nx.t)}.`:' That finishes the path.'}`}
   if(n.kind==='deload')return `<b>This is a lighter week.</b> You've trained steadily for ${n.weeks} weeks. Weights drop one step and there are no new targets, so your body can catch up and the next push sticks.`;
   return '';
 }
@@ -3148,7 +3296,7 @@ function renderContinue(){
   $('contDot').hidden=!items.some(x=>x!=='skills');
   let h='';
   if(items.includes('resume')){const r=readResume(),pct=Math.round(r.i/Math.max(1,r.total)*100);
-    h+=`<article class="ccard ccard-hot"><div class="eyebrow">Workout in progress</div><h3>${esc(r.w.program?r.w.program.label:GOALS[r.w.type]+' · '+r.w.minutes+' min')}</h3>
+    h+=`<article class="ccard ccard-hot"><div class="eyebrow">Workout in progress</div><h3>${esc(r.w.program?r.w.program.label:r.w.label||GOALS[r.w.type]+' · '+r.w.minutes+' min')}</h3>
       <p class="hint">Stopped at step ${r.i+1} of ${r.total}${r.name?' · '+esc(r.name):''} · ${ago(r.ts)} · ${Math.round(r.elapsed/60)} min done</p>
       <span class="meter"><i class="s-ready" style="width:${pct}%"></i></span>
       <div class="go"><button class="btn" data-c="resume">▶ Resume</button><button class="btn ghost small" data-c="restart">Start over</button><button class="link" data-c="drop">Discard</button></div></article>`}
@@ -3181,7 +3329,7 @@ function renderContinue(){
       <span class="go"><button class="btn small" data-c="built:${esc(w.id)}">Open</button><button class="btn ghost small" data-c="builtgo:${esc(w.id)}">▶ Start</button><button class="link" data-c="builtdrop:${esc(w.id)}">Remove</button></span></div>`).join('')}</article>`}
   if(items.includes('skills')){
     h+=`<article class="ccard"><div class="eyebrow">Skill paths</div>${Object.entries(PATHS).filter(([eq])=>activeEq().includes(eq)&&pOpen(eq,1).length).map(([eq,P])=>{const nx=pOpen(eq,1)[0];
-      return `<div class="cskill">${eqBanner(eq,'')}<p><b>${PATH_LVLS[nx.lvl]} · ${esc(nx.t)}</b><br><span class="hint">${esc(nx.goal)}</span></p><button class="btn ghost small" data-c="skill:${eq}">Practice</button></div>`}).join('')}${needBasics(activeEq()).length?`<p class="hint">Finish the Basics for your ${esc(eqNames(needBasics(activeEq())))} to unlock weekly plans and programs with it.</p>`:''}</article>`}
+      return `<div class="cskill">${eqBanner(eq,'')}<p><b>${PATH_LVLS[nx.lvl]} · ${esc(nx.t)}</b><br><span class="hint">${esc(nx.goal)}</span></p><span class="go"><button class="btn small" data-c="pract:${eq}">▶ Practice</button><button class="link" data-c="skill:${eq}">See path</button></span></div>`}).join('')}${needBasics(activeEq()).length?`<p class="hint">Finish the Basics for your ${esc(eqNames(needBasics(activeEq())))} to unlock weekly plans and programs with it.</p>`:''}</article>`}
   const gst=goalStats();
   if(!items.length)h=`<div class="empty"><p><b>Nothing in progress yet.</b> Workouts you build, weekly plans, programs and skill paths you start will show up here so you can pick up where you left off.</p>
       <div class="go"><button class="btn" data-c="tobuild">Build a workout</button><button class="btn ghost" data-c="progs">Browse programs</button></div></div>`;
@@ -3203,6 +3351,7 @@ function renderContinue(){
     if(k==='builtgo'){if(showSaved(a)){render();startGuided(current.single,0)}}
     if(k==='builtdrop'){if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Tap again to remove';return}dropSaved(a);Store.saveState();renderContinue();if(current&&current.single&&current.single.id===a){current=null;render()}}
     if(k==='skill'){goPaths(a)}
+    if(k==='pract'){startPractice(a)}
     if(k==='tobuild')go('build');
   });
 }
@@ -3226,6 +3375,7 @@ $('gen').onclick=()=>{const b=$('gen'),p=S.mode==='week'&&planNorm();
     setTimeout(()=>{if(b.classList.contains('armed')){b.classList.remove('armed');b.textContent='Build plan'}},4000);return}
   b.classList.remove('armed');if(S.mode==='week')b.textContent='Build plan';generate(true)};
 $('useSkills').onchange=e=>{S.useSkills=e.target.checked;save();syncPathLevel();renderSettings();renderPrograms();renderRec(true)};
+$('onbAgain').onclick=()=>openOnboard();
 $('pathLock').onchange=e=>{S.pathLock=e.target.checked;save();renderPrograms()};
 $('gearDone').onclick=()=>{$('gearBox').open=false;$('gearBox').scrollIntoView({block:'nearest'})};
 $('suName').oninput=e=>{const v=e.target.value.trim().slice(0,24);if(!v)return;activeSetup().name=v;$('gearSum').textContent=v;save();renderSetupBar()};
@@ -3244,6 +3394,7 @@ Store.loadLocal();
   else generate()}
 {const h=(location.hash||'').slice(1);go(VIEWS.includes(h)?h:(contItems().some(x=>x!=='skills')?'continue':'build'),true)}
 Store.init();
+setTimeout(maybeOnboard,0);
 /* ---- backup ---- */
 $('bkSave').onclick=()=>{
   const data={app:'arc-and-iron',version:1,exported:new Date().toISOString(),settings:S,logs:Store.logs,checks:Store.checks,state:Store.state};
