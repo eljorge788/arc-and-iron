@@ -83,7 +83,7 @@ section{display:grid;gap:14px}
 .weights .chip i{font-style:normal;font-size:.7em;opacity:.75;margin-left:2px}
 .weights .chip small{display:block;font-size:.65em;opacity:.7;line-height:1.1}
 .chip.chip-x{border-style:dashed}
-.implement.off .rk-browse,.implement.off .rk-own{display:none}
+.implement.off .rk-browse,.implement.off .rk-own,.implement.off .adjbox{display:none}
 .rk-listed{margin-top:4px}
 .gearbox{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:12px 14px}
 .gearbox>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:baseline}
@@ -1191,40 +1191,52 @@ const rackBrowse={};
 function renderRack(){
   const r=$('rack');r.innerHTML='';
   for(const k in EQ){
-    const e=EQ[k],st=S.eq[k];
+    const e=EQ[k],st=S.eq[k];st.adj=st.adj||[];st.both=st.both||[];
     const div=document.createElement('div');div.className='implement'+(st.on?'':' off');
-    const u=unitOf(k),bu=rackBrowse[k]||u,own=st.w.map(x=>wP(x,u));
-    const list=[...e.lists[bu].map(v=>wP(v+bu)),...own].filter((p,i,a)=>a.findIndex(q=>q.key===p.key)===i).sort((a,b)=>a.kg-b.kg||(a.u<b.u?-1:1));
-    const conv=p=>p.u!==u?`<small>${wConv(p,u)} ${u}</small>`:'';
+    const u=unitOf(k),conv=p=>p.u!==u?`<small>${wConv(p,u)} ${u}</small>`:'';
+    const inAdj=key=>st.adj.some(a=>(a.w||[]).includes(key)),isFixed=key=>st.w.includes(key)&&(!inAdj(key)||st.both.includes(key));
+    const fixed=st.w.filter(isFixed).map(x=>wP(x,u)),adjW=st.w.filter(inAdj).map(x=>wP(x,u));
+    // one weight picker: the standard sizes in the browse unit plus the ones already chosen, and an Other weight box
+    const picker=(id,mine,on)=>{const bu=rackBrowse[k+id]||rackBrowse[k]||u;
+      const list=[...e.lists[bu].map(v=>wP(v+bu)),...mine.map(x=>wP(x,u))].filter((p,i,a)=>p&&a.findIndex(q=>q.key===p.key)===i).sort((a,b)=>a.kg-b.kg||(a.u<b.u?-1:1));
+      return {bu,list,html:`<div class="rk-browse"><span class="unit">Sizes listed in</span><div class="seg unitseg" role="group" aria-label="${e.name} sizes listed in"><button type="button" data-bu="${id}:kg" aria-pressed="${bu==='kg'}">kg</button><button type="button" data-bu="${id}:lb" aria-pressed="${bu==='lb'}">lb</button></div></div>
+        <div class="weights">${list.map(p=>`<button type="button" class="chip${p.u!==bu?' chip-x':''}" data-pw="${id}:${p.key}" aria-pressed="${on(p.key)}" aria-label="${esc(wLab(p))}">${p.v}<i>${p.u}</i>${conv(p)}</button>`).join('')}</div>
+        <div class="addw"><input type="number" data-pi="${id}" min="1" max="200" step="0.5" inputmode="decimal" placeholder="Other weight" aria-label="Add another ${e.name.toLowerCase()} weight in ${bu}"><span class="unit">${bu}</span><button type="button" class="btn ghost small" data-pa="${id}">Add</button></div>`}};
+    const fx=picker('f',st.w.filter(isFixed),isFixed);
     div.innerHTML=`<div class="imp-head"><label><input type="checkbox" id="on-${k}" ${st.on?'checked':''}> ${e.name}</label>
         <div class="unitwrap"><span class="unit">Show in</span><div class="seg unitseg" role="group" aria-label="Show ${e.name.toLowerCase()} weights in"><button id="u-${k}-lb" aria-pressed="${u==='lb'}">lb</button><button id="u-${k}-kg" aria-pressed="${u==='kg'}">kg</button></div></div></div>
-      <p class="hint rk-own">${own.length?`Yours: ${own.map(p=>esc(wLab(p))+((st.adj||[]).some(a=>(a.w||[]).includes(p.key))?' (adjustable)':'')).join(', ')}`:'Tap the weights you own. Mix kg and lb if your gear comes from different makers.'}</p>
-      <div class="rk-browse"><span class="unit">Sizes listed in</span><div class="seg unitseg" role="group" aria-label="${e.name} sizes listed in"><button id="b-${k}-kg" aria-pressed="${bu==='kg'}">kg</button><button id="b-${k}-lb" aria-pressed="${bu==='lb'}">lb</button></div></div>
-      <div class="weights">${list.map((p,j)=>`<button class="chip${p.u!==bu?' chip-x':''}" id="w-${k}-${j}" aria-pressed="${st.w.includes(p.key)}" aria-label="${esc(wLab(p))}">${p.v}<i>${p.u}</i>${conv(p)}</button>`).join('')}</div>
-      <div class="addw"><input type="number" id="add-${k}" min="1" max="200" step="0.5" inputmode="decimal" placeholder="Other weight" aria-label="Add another ${e.name.toLowerCase()} weight in ${bu}"><span class="unit">${bu}</span><button class="btn ghost small" id="addb-${k}">Add</button></div>
+      <p class="hint rk-own">${fixed.length||adjW.length?`${fixed.length?'Fixed: '+fixed.map(p=>esc(wLab(p))).join(', '):''}${fixed.length&&adjW.length?' · ':''}${adjW.length?'Adjustable: '+adjW.map(p=>esc(wLab(p))).join(', '):''}`:'Tap the weights you own. Mix kg and lb if your gear comes from different makers.'}</p>
+      <div class="unit">Fixed ${EQWORD[k]}s</div>${fx.html}
       ${e.pair?`<label class="pairrow"><input type="checkbox" id="pair-${k}" ${st.pair?'checked':''}> I have matching pairs (unlocks double ${k==='kb'?'bell':'club'} moves)</label>`:''}
-      ${!own.length?`<div class="adjbox"><div class="unit">Adjustable ${EQWORD[k]}s</div><p class="hint">Have an adjustable ${EQWORD[k]}? Tap the weights it can be set to above first, then add it here as quick or slow change.</p></div>`:''}${own.length?`<div class="adjbox"><div class="unit">Adjustable ${EQWORD[k]}s</div>${(st.adj||[]).map((a,ai)=>`<div class="adjit"><div class="adjhd"><b>${esc(EQ[k].name)} ${(st.adj.length>1?ai+1:'')}</b>
+      <div class="adjbox"><div class="unit">Adjustable ${EQWORD[k]}s</div>${st.adj.map((a,ai)=>{const pk=picker('a'+ai,a.w||[],key=>(a.w||[]).includes(key));
+        return `<div class="adjit"><div class="adjhd"><b>Adjustable ${esc(e.name.toLowerCase())}${st.adj.length>1?' '+(ai+1):''}</b>
           <div class="seg" role="group" aria-label="How fast it changes"><button type="button" data-aq="${ai}:quick" aria-pressed="${a.speed==='quick'}">Quick change</button><button type="button" data-aq="${ai}:slow" aria-pressed="${a.speed!=='quick'}">Slow change</button></div>
           <button type="button" class="link" data-ax="${ai}">Remove</button></div>
-          <p class="hint">${a.speed==='quick'?'A pin, dial or click: a few seconds to change.':'Screws, plates or collars: a minute or more to change.'} Tap the weights it can be set to.</p>
-          <div class="weights">${own.map(p=>`<button type="button" class="chip" data-aw="${ai}:${p.key}" aria-pressed="${(a.w||[]).includes(p.key)}">${p.v}<i>${p.u}</i></button>`).join('')}</div></div>`).join('')}
+          <p class="hint">${a.speed==='quick'?'A pin, dial or click: a few seconds to change.':'Screws, plates or collars: a minute or more to change.'} Tap every weight it can be set to.${(a.w||[]).length?' Set to: '+(a.w||[]).map(x=>esc(wLab(wP(x,u)))).join(', ')+'.':''}</p>${pk.html}</div>`}).join('')}
         <button type="button" class="btn ghost small" data-aa="1">+ Add an adjustable ${EQWORD[k]}</button>
-        <p class="hint">Weights you don't tap on an adjustable one count as fixed ${EQWORD[k]}s. Workouts set slow-change gear once per section (or once per superset pair) and guided mode pauses for every change.</p></div>`:''}`;
+        <p class="hint">Workouts set slow-change gear once per section (or once per superset pair), and guided mode pauses for every change until you tap Done.</p></div>`;
     r.appendChild(div);
+    const done=()=>{sortRack(st);save();renderRack();try{render()}catch(e){}};
+    // fixed weights
+    const toggleFixed=key=>{if(isFixed(key)){if(inAdj(key))st.both=st.both.filter(x=>x!==key);else st.w=st.w.filter(x=>x!==key)}
+      else{if(!st.w.includes(key))st.w.push(key);if(inAdj(key)&&!st.both.includes(key))st.both.push(key)}};
+    // a weight on an adjustable item (each weight belongs to one adjustable at most)
+    const toggleAdj=(ai,key)=>{const a=st.adj[ai];a.w=a.w||[];
+      if(a.w.includes(key)){a.w=a.w.filter(x=>x!==key);if(st.both.includes(key))st.both=st.both.filter(x=>x!==key);else if(!inAdj(key))st.w=st.w.filter(x=>x!==key)}
+      else{const wasFixed=isFixed(key);st.adj.forEach(x=>{x.w=(x.w||[]).filter(y=>y!==key)});a.w.push(key);if(!st.w.includes(key))st.w.push(key);if(wasFixed&&!st.both.includes(key))st.both.push(key)}};
+    const target=id=>id==='f'?toggleFixed:key=>toggleAdj(+id.slice(1),key);
     div.querySelector(`#on-${k}`).onchange=ev=>{st.on=ev.target.checked;save();renderRack()};
-    list.forEach((p,j)=>{div.querySelector(`#w-${k}-${j}`).onclick=()=>{const i=st.w.indexOf(p.key);i<0?st.w.push(p.key):st.w.splice(i,1);sortRack(st);save();renderRack()}});
     ['lb','kg'].forEach(nu=>{div.querySelector(`#u-${k}-${nu}`).onclick=()=>{if(nu===u)return;st.unit=nu;if(!rackBrowse[k])rackBrowse[k]=u;save();renderRack();try{render()}catch(e){}}});
-    ['lb','kg'].forEach(nu=>{div.querySelector(`#b-${k}-${nu}`).onclick=()=>{rackBrowse[k]=nu;renderRack()}});
-    const addIt=()=>{const v=Math.round(parseFloat(div.querySelector(`#add-${k}`).value)*2)/2,key=v+bu;if(v>0&&v<=200&&!st.w.includes(key)){st.w.push(key);sortRack(st);save();renderRack()}};
-    div.querySelector(`#addb-${k}`).onclick=addIt;
-    div.querySelector(`#add-${k}`).onkeydown=ev=>{if(ev.key==='Enter')addIt()};
+    div.querySelectorAll('[data-bu]').forEach(b=>b.onclick=()=>{const[id,nu]=b.dataset.bu.split(':');rackBrowse[k+id]=nu;if(id==='f')rackBrowse[k]=nu;renderRack()});
+    div.querySelectorAll('[data-pw]').forEach(b=>b.onclick=()=>{const i=b.dataset.pw.indexOf(':'),id=b.dataset.pw.slice(0,i),key=b.dataset.pw.slice(i+1);target(id)(key);done()});
+    div.querySelectorAll('[data-pa]').forEach(b=>{const id=b.dataset.pa,inp=div.querySelector(`[data-pi="${id}"]`),bu=rackBrowse[k+id]||rackBrowse[k]||u;
+      const addIt=()=>{const v=Math.round(parseFloat(inp.value)*2)/2,key=v+bu;if(!(v>0&&v<=200))return;
+        const on=id==='f'?isFixed(key):(st.adj[+id.slice(1)].w||[]).includes(key);if(!on)target(id)(key);done()};
+      b.onclick=addIt;inp.onkeydown=ev=>{if(ev.key==='Enter')addIt()}});
     if(e.pair)div.querySelector(`#pair-${k}`).onchange=ev=>{st.pair=ev.target.checked;save()};
-    const adjSave=()=>{save();renderRack();try{render()}catch(e){}};
-    div.querySelectorAll('[data-aa]').forEach(b=>b.onclick=()=>{st.adj=st.adj||[];st.adj.push({id:'a'+Date.now().toString(36)+st.adj.length,speed:'slow',w:[]});adjSave()});
-    div.querySelectorAll('[data-ax]').forEach(b=>b.onclick=()=>{st.adj.splice(+b.dataset.ax,1);adjSave()});
-    div.querySelectorAll('[data-aq]').forEach(b=>b.onclick=()=>{const[i,v]=b.dataset.aq.split(':');st.adj[+i].speed=v;adjSave()});
-    div.querySelectorAll('[data-aw]').forEach(b=>b.onclick=()=>{const[i,key]=b.dataset.aw.split(':'),a=st.adj[+i];a.w=a.w||[];const j=a.w.indexOf(key);
-      if(j<0){st.adj.forEach(x=>{x.w=(x.w||[]).filter(y=>y!==key)});a.w.push(key)}else a.w.splice(j,1);adjSave()});
+    div.querySelectorAll('[data-aa]').forEach(b=>b.onclick=()=>{st.adj.push({id:'a'+Date.now().toString(36)+st.adj.length,speed:'slow',w:[]});done()});
+    div.querySelectorAll('[data-ax]').forEach(b=>b.onclick=()=>{const a=st.adj[+b.dataset.ax];(a.w||[]).slice().forEach(key=>toggleAdj(+b.dataset.ax,key));st.adj.splice(+b.dataset.ax,1);done()});
+    div.querySelectorAll('[data-aq]').forEach(b=>b.onclick=()=>{const[i,v]=b.dataset.aq.split(':');st.adj[+i].speed=v;done()});
   }
   const sl=document.createElement('label');sl.className='pairrow rk-listed';
   sl.innerHTML=`<input type="checkbox" id="showListed" ${showListed()?'checked':''}> When a weight is converted, also show it as listed on the bell, mace or club (e.g. 15.9 kg (35 lb))`;
@@ -1320,7 +1332,7 @@ const midItem=l=>l[Math.min(l.length-1,Math.floor((l.length-1)/2))];
 const ADJ_QUICK=15,ADJ_ONE={Tabata:1,AMRAP:1,Ladder:1,'Deck of cards':1};
 function adjItems(eq){const st=S.eq[eq];if(!st||!Array.isArray(st.adj)||!st.adj.length)return [];const own=new Set(effEq(eq).w||[]);
   return st.adj.map(a=>({id:a.id,speed:a.speed==='quick'?'quick':'slow',w:(a.w||[]).filter(k=>own.has(k))})).filter(a=>a.w.length)}
-function adjFor(eq,wt){if(!eq||!wt)return null;const p=wP(wt,unitOf(eq));if(!p)return null;return adjItems(eq).find(a=>a.w.includes(p.key))||null}
+function adjFor(eq,wt){if(!eq||!wt)return null;const p=wP(wt,unitOf(eq));if(!p||(S.eq[eq].both||[]).includes(p.key))return null;return adjItems(eq).find(a=>a.w.includes(p.key))||null}
 function adjName(eq,a){const all=(S.eq[eq].adj||[]).filter(x=>(x.w||[]).length),n=all.findIndex(x=>x.id===a.id);return 'adjustable '+EQWORD[eq]+(all.length>1?' '+(n+1):'')}
 const adjKey=(m)=>{const p=wP(m.wt,unitOf(m.eq));return p?p.key:''};
 function adjSet(m,p){const pair=/^2 ×/.test(String(m.wt));if(adjKey(m)===p.key)return;m.adjFrom=m.wt;m.wt=(pair?'2 × ':'')+wLab(p);delete m.up;delete m.need}
