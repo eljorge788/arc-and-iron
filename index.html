@@ -1342,6 +1342,11 @@ function coachBlock(b){
 function upTag(o,eq){if(!o||!o.up)return '';const f=esc(wTxt(o.up.from,eq));
   return o.up.dir==='up'?`<span class="upt up">▲ Up from ${f}</span>`:`<span class="upt dn">▼ Lighter week · usually ${f}</span>`}
 const fromWt=(f,eq)=>typeof f==='number'?f+' '+unitOf(eq):String(f);
+// once per implement, size and pair: a coach note that a heavier one would keep a move progressing (kind gear)
+function noteGear(w){if(!w||!progOn()||!Store.state)return;const c=coachState(),seen=c.gearSeen||(c.gearSeen={});let ch=false;
+  gearNeeds(w).filter(n=>n.next).forEach(n=>{const key=n.eq+'|'+n.next+n.unit+(n.dbl?'|2':'');if(seen[key])return;seen[key]=Date.now();ch=true;
+    coachNote({kind:'gear',eq:n.eq,next:n.next,unit:n.unit,cur:typeof n.cur==='number'?n.cur+' '+n.unit:n.cur,dbl:!!n.dbl,moves:n.moves.slice(0,3)})});
+  if(ch)try{Store.saveState()}catch(e){}}
 function gearNeeds(w){
   const by={};w.blocks.forEach(b=>{const items=b.flow?[{name:b.flow.name,eq:b.flow.eq,need:b.need}]:(b.moves||[]);
     items.forEach(m=>{if(!m.need||!m.eq)return;const k=m.eq+(m.need.dbl?'|2':'');const cur=by[k];
@@ -1575,6 +1580,7 @@ function buildWorkout(type,eqs,minutes,opts){
   return{id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),type,eqs,minutes,blocks,opts,avoided:ctx.avoided?rRest:[],built:Date.now(),deload:!opts.noProg&&(opts.light||(opts.around&&opts.around.light)?progOn():deloadActive())};
 }
 
+{const _bw=buildWorkout;buildWorkout=function(){const w=_bw.apply(this,arguments);try{noteGear(w)}catch(e){}return w}}
 let current=null,selDay=0,selWk=0;
 function generate(jump){
   const eqs=activeEq();const m=$('msg');
@@ -2323,8 +2329,18 @@ function learnSet(eq,n){const s=new Set(),open=[];for(const st of pSteps(eq)){if
 function masteredMove(name,eq){return pSteps(eq).some(s=>s.m===name&&pDone(s.id))}
 function skillLocked(x,n){if(!followPaths()||!PATHS[x.eq])return false;return !learnSet(x.eq,n).has(x.name)}
 // keep the workout level in step with the paths for the gear in use (the lowest of them, to stay safe)
-function syncPathLevel(){if(!followPaths())return false;const eqs=activeEq().filter(k=>PATHS[k]);if(!eqs.length)return false;
-  const l=Math.min(...eqs.map(pathWorkLvl));if(S.level!==l){S.level=l;save();return true}return false}
+/* Workout level per implement from its path. Finishing a path level that raises it leaves a coach note (kind plevel);
+   Undo holds that implement at the level below until its path moves up again. coach.pwl remembers the last level seen
+   per implement (first seen silently), S.lvlHold the holds. */
+function pathLvlFor(eq){const l=pathWorkLvl(eq),h=(S.lvlHold||{})[eq];return h?Math.min(l,h):l}
+function notePathLevels(){if(!followPaths()||!Store.state)return;const c=coachState(),pwl=c.pwl||(c.pwl={});let ch=false;
+  for(const eq in PATHS){const l=pathWorkLvl(eq),prev=pwl[eq];
+    if(prev==null){pwl[eq]=l;ch=true;continue}
+    if(l>prev){pwl[eq]=l;ch=true;if(S.lvlHold&&S.lvlHold[eq]){delete S.lvlHold[eq];save()}coachNote({kind:'plevel',eq,from:prev,to:l})}
+    else if(l<prev){pwl[eq]=l;ch=true}}
+  if(ch)try{Store.saveState()}catch(e){}}
+function syncPathLevel(){if(!followPaths())return false;notePathLevels();const eqs=activeEq().filter(k=>PATHS[k]);if(!eqs.length)return false;
+  const l=Math.min(...eqs.map(pathLvlFor));if(S.level!==l){S.level=l;save();return true}return false}
 // gear whose Basics are not done yet, for the plan and program lock
 const needBasics=eqs=>pathLock()?eqs.filter(k=>PATHS[k]&&!basicsDone(k)):[];
 const eqNames=ks=>listJoin(ks.map(k=>EQ[k].name.toLowerCase()));
@@ -3064,7 +3080,7 @@ function hideToast(){const el=$('toast');clearTimeout(toastT);el.classList.remov
    Store.state.coach = {notes:[...], deload:'YYYY-MM-DD' Monday, lastDeload, skipDeload, noAuto:{'eq:i':1}} */
 function coachState(){return Store.state.coach||(Store.state.coach={})}
 const noteId=()=>'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-function coachNote(n){const c=coachState();c.notes=(c.notes||[]).filter(x=>x.kind!==n.kind||n.kind==='skill').concat([Object.assign({ts:Date.now()},n,{id:noteId()})]).slice(-5)}
+function coachNote(n){const c=coachState();c.notes=(c.notes||[]).filter(x=>x.kind!==n.kind||n.kind==='skill'||(n.kind==='gear'&&!(x.eq===n.eq&&x.dbl===n.dbl))||(n.kind==='plevel'&&x.eq!==n.eq)).concat([Object.assign({ts:Date.now()},n,{id:noteId()})]).slice(-5)}
 // skill notes saved before the fix used the step id as the note id, which broke their buttons: move it to sid
 function fixNotes(c){(c.notes||[]).forEach(n=>{if(n.kind==='skill'&&!n.sid&&n.id&&String(n.id).includes(':')){n.sid=n.id;n.id=noteId()}})}
 const avg=a=>a.reduce((x,y)=>x+y,0)/Math.max(1,a.length);
@@ -3098,6 +3114,12 @@ function noteText(n){
     :`<b>Eased you back to ${LEVELS[n.to-1]} for now.</b> Your last few sessions were rated 9 or 10 out of 10. It moves back up once training feels steady again.`;
   if(n.kind==='skill'){const P=PATHS[n.eq],st=n.sid&&P&&P.steps.find(x=>x.id===n.sid);if(!st)return '';const nx=pOpen(n.eq,1)[0];
     return `<b>Marked “${esc(st.t)}” mastered</b> on your ${esc(P.name.toLowerCase())} path after ${n.via==='practice'?'two solid practice sessions':'three solid sessions with it'}.${nx?` Next up: ${esc(nx.t)}.`:' That finishes the path.'}`}
+  if(n.kind==='plevel'){const P=PATHS[n.eq];if(!P)return '';const nm=P.name.toLowerCase(),lv=LEVELS[n.to-1],held=(S.lvlHold||{})[n.eq];if(held)return '';
+    const lower=activeEq().filter(k=>PATHS[k]&&k!==n.eq&&pathLvlFor(k)<n.to);
+    return `<b>Your ${esc(nm)} workouts move up to ${lv}.</b> You've mastered every ${LEVELS[n.to-2].toLowerCase()} step on the ${esc(nm)} path, so new workouts bring in more reps, longer work periods and ${lv.toLowerCase()} moves as you learn them.${lower.length?` Workouts that also use your ${esc(eqNames(lower))} stay at the easier level until ${lower.length>1?'those paths catch':'that path catches'} up.`:''}`}
+  if(n.kind==='gear'){const own=(S.eq[n.eq]||{w:[]}).w.map(x=>wP(x)).some(p=>p&&Math.abs(p.kg-wKg(n.next,n.unit))<.05);if(own)return '';
+    const nm=EQ[n.eq]?EQ[n.eq].name.toLowerCase():'',nx=wTxt(n.next+' '+n.unit,n.eq),cu=wTxt(n.cur,n.eq),mv=listJoin(n.moves||[]);
+    return `<b>Time for a heavier ${esc(nm)}${n.dbl?' pair':''}.</b> ${esc(mv)} ${(n.moves||[]).length>1?'are':'is'} ready to move up from ${esc(cu)}, but that's the heaviest ${n.dbl?'pair':'one'} in your setup. The next size up is <b>${esc(n.dbl?'a pair of '+nx:nx)}</b>. Until you have it, the app keeps you at ${esc(cu)}; adding reps or slowing the tempo keeps you progressing.`}
   if(n.kind==='deload')return `<b>This is a lighter week.</b> You've trained steadily for ${n.weeks} weeks. Weights drop one step and there are no new targets, so your body can catch up and the next push sticks.`;
   return '';
 }
@@ -3106,13 +3128,15 @@ function renderCoach(){
   // a note with nothing to say (for example an old skill note from the earlier paths) is retired quietly
   (c.notes||[]).forEach(n=>{if(!n.seen&&!noteText(n))n.seen=true});
   const notes=(c.notes||[]).filter(n=>!n.seen&&!(n.kind==='deload'&&c.deload!==mon));
-  box.innerHTML=notes.map(n=>`<div class="cnote"><p>${noteText(n)}</p><div class="go"><button class="btn ghost small" type="button" data-cn="ok:${n.id}">Got it</button><button class="link" type="button" data-cn="undo:${n.id}">${n.kind==='deload'?'Skip the lighter week':'Undo'}</button></div></div>`).join('');
+  box.innerHTML=notes.map(n=>`<div class="cnote"><p>${noteText(n)}</p><div class="go"><button class="btn ghost small" type="button" data-cn="ok:${n.id}">Got it</button><button class="link" type="button" data-cn="undo:${n.id}">${n.kind==='deload'?'Skip the lighter week':n.kind==='gear'?'I have it now: add to my setup':n.kind==='plevel'?'Keep me at '+LEVELS[n.from-1]+' for now':'Undo'}</button></div></div>`).join('');
   box.querySelectorAll('[data-cn]').forEach(b=>b.onclick=()=>{const v=b.dataset.cn,j=v.indexOf(':'),k=v.slice(0,j),id=v.slice(j+1);const n=(c.notes||[]).find(x=>x.id===id);if(!n)return;
     n.seen=true;
     if(k==='undo'){
       if(n.kind==='level'){S.level=n.from;S.levelAt=Date.now();save();renderSettings()}
       if(n.kind==='skill'&&n.sid){setStep(n.sid,false);c.noAuto=Object.assign({},c.noAuto,{[n.sid]:1});renderPrograms()}
       if(n.kind==='deload'){c.skipDeload=c.deload;c.deload=null}
+      if(n.kind==='plevel'){S.lvlHold=Object.assign({},S.lvlHold,{[n.eq]:n.from});save();syncPathLevel();renderSettings()}
+      if(n.kind==='gear'){const st=S.eq[n.eq],key=n.next+n.unit;if(st&&!st.w.includes(key)){st.w.push(key);sortRack(st);save();renderRack();renderSetupBar()}}
       if(current&&current.single&&!current.single.program){current.single=buildWorkout(current.single.type,current.single.eqs,current.single.minutes,current.single.opts);keepBuilt();render()}
       renderRec(true);
     }
