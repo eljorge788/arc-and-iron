@@ -2881,8 +2881,10 @@ function mondayOf(ds){const d=new Date(ds+'T12:00');d.setDate(d.getDate()-((d.ge
 const logDay=l=>l.date||ymd(new Date(l.ts));
 function goalFor(mon){const g=Store.state.goal;if(!g)return null;const h=g.hist&&g.hist.length?g.hist:[{from:'',n:g.n,unit:g.unit}];let cur=h[0];h.forEach(x=>{if(x.from<=mon)cur=x});return cur}
 function setGoal(n,unit){
-  const mon=mondayOf(todayStr()),g=Store.state.goal;
-  const hist=(g&&g.hist?g.hist:[]).filter(x=>x.from<mon);hist.push({from:mon,n,unit});
+  const mon=mondayOf(todayStr()),g=Store.state.goal,first=Store.logs.length?mondayOf(Store.logs.map(logDay).sort()[0]):mon;
+  // no goal yet: it applies back to the first logged week, so the streak and past weeks are counted from the log
+  const hist=(g&&g.hist?g.hist:[]).filter(x=>x.from<mon);hist.push({from:g?mon:(first<mon?first:mon),n,unit});
+  if(!g&&Store.state.recovered)Store.state.achQuiet=1;
   Store.state.goal={n,unit,hist};Store.saveState();
 }
 function clearGoal(){Store.state.goal=null;Store.saveState()}
@@ -2933,6 +2935,10 @@ function goalCardHTML(st,compact){
   </article>`;
 }
 let goalEditing=false,goalDraft=null;
+// typical training days a week over the last four weeks that had any training (a starting point when setting a goal)
+function goalGuess(){const wk={};Store.logs.forEach(l=>{const d=logDay(l),m=mondayOf(d);(wk[m]=wk[m]||new Set()).add(d)});
+  const ks=Object.keys(wk).filter(m=>m<mondayOf(todayStr())).sort().slice(-4);if(!ks.length)return 0;
+  return Math.max(1,Math.min(GOAL_MAX.days,Math.round(ks.reduce((a,m)=>a+wk[m].size,0)/ks.length)))}
 function renderGoal(){
   const box=$('goalBox');if(!box)return;
   const g=Store.state.goal;
@@ -2951,9 +2957,12 @@ function renderGoal(){
     box.querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>{d.unit=b.dataset.unit;renderGoal()});
     box.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>{d.n=Math.max(1,Math.min(GOAL_MAX[d.unit],d.n+ +b.dataset.step));renderGoal()});
   }else if(g){box.innerHTML=goalCardHTML(goalStats(),false)}
+  else if(Store.state.recovered&&Store.logs.length){const sug=goalGuess();
+    box.innerHTML=`<div class="empty"><p><b>Your weekly goal was lost</b> in an app bug on November 27 and 28. Your workout log is safe, so set the goal again and your streak and past weeks are counted from it.</p>
+      ${sug?`<p class="hint">Over your recent weeks you trained about ${sug} day${sug>1?'s':''} a week.</p>`:''}<div class="go"><button class="btn small" type="button" data-goal="edit">Set it again</button></div></div>`}
   else box.innerHTML=`<div class="empty"><p><b>Set a weekly goal.</b> Choose how many days or workouts you want each week, and Arc &amp; Iron keeps your streak of weeks that hit it.</p><div class="go"><button class="btn small" type="button" data-goal="edit">Set a weekly goal</button></div></div>`;
   box.querySelectorAll('[data-goal]').forEach(b=>b.onclick=()=>{const k=b.dataset.goal;
-    if(k==='edit'){goalEditing=true;goalDraft=null;renderGoal()}
+    if(k==='edit'){goalEditing=true;goalDraft=!Store.state.goal&&goalGuess()?{n:goalGuess(),unit:'days'}:null;renderGoal()}
     if(k==='cancel'){goalEditing=false;goalDraft=null;renderGoal()}
     if(k==='save'){setGoal(goalDraft.n,goalDraft.unit);goalEditing=false;goalDraft=null;renderTrack()}
     if(k==='off'){if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Tap again to turn off';setTimeout(()=>{b.classList.remove('armed');b.textContent='Turn off goal'},3000);return}
@@ -2996,7 +3005,7 @@ PROGRAMS.forEach(p=>ACH.push({id:'prog-'+p.id,g:'finish',tier:3,icon:'flag',t:p.
 ACH.push(
   {id:'plan-1',g:'finish',tier:1,icon:'flag',t:'Full week',d:'Finish every day of a weekly plan.',check:c=>hit((c.st.plansDone||[]).length,1)},
   {id:'plan-4',g:'finish',tier:2,icon:'flag',t:'Plan keeper',d:'Finish four weekly plans.',check:c=>hit((c.st.plansDone||[]).length,4)},
-  {id:'path-step',g:'finish',tier:1,icon:'path',t:'First step',d:'Mark your first skill path step as learned.',check:c=>hit(Object.keys(c.st.skills||{}).length?1:0,1)});
+  {id:'path-step',g:'finish',tier:1,icon:'path',t:'First step',d:'Mark your first skill path step as learned.',check:c=>hit(Object.keys(c.st.skills||{}).length||Object.keys(c.st.path||{}).length?1:0,1)});
 Object.entries(PATHS).forEach(([eq,P])=>ACH.push({id:'path-'+eq,g:'finish',tier:2,icon:'path',legacy:true,t:P.name+' path (original)',d:`Learned every step of the original ${P.name.toLowerCase()} skill path.`,check:()=>hit(Object.keys(KS()).filter(k=>k.split(':')[0]===eq).length,OLD_PATH_N[eq])}));
 Object.entries(PATHS).forEach(([eq,P])=>PATH_LVLS.forEach((ln,l)=>ACH.push({id:'pl-'+eq+'-'+l,g:'paths',tier:l,icon:'path',t:`${P.name} ${ln}`,
   d:l?`Master every ${ln.toLowerCase()} step on the ${P.name.toLowerCase()} path.`:`Master the ${P.name.toLowerCase()} basics: picking it up, setting it down, and the holds and positions.`,
@@ -3026,7 +3035,7 @@ ACH.push(
 
 let achRetro=0,achQueue=[];
 function evalAch(){
-  const st=Store.state,first=!st.ach;if(first)st.ach={};
+  const st=Store.state,first=!st.ach||!!st.achQuiet;if(!st.ach)st.ach={};delete st.achQuiet;
   const c=achCtx(),fresh=[];
   ACH.forEach(a=>{if(st.ach[a.id])return;let r;try{r=a.check(c)}catch(e){return}if(r&&r.got){st.ach[a.id]=r.at||Date.now();fresh.push(a)}});
   if(first||fresh.length)Store.saveState();
