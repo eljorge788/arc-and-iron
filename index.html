@@ -3547,8 +3547,7 @@ function contItems(){
   const it=[];const st=Store.state;
   const r=readResume();if(r)it.push('resume');
   const p=planNorm();if(p&&planNext(p)&&Date.now()-planLast(p)<21*864e5)it.push('week');
-  if(upcoming(1).some(u=>u.date===todayStr()))it.unshift('today');
-  if(progList().some(x=>{const pr=PROGRAMS.find(y=>y.id===x.id);return pr&&progNext(pr,x)}))it.push('program');
+    if(progList().some(x=>{const pr=PROGRAMS.find(y=>y.id===x.id);return pr&&progNext(pr,x)}))it.push('program');
   if(contSaved(r).length)it.push('built');
   if(progDoneList().some(x=>Date.now()-x.end<7*DAY&&!contHidden('pd-'+x.id+'-'+x.end)))it.push('progdone');
   if(p&&!planNext(p)&&Date.now()-planLast(p)<7*DAY&&!contHidden('plan-'+p.id))it.push('plandone');
@@ -3557,7 +3556,7 @@ function contItems(){
 }
 function renderContinue(){
   const box=$('cont');if(!box)return;const st=Store.state,items=contItems();
-  $('contDot').hidden=!items.some(x=>x!=='skills');
+  $('contDot').hidden=!items.some(x=>x!=='skills')&&!upcoming(1).some(u=>u.date===todayStr());
   let h='';
   if(items.includes('resume')){const r=readResume(),pct=Math.round(r.i/Math.max(1,r.total)*100);
     h+=`<article class="ccard ccard-hot" data-ck="resume"><div class="eyebrow">Workout in progress</div><h3>${esc(r.w.program?r.w.program.label:r.w.label||GOALS[r.w.type]+' · '+r.w.minutes+' min')}</h3>
@@ -3574,9 +3573,21 @@ function renderContinue(){
       <p class="hint">Next: <b>${n>1?'Week '+(nx.k+1)+' · ':''}${w.day}</b> · ${GOALS[w.type]} · ${w.minutes} min · ${esc(eqLabel(w.eqs))}${last?` · last done ${fmtDate(last)}`:''}</p>
       <div class="go"><button class="btn" data-c="wday:${nx.k}:${nx.i}">Open ${w.day}'s workout</button><button class="btn ghost small" data-c="wdone:${nx.k}:${nx.i}">Mark ${w.day} done</button></div>
       <div class="go"><button class="link" data-c="wnew">Replace with a new plan</button><button class="link" data-c="wend">End plan</button></div></article>`}
-  if(items.includes('today')){const due=upcoming(1).filter(u=>u.date===todayStr());
-    h=`<article class="ccard ccard-hot" data-ck="today"><div class="eyebrow">Scheduled today · ${dowName(todayStr())}</div>${due.map((u,i)=>`<div class="trow"><span>${eqDots(u.eqs)}<b>${esc(u.label)}</b></span><button class="btn small" data-c="due:${i}">Open</button></div>`).join('')}
-      <p class="hint">Want more? <button class="link" data-c="extra">Add another workout</button> built around these.</p></article>`}
+  /* Today's workout: always shown right under the goal card. Plan and program sessions due today, else what was done today, else today's recommendation. */
+  const tday=(()=>{const td=todayStr(),due=upcoming(1).filter(u=>u.date===td),doneT=Store.logs.filter(l=>l.date===td),rc=st.rec&&st.rec.day===td&&st.rec.w?st.rec:null;
+    let body,h3;
+    if(due.length){h3=due.length===1?esc(due[0].label):due.length+' sessions scheduled';
+      body=due.map((u,i)=>`<div class="trow"><span>${eqDots(u.eqs)}<b>${esc(u.label)}</b></span><button class="btn small" data-c="due:${i}">Open</button></div>`).join('')
+        +(doneT.length?`<p class="hint">Already logged today: ${doneT.map(l=>esc(l.title||'Workout')).join(', ')}.</p>`:'')
+        +`<p class="hint">Want more? <button class="link" data-c="extra">Add another workout</button> built around these.</p>`}
+    else if(doneT.length){h3='✓ Done for today';
+      body=doneT.map(l=>`<div class="trow"><span>${eqDots(l.eqs||[])}<b>${esc(l.title||'Workout')}</b></span><small>${l.minutes?l.minutes+' min':''}</small></div>`).join('')
+        +`<p class="hint">Nothing else is scheduled today. <button class="link" data-c="extra">Add another workout</button> if you want more.</p>`}
+    else if(rc){h3='Recommended: '+esc(GOALS[rc.type]+' · '+rc.minutes+' min');
+      body=`<p class="hint">Nothing from a plan or program is scheduled today. Here's what the coach suggests.</p><div class="trow"><span>${eqDots(rc.eqs||[])}<b>${esc(GOALS[rc.type]+' · '+rc.minutes+' min')}</b></span><button class="btn small" data-c="todayrec">See it</button></div>`}
+    else{h3='Nothing scheduled';
+      body=`<p class="hint">Nothing from a plan or program is scheduled today.</p><div class="go"><button class="btn small" data-c="todayrec">Get a recommendation</button><button class="btn ghost small" data-c="tobuild">Build a workout</button></div>`}
+    return `<article class="ccard${due.length?' ccard-hot':''}" data-ck="today"><div class="eyebrow">Today's workout · ${dowName(td)}</div><h3 class="cf-only">${h3}</h3>${body}</article>`})();
   if(items.includes('program'))progList().forEach(ps=>{const prog=PROGRAMS.find(x=>x.id===ps.id);if(!prog)return;const nx=progNext(prog,ps);if(!nx)return;
     const spec=prog.day(nx.w,nx.d),doneN=Object.keys(ps.done||{}).length,tot=prog.weeks*prog.days,when=upcoming(14).find(u=>u.src==='prog'&&u.id===prog.id);
     h+=`<article class="ccard" data-ck="prog-${prog.id}">${artHTML(PROG_ART[prog.id])}<div class="eyebrow">Program · ${doneN} of ${tot} sessions${ps.days?' · '+ps.days.join(', '):''}</div><h3>${esc(prog.name)}</h3>
@@ -3602,7 +3613,7 @@ function renderContinue(){
   const gst=goalStats();
   if(!items.length)h=`<div class="empty"><p><b>Nothing in progress yet.</b> Workouts you build, weekly plans, programs and skill paths you start will show up here so you can pick up where you left off.</p>
       <div class="go"><button class="btn" data-c="tobuild">Build a workout</button><button class="btn ghost" data-c="progs">Browse programs</button></div></div>`;
-  box.innerHTML=(gst?goalCardHTML(gst,true).replace('<article class="goal','<article data-ck="goal" class="goal'):'')+h;
+  box.innerHTML=(gst?goalCardHTML(gst,true).replace('<article class="goal','<article data-ck="goal" class="goal'):'')+tday+h;
   contFold(box);
   box.querySelectorAll('[data-goal="see"]').forEach(b=>b.onclick=()=>go('progress'));
   box.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{const[k,a,c]=b.dataset.c.split(':');const r=readResume();
@@ -3624,6 +3635,7 @@ function renderContinue(){
     if(k==='skill'){goPaths(a)}
     if(k==='pract'){startPractice(a)}
     if(k==='tobuild')go('build');
+    if(k==='todayrec'){go('build');renderRec();const d=$('bs-rec');if(d){d.hidden=false;d.open=true;try{d.scrollIntoView({block:'start'})}catch(e){}}}
   });
 }
 
