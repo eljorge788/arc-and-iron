@@ -614,6 +614,7 @@ textarea{min-height:70px;resize:vertical}
 .bs-s{color:var(--muted);font-size:.86rem;flex:1 1 160px;min-width:0}
 .bsec>section,.bsec>div{padding:0 14px 14px}
 .bsec[open]>.bs-h{border-bottom:1px solid var(--line);margin-bottom:12px}
+.need{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:8px 12px;margin:8px 0}.need ul{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:6px}.need li{display:grid;gap:2px}.need li b{display:flex;align-items:center;gap:6px}.need-r{font-size:.9rem;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}.need-l{color:var(--muted)}
 .wkind{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-bottom:4px}
 .wkind b{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;border-radius:999px;padding:3px 9px;background:var(--accent-soft);color:var(--accent)}
 .wkind.wk-program b{background:var(--eq-club-soft);color:var(--eq-club-ink)}
@@ -1838,9 +1839,24 @@ function wKind(w){if(!w)return null;
   if(w.weekRef){const p=planNorm(),wk=w.weekRef.wk||1,days=p&&p.plan[wk-1]?p.plan[wk-1].days:[],i=days.findIndex(x=>x.day===w.weekRef.day),many=p&&p.plan.length>1;
     return{k:'plan',t:'Weekly plan',name:p?(many?p.plan.length+'-week plan':'One-week plan'):'Weekly plan',when:`${WEEKFULL[w.weekRef.day]||w.weekRef.day}${soon('plan',x=>x.k===wk-1&&x.i===i)}, ${many?'week '+wk+' ':''}day ${i+1}`}}
   return{k:'single',t:'Single workout',name:'Built '+ago(w.built||Date.now()),when:''}}
+// the gear a workout needs: per implement, fixed weights (2 × when a pair is used) and each adjustable piece with its settings in order of use
+function needList(w){const by={};
+  const add=(eq,wt)=>{if(!eq)return;const e=by[eq]=by[eq]||{keys:[],pair:{},light:false};if(!wt){e.light=true;return}
+    const p=wP(wt,unitOf(eq));if(!p)return;if(!e.keys.includes(p.key))e.keys.push(p.key);if(/^2 ×/.test(String(wt)))e.pair[p.key]=1};
+  (w.blocks||[]).forEach(b=>{if(b.flow)add(b.flow.eq,b.wt);(b.moves||[]).forEach(m=>add(m.eq,m.wt))});
+  return Object.keys(EQ).filter(k=>by[k]).map(k=>{const e=by[k],rows=[],fx=[],items={};
+    e.keys.forEach(key=>{const a=adjFor(k,key);if(a){(items[a.id]=items[a.id]||{a,keys:[]}).keys.push(key)}else fx.push(key)});
+    const t=key=>(e.pair[key]?'2 × ':'')+wTxt(key,k);
+    if(fx.length)rows.push({label:'Fixed',txt:fx.slice().sort((x,y)=>wP(x).kg-wP(y).kg).map(t).join(', ')});
+    Object.values(items).forEach(g=>rows.push({label:adjName(k,g.a).replace(/^a/,'A'),speed:g.a.speed,txt:(g.keys.length>1?'set to ':'at ')+g.keys.map(t).join(', then ')}));
+    if(!rows.length&&e.light)rows.push({label:'',txt:'your lightest one (warm-up drills)'});
+    return {eq:k,rows}})}
+function needHTML(w){const l=needList(w);if(!l.length)return '';
+  return `<div class="need"><div class="eyebrow">You'll need</div><ul>${l.map(n=>`<li class="eq-${n.eq}"><b>${EQ_ICON[n.eq]}${EQ[n.eq].name}</b>${n.rows.map(r=>`<span class="need-r">${r.label?`<span class="need-l">${esc(r.label)}</span>${r.speed?`<i class="tg-sp tg-${r.speed}">${r.speed==='slow'?'Slow change':'Quick change'}</i>`:''} `:''}${esc(r.txt)}</span>`).join('')}</li>`).join('')}</ul></div>`}
 function workoutHTML(w,wi,heading){const K=wKind(w);
   return `<div class="sheet"><div class="sheet-head"><div><div class="wkind wk-${K.k}"><b>${K.t}</b><span>${esc(K.name)}${K.when?' · '+esc(K.when):''}</span></div><h2>${GOALS[w.type]} · ${w.minutes} min</h2></div>
     <div class="tags"><span class="tag">${esc(activeSetup().name)}</span><span class="tag">${LEVELS[S.level-1]}</span>${w.eqs.map(k=>`<span class="tag tag-eq eq-${k}">${EQ_ICON[k]}${EQ[k].name}</span>`).join('')}</div></div>
+    ${needHTML(w)}
     <button class="btn startbtn" data-start="${wi}">▶ Start workout</button>
     ${coachHTML(w,wi)}${progOn()&&!(w.opts&&w.opts.noProg)?gearHTML(w,wi):''}${aroundNote(w)}${avoidedNote(w)}${recoveryTip(w)}
     <div class="foldbar"><button class="link" data-foldall="0" type="button">Collapse all</button><button class="link" data-foldall="1" type="button">Expand all</button></div>
