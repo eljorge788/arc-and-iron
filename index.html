@@ -507,6 +507,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .tabs button{font:inherit;font-family:var(--display);font-size:1.05rem;text-transform:uppercase;letter-spacing:.03em;border:0;background:transparent;color:var(--muted);padding:6px 12px;border-radius:6px;cursor:pointer;white-space:nowrap}
 .tabs button[aria-current="page"]{color:var(--ink);background:var(--accent-soft);box-shadow:inset 0 -3px 0 var(--accent)}
 .view{display:grid;gap:28px}
+.appfoot{display:grid;gap:28px;margin-top:40px}
 #out{scroll-margin-top:72px}
 /* tracker */
 .form{display:grid;gap:14px}
@@ -801,45 +802,6 @@ html.guiding,html.guiding body{overflow:hidden}
   </details>
   <details class="bsec" id="bs-out" hidden><summary class="bs-h"><span class="bs-t">Your workout</span><span class="bs-s" id="bsS-out"></span></summary><section id="out" aria-live="polite"></section></details>
 
-  <details class="lib" id="lib">
-    <summary>Movement library</summary>
-    <div class="libbar">
-      <div class="seg" id="libEq" role="group" aria-label="Equipment"></div>
-      <div class="seg" id="libView" role="group" aria-label="Moves or flows"></div>
-    </div>
-    <p class="note" id="libNote" style="margin-top:8px"></p>
-    <div class="libgrid" id="libgrid"></div>
-    <p class="note" id="libSrc">Sources for further study: <a href="https://www.setforset.com/blogs/news/how-to-flow-with-a-steel-mace" target="_blank" rel="noopener">SET FOR SET, How to flow with a steel mace</a> · <a href="https://www.setforset.com/blogs/news/steel-mace-basics" target="_blank" rel="noopener">SET FOR SET, Steel mace basics</a> · <a href="https://www.dangerouslyfit.com.au/steel-club-workout/the-3-club-flow-you-need-to-know/" target="_blank" rel="noopener">Dangerously Fit, The 3 club flow</a> · <a href="https://somble.com/seanpearse/programs/steel-mace-beginner-flow-102ef" target="_blank" rel="noopener">Sean Pearse, Beginner flow series</a> · <a href="https://fitnessvolt.com/steel-club-exercises/" target="_blank" rel="noopener">Fitness Volt, Steel club exercises</a></p>
-  </details>
-
-  <details class="lib" id="lookBox">
-    <summary>Theme</summary>
-    <div class="libgrid">
-      <div class="skins" id="skins" role="group" aria-label="Theme"></div>
-      <div class="field"><span>Light or dark</span><div class="seg" id="appearance"></div></div>
-      <div class="field"><span>Artwork</span><div class="seg" id="artStyle"></div><span class="hint">Drawings of the gear behind each tab and on every program. They take on the theme's colors.</span></div>
-    </div>
-  </details>
-
-  <details class="lib">
-    <summary>Put it on your home screen</summary>
-    <div class="libgrid">
-      <div class="flowcard"><b>iPhone</b><p>Open this page in Safari. Tap the Share button, then Add to Home Screen, then Add.</p></div>
-      <div class="flowcard"><b>Android</b><p>Open this page in Chrome. Tap Install app when it appears, or the ⋮ menu, then Add to Home screen.</p></div>
-      <p class="note">It opens full screen with the Arc &amp; Iron badge and works offline once it has loaded.</p>
-    </div>
-  </details>
-
-  <details class="lib" id="backupBox">
-    <summary>Back up your data</summary>
-    <div class="libgrid">
-      <p class="note">Your log, check-ins, skills and program progress are saved on this device only. Download a backup now and then, and restore it on a new phone or after clearing your browser.</p>
-      <div class="go"><button class="btn ghost small" id="bkSave" type="button">Download backup</button><label class="btn ghost small" for="bkFile">Restore from backup</label><input type="file" id="bkFile" accept="application/json,.json" hidden></div>
-      <p class="msg" id="bkMsg" hidden></p>
-    </div>
-  </details>
-
-  <p class="note">Train in clear space with room overhead and behind you. Swinging moves like the 360 punish sloppy shoulders, so learn them with your lightest mace or club and stop a set when form fades. This is a training aid, not medical advice.</p>
   </div>
 
   <div class="view" id="v-programs" hidden>
@@ -933,6 +895,49 @@ html.guiding,html.guiding body{overflow:hidden}
       <p class="msg" id="ciMsg" hidden></p>
     </section>
   </div>
+
+  <footer class="appfoot" id="appFoot" aria-label="Library and app settings">
+  <details class="lib" id="lib">
+    <summary>Movement library</summary>
+    <div class="libbar">
+      <div class="seg" id="libEq" role="group" aria-label="Equipment"></div>
+      <div class="seg" id="libView" role="group" aria-label="Moves or flows"></div>
+    </div>
+    <p class="note" id="libNote" style="margin-top:8px"></p>
+    <div class="libgrid" id="libgrid"></div>
+    <p class="note" id="libSrc">Sources for further study: <a href="https://www.setforset.com/blogs/news/how-to-flow-with-a-steel-mace" target="_blank" rel="noopener">SET FOR SET, How to flow with a steel mace</a> · <a href="https://www.setforset.com/blogs/news/steel-mace-basics" target="_blank" rel="noopener">SET FOR SET, Steel mace basics</a> · <a href="https://www.dangerouslyfit.com.au/steel-club-workout/the-3-club-flow-you-need-to-know/" target="_blank" rel="noopener">Dangerously Fit, The 3 club flow</a> · <a href="https://somble.com/seanpearse/programs/steel-mace-beginner-flow-102ef" target="_blank" rel="noopener">Sean Pearse, Beginner flow series</a> · <a href="https://fitnessvolt.com/steel-club-exercises/" target="_blank" rel="noopener">Fitness Volt, Steel club exercises</a></p>
+  </details>
+
+  <details class="lib" id="lookBox">
+    <summary>Theme</summary>
+    <div class="libgrid">
+      <div class="skins" id="skins" role="group" aria-label="Theme"></div>
+      <div class="field"><span>Light or dark</span><div class="seg" id="appearance"></div></div>
+      <div class="field"><span>Artwork</span><div class="seg" id="artStyle"></div><span class="hint">Drawings of the gear behind each tab and on every program. They take on the theme's colors.</span></div>
+    </div>
+  </details>
+
+  <details class="lib">
+    <summary>Put it on your home screen</summary>
+    <div class="libgrid">
+      <div class="flowcard"><b>iPhone</b><p>Open this page in Safari. Tap the Share button, then Add to Home Screen, then Add.</p></div>
+      <div class="flowcard"><b>Android</b><p>Open this page in Chrome. Tap Install app when it appears, or the ⋮ menu, then Add to Home screen.</p></div>
+      <p class="note">It opens full screen with the Arc &amp; Iron badge and works offline once it has loaded.</p>
+    </div>
+  </details>
+
+  <details class="lib" id="backupBox">
+    <summary>Back up your data</summary>
+    <div class="libgrid">
+      <p class="note">Your log, check-ins, skills and program progress are saved on this device only. Download a backup now and then, and restore it on a new phone or after clearing your browser.</p>
+      <div class="go"><button class="btn ghost small" id="bkSave" type="button">Download backup</button><label class="btn ghost small" for="bkFile">Restore from backup</label><input type="file" id="bkFile" accept="application/json,.json" hidden></div>
+      <p class="msg" id="bkMsg" hidden></p>
+    </div>
+  </details>
+
+  <p class="note">Train in clear space with room overhead and behind you. Swinging moves like the 360 punish sloppy shoulders, so learn them with your lightest mace or club and stop a set when form fades.</p>
+  <p class="note"><b>Not medical advice.</b> Arc &amp; Iron is a training aid. Check with a doctor before starting a new exercise program, especially with an injury or health condition, and stop any movement that causes pain.</p>
+  </footer>
 </div>
 
 <div class="guide" id="guide" hidden role="dialog" aria-modal="true" aria-label="Workout in progress">
