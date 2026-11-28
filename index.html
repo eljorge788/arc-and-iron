@@ -548,6 +548,21 @@ textarea{min-height:70px;resize:vertical}
 .bm-key i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .bm-key .bm-kn{background:var(--line)}
 .musc li.m-sel{background:var(--accent-soft)}
+.dmm{border:1px solid var(--line);border-radius:10px;margin:0 0 10px;background:var(--surface)}
+.dmm>summary{list-style:none;cursor:pointer;display:flex;gap:8px;align-items:baseline;padding:9px 12px;flex-wrap:wrap}
+.dmm>summary::-webkit-details-marker{display:none}
+.dmm>summary::after{content:'▾';margin-left:auto;color:var(--muted)}
+.dmm[open]>summary::after{content:'▴'}
+.dmm-sum{color:var(--muted);font-size:.86rem;flex:1 1 140px;min-width:0}
+.dmm-body{display:grid;grid-template-columns:minmax(150px,230px) 1fr;gap:10px;padding:0 12px 10px;align-items:start}
+.dmm-svg{width:100%;height:auto}
+.dmm-p{stroke:var(--surface);stroke-width:1.6}
+.dmm-list ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.dmm-list li{display:grid;grid-template-columns:12px 1fr auto;gap:8px;align-items:center;font-size:.9rem}
+.dmm-list li i{width:12px;height:12px;border-radius:3px}
+.dmm-list li small{color:var(--muted)}
+.dmm-list .hint{margin:6px 0 0;font-size:.78rem}
+@media (max-width:420px){.dmm-body{grid-template-columns:1fr}.dmm-svg{max-width:220px;margin:0 auto}}
 .musc li{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:10px 0;border-bottom:1px solid var(--line);align-items:center}
 .meter{grid-column:1/-1;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
 .meter i{display:block;height:100%;border-radius:3px}
@@ -1349,7 +1364,7 @@ function pool(eqs,maxLvl,noGate){
   if(!p||p.length<3)p=X.filter(x=>base(x)&&!limitedX(x));
   if(p.length<3&&!myLimits().length)p=X.filter(base);
   const ctx=BUILD_CTX;
-  if(ctx&&ctx.rest.length){const q=p.filter(x=>!ctx.rest.some(g=>moveMuscles(x)[g]===2));if(q.length>=5&&q.length<p.length){ctx.avoided=true;p=q}}
+  if(ctx&&ctx.rest.length){const q=p.filter(x=>!ctx.rest.some(g=>mainG(moveMuscles(x),g)));if(q.length>=5&&q.length<p.length){ctx.avoided=true;p=q}}
   return p;
 }
 function pickBalanced(p,n,order){
@@ -2513,8 +2528,68 @@ const FLOW_MUSCLES={mace:{shoulders:2,core:2,grip:1,quads:1,glutes:1,calves:1},c
 // moves that work chest or calves beyond their movement pattern (added on top of PAT_MUSCLES)
 const MOVE_EXTRA={'kb:Crush press':{chest:2},'kb:Pullover':{chest:1},'kb:Tricep press':{chest:1},'mace:Shield press':{chest:1},'mace:Plank pull-through':{chest:1},'mace:Archer hold':{chest:1},
   'club:Two-hand shield cast':{chest:1},'club:One-arm shield cast':{chest:1},'club:Switch shield cast':{chest:1},'club:Front lever hold':{chest:1},'kb:Farmer carry':{calves:1},'kb:Thrusters':{calves:1},'kb:Push press':{calves:1}};
-function moveMuscles(x){const m=Object.assign({},PAT_MUSCLES[x.pat]||{}),e=MOVE_EXTRA[x.eq+':'+x.name]||{};for(const g in e)m[g]=(m[g]||0)+e[g];
+function moveMuscles(x){const d=MUSCLE_MAP[x.eq+':'+x.name];if(d)return Object.assign({},d);const m=Object.assign({},PAT_MUSCLES[x.pat]||{}),e=MOVE_EXTRA[x.eq+':'+x.name]||{};for(const g in e)m[g]=(m[g]||0)+e[g];
   if(x.b&&(x.pat==='hinge'||x.pat==='squat'))m.calves=(m.calves||0)+1;return m}
+// a main mover for this move (3 in the graded data, or the top of an older pattern map)
+const mainG=(m,g)=>(m[g]||0)>=3||((m[g]||0)>=2&&Math.max(...Object.values(m))<3);
+/* ---------- muscles worked, per move ----------
+   3 = main mover, 2 = worked hard, 1 = supporting or stabilising. Kettlebell entries lean on EMG studies (swing,
+   clean, snatch, press, get-up, carries, single-leg deadlift, goblet squat); steel mace and club entries are estimates
+   from coaching sources and the mechanics of each move (there is little lab research on them). Groups follow GROUPS.
+   Sources and reasoning: project doc claude/muscles-worked.md. */
+const MUSCLE_MAP=(()=>{const D={
+ // kettlebell
+ 'kb:Two-hand deadlift':'glutes3 back2 quads2 grip2 core1','kb:Suitcase deadlift':'glutes3 core3 back2 quads2 grip2','kb:Single-leg deadlift':'glutes3 back2 core2 grip1 quads1 calves1',
+ 'kb:Two-hand swing':'glutes3 back2 core2 grip2 quads1 shoulders1 calves1','kb:One-arm swing':'glutes3 core3 back2 grip2 shoulders1 quads1 calves1',
+ 'kb:Hand-to-hand swing':'glutes3 core3 back2 grip2 shoulders1 quads1 calves1','kb:Double swing':'glutes3 back3 grip3 core2 quads1 shoulders1 calves1',
+ 'kb:Goblet squat':'quads3 glutes2 core2 back1 arms1 calves1','kb:Front squat':'quads3 core3 glutes2 back1 shoulders1 calves1','kb:Double front squat':'quads3 glutes2 core2 back2 shoulders1 calves1',
+ 'kb:Rack reverse lunge':'quads3 glutes3 core2 shoulders1 calves1','kb:Overhead press':'shoulders3 arms2 core2 back1 chest1','kb:Push press':'shoulders3 arms2 quads2 core2 glutes1 chest1 calves1',
+ 'kb:Crush press':'shoulders3 chest2 arms2 grip2 core2','kb:Thrusters':'quads3 shoulders3 glutes2 arms2 core2 calves1','kb:Horn curl':'arms3 grip2 shoulders1 core1',
+ 'kb:Pullover':'back3 chest2 arms2 core2 shoulders1','kb:Tricep press':'arms3 shoulders1 chest1 core1','kb:Bent-over row':'back3 arms2 grip2 core2 glutes1 shoulders1',
+ 'kb:Gorilla row':'back3 core3 arms2 grip2 glutes1 shoulders1','kb:High pull':'glutes3 back3 shoulders2 arms2 grip2 core1 quads1','kb:Clean':'glutes3 core3 back2 grip2 arms2 shoulders1 quads1',
+ 'kb:Snatch':'glutes3 shoulders3 core3 grip3 back2 arms1 quads1','kb:Clean & press':'shoulders3 core3 glutes2 back2 arms2 grip2 quads1','kb:Halo':'shoulders3 arms2 back2 core2 grip1 chest1',
+ 'kb:Alternating halo':'shoulders3 arms2 back2 core2 grip1 chest1','kb:Around-the-world':'grip3 core2 shoulders2 arms1 back1','kb:Figure-8':'core3 grip3 glutes2 back2 quads2 shoulders1',
+ 'kb:Figure 8 back to front':'core3 grip3 glutes2 back2 quads2 shoulders1','kb:Windmill':'core3 shoulders3 glutes2 back2 arms1','kb:Turkish get-up':'shoulders3 core3 glutes2 quads2 arms2 back1 chest1',
+ 'kb:Farmer carry':'core3 grip3 back2 shoulders1 glutes1 quads1 calves1',
+ // steel mace
+ 'mace:10-to-2':'shoulders3 grip3 core3 back2 chest1 arms1','mace:360':'shoulders3 grip3 core3 back2 chest2 arms2','mace:Pendulum swing':'shoulders2 grip2 core2 back1 glutes1',
+ 'mace:Gravedigger':'core3 back2 shoulders2 glutes2 quads2 grip2','mace:Barbarian squat':'quads3 glutes2 shoulders2 back2 arms2 core2 grip1','mace:Mace front squat':'quads3 glutes2 core2 shoulders1 arms1 back1 calves1',
+ 'mace:Shouldered reverse lunge':'quads3 glutes3 core2 shoulders1 calves1','mace:Lateral lunge':'quads3 glutes3 core2 shoulders1 grip1 calves1','mace:Offset press':'shoulders3 core3 arms2 grip2 back1 chest1',
+ 'mace:Shield press':'shoulders3 chest2 core2 arms2 grip2','mace:Uppercut':'core3 shoulders3 back2 glutes2 grip2 arms1','mace:Ballistic curl 360':'arms3 grip3 shoulders2 core2 back1',
+ 'mace:Switch curl':'arms3 grip2 shoulders1 core1','mace:Offset bent-over row':'back3 grip3 arms2 core2 glutes1','mace:Paddle':'core3 shoulders2 back2 grip2 arms1',
+ 'mace:Sword switch':'shoulders2 core2 grip2 arms1','mace:Prayer switch':'grip2 shoulders2 arms1 core1 chest1','mace:Archer hold':'shoulders3 core2 grip2 back2 chest1',
+ 'mace:Offset march':'core3 shoulders2 grip2 quads1 glutes1 calves1','mace:Lunge to 360':'quads3 glutes3 shoulders3 core3 grip2 back2 calves1','mace:Plank pull-through':'core3 shoulders2 chest2 back2 arms1',
+ // steel club
+ 'club:Two-hand side swing':'core3 glutes2 shoulders2 grip2 back1 quads1','club:Single-arm side swing':'core3 grip3 shoulders2 glutes2 back1','club:Lateral swing':'grip3 core2 shoulders2 glutes1',
+ 'club:Arm cast':'shoulders3 grip3 back2 arms2 core1 chest1','club:Swipe':'grip3 glutes2 shoulders2 core2 back2 quads1','club:Side swipe':'core3 grip3 shoulders2 glutes2 back1',
+ 'club:Two-hand arm cast':'shoulders3 back2 grip2 arms2 core2 chest1','club:Two-hand shield cast':'shoulders3 back2 chest2 grip2 arms2 core2','club:One-arm shield cast':'shoulders3 grip3 back2 chest2 arms2 core2',
+ 'club:Switch shield cast':'shoulders3 grip3 back2 chest2 arms2 core2','club:Inside circle':'grip3 shoulders2 core2 arms1 chest1','club:Outside circle':'grip3 shoulders2 core2 back1 arms1',
+ 'club:Mill':'shoulders3 grip3 core2 back2 arms2 chest1','club:Reverse mill':'shoulders3 grip3 core2 back2 arms2 chest1','club:Switch reverse mill':'shoulders3 grip3 core2 back2 arms2 chest1',
+ 'club:Gamma cast':'shoulders3 core3 back2 grip2 chest1 glutes1','club:Double swipe':'shoulders3 grip3 glutes2 back2 core2 quads1','club:Double mill':'shoulders3 grip3 core3 back2 arms2 chest1',
+ 'club:Torch press':'shoulders3 arms2 grip2 core2 back1','club:Two-hand torch press':'shoulders3 arms2 core2 grip1','club:Rotational torch press':'shoulders3 core3 arms2 grip2 glutes1',
+ 'club:Flag press':'shoulders3 grip3 arms2 core2 chest1','club:Two-hand flag press':'shoulders3 grip2 arms2 core2 chest1','club:Club barbarian squat':'quads3 glutes2 shoulders2 back2 arms2 core2',
+ 'club:Order-position squat':'quads3 glutes2 core2 shoulders1 calves1','club:Two-hand clean':'glutes3 back2 grip2 core2 arms1 shoulders1 quads1','club:One-hand 180':'core3 grip3 shoulders2 glutes1 back1',
+ 'club:Switch 180':'core3 grip3 shoulders2 glutes1 back1','club:H2H clean':'glutes3 grip3 back2 core2 shoulders1 quads1','club:Two-hand swing squat':'quads3 glutes3 shoulders2 core2 grip2 back1',
+ 'club:Two-hand arm cast to flag press':'shoulders3 back2 grip2 arms2 core2 chest1','club:Two-hand clean to torch press':'shoulders3 glutes2 back2 arms2 grip2 core2',
+ 'club:Reverse lunge arm cast':'quads3 glutes3 shoulders2 back2 grip2 core2 calves1','club:Two-hand reverse lunge arm cast':'quads3 glutes3 shoulders2 back2 core2 grip1 calves1',
+ 'club:Forward lunge flag press':'quads3 glutes3 shoulders3 grip2 core2 calves1','club:Two-hand forward lunge flag press':'quads3 glutes3 shoulders3 core2 grip1 calves1',
+ 'club:Side clean':'core3 glutes2 shoulders2 grip2 back1 quads1','club:Bullwhip':'shoulders3 grip3 core3 back2 arms2','club:Clock squat':'quads3 shoulders3 grip3 glutes2 core2 back1',
+ 'club:Two-hand clock squat':'quads3 shoulders3 glutes2 grip2 core2 back1','club:Front lever hold':'shoulders3 grip3 core2 chest1 arms1','club:Side lever hold':'shoulders3 grip3 core2 back1',
+ // steps inside flows that are not library moves
+ 'kb:Overhead hold':'shoulders3 core2 arms1 grip1 back1','mace:Front lunge':'quads3 glutes3 core2 shoulders1 calves1','mace:Switch hands: high grab into the row position':'grip2 shoulders2 core1 back1'};
+ const out={};for(const k in D){const m={};D[k].split(' ').forEach(t=>{const g=t.slice(0,-1);m[g]=+t.slice(-1)});out[k]=m}return out})();
+// names used inside flows for library moves
+const FLOW_ALIAS={'kb:Press':'Overhead press','kb:Thruster':'Thrusters','kb:Skull crusher':'Tricep press','kb:Hand-to-hand swing switch':'Hand-to-hand swing',
+  'mace:Reverse lunge':'Shouldered reverse lunge','mace:Squat':'Mace front squat','mace:Lateral lunge (prayer switch)':'Lateral lunge','mace:Gravedigger left':'Gravedigger','mace:Gravedigger right':'Gravedigger',
+  'club:Half reverse mill':'Reverse mill','club:Half mill':'Mill'};
+const MUSCLE_LVL=['','Supporting','Worked hard','Main'];
+// muscles for a library move, or for a step name used in a flow (null when nothing is known)
+function stepMuscles(name,eq){if(!name||!eq)return null;const n=String(name).replace(/\s*\((left|right)[^)]*\)\s*$/i,'').trim();
+  if(MUSCLE_MAP[eq+':'+n])return MUSCLE_MAP[eq+':'+n];const a=FLOW_ALIAS[eq+':'+n];if(a&&MUSCLE_MAP[eq+':'+a])return MUSCLE_MAP[eq+':'+a];
+  const s=n.toLowerCase(),x=X.find(z=>z.eq===eq&&(z.name.toLowerCase()===s||(s.length>4&&z.name.toLowerCase().includes(s))||(z.name.length>4&&s.includes(z.name.toLowerCase()))));
+  return x?moveMuscles(x):null}
+// a whole flow: the highest level each group reaches in any of its steps
+function flowMuscles(f){const m={};(f.steps||[]).forEach(st=>{const s=stepMuscles(st,f.eq)||{};for(const g in s)m[g]=Math.max(m[g]||0,s[g])});return Object.keys(m).length?m:null}
 const TYPE_MUSCLES={flow:{shoulders:2,core:2,grip:1,quads:1,glutes:1},conditioning:{glutes:2,quads:1,shoulders:1,core:1,grip:1,calves:1},strength:{back:1,quads:1,glutes:1,shoulders:1,arms:1,core:1,chest:1},mixed:{shoulders:1,core:1,glutes:1,quads:1,back:1,grip:1}};
 const DAY=864e5;
 const todayStr=()=>new Date().toLocaleDateString('en-CA');
@@ -2523,7 +2598,7 @@ const fmtDate=ts=>new Date(ts).toLocaleDateString(undefined,{month:'short',day:'
 function musclesFor(moves,type){
   const m={};
   moves.forEach(mv=>{let map=null;
-    if(mv.flow)map=FLOW_MUSCLES[mv.eq];else{const ex=X.find(x=>x.name===mv.name&&x.eq===mv.eq);map=ex?moveMuscles(ex):null}
+    if(mv.flow){const f=FLOWS.find(z=>z.name===mv.name&&z.eq===mv.eq);map=(f&&flowMuscles(f))||FLOW_MUSCLES[mv.eq]}else{const ex=X.find(x=>x.name===mv.name&&x.eq===mv.eq);map=ex?moveMuscles(ex):null}
     if(map)for(const g in map)m[g]=(m[g]||0)+map[g]});
   if(!Object.keys(m).length&&TYPE_MUSCLES[type])Object.assign(m,TYPE_MUSCLES[type]);
   const tot=Object.values(m).reduce((a,b)=>a+b,0)||1;const out={};for(const g in m)out[g]=Math.round(m[g]/tot*1000)/1000;return out;
@@ -3458,6 +3533,33 @@ $('bkFile').onchange=async e=>{
     Store.saveLocal();renderRack();renderSettings();renderTrack();m.textContent='Restored '+d.logs.length+' workouts.';
   }catch(err){m.textContent='That file is not an Arc & Iron backup.'}
   m.hidden=false;e.target.value='';
+};
+
+/* ---------- muscles worked, in the demo pop-up ----------
+   demos.js calls DemoMuscles.open() when a demo opens and DemoMuscles.step() as each part plays. A move shows its
+   graded muscles; a flow shows the step playing now in full colour and the rest of the flow faint. The bar opens
+   and closes (S.dmmOpen remembers which). Colours are the equipment's colour, kept apart from recovery colours. */
+const DMM_OP={3:.95,2:.6,1:.3};
+function dmmFig(view,lv,col,dx){const part=([g,d])=>{const L=g?lv(g):0,f=g&&L?col:'var(--line)',o=g&&L?(L<1?.16:DMM_OP[L]):.45;
+    return `<path d="${d}" fill="${f}" fill-opacity="${o}" class="dmm-p"/><path d="${d}" fill="${f}" fill-opacity="${o}" class="dmm-p" transform="scale(-1 1)"/>`};
+  return `<g transform="translate(${dx} 4)"><path d="${BODY_OUTLINE}" class="bm-fill"/><path d="${BODY_OUTLINE}" class="bm-fill" transform="scale(-1 1)"/><ellipse class="bm-body" cx="0" cy="29" rx="18" ry="23"/><path class="bm-edge" d="${BODY_EDGE()}"/><path class="bm-edge" d="${BODY_EDGE()}" transform="scale(-1 1)"/>${BODY_PARTS[view].map(part).join('')}</g>`}
+window.DemoMuscles={box:null,ctx:null,cur:null,ck:null,
+  open(box,ctx){this.box=box;this.ctx=ctx||null;this.cur=null;this.ck=null;this.draw()},
+  step(i,m,label){const c=this.ctx;if(!c||!c.flow)return;const n=(m&&m.label)||label||'';if(n===this.ck)return;this.ck=n;
+    this.cur=n?{name:n.replace(/\s*\((left|right)[^)]*\)\s*$/i,''),m:stepMuscles(n,c.flow.eq)}:null;this.draw()},
+  draw(){const box=this.box,c=this.ctx;if(!box)return;if(!c){box.innerHTML='';return}
+    const eq=c.flow?c.flow.eq:c.eq,whole=c.flow?flowMuscles(c.flow):stepMuscles(c.name,c.eq);if(!whole||!EQ[eq]){box.innerHTML='';return}
+    const now=c.flow&&this.cur&&this.cur.m?this.cur.m:null,show=now||whole,col=`var(--eq-${eq})`;
+    const lv=g=>now?(now[g]||(whole[g]?.5:0)):(whole[g]||0);
+    const rows=Object.keys(show).filter(g=>GROUPS[g]).sort((a,b)=>show[b]-show[a]||Object.keys(GROUPS).indexOf(a)-Object.keys(GROUPS).indexOf(b));
+    const main=rows.filter(g=>show[g]===3).map(g=>GROUPS[g]);
+    const sum=(now?`Now: ${this.cur.name} · `:'')+(main.length?main.join(', '):rows.slice(0,2).map(g=>GROUPS[g]).join(', '));
+    box.innerHTML=`<details class="dmm"${S.dmmOpen?' open':''}><summary><b>Muscles worked</b><span class="dmm-sum">${esc(sum)}</span></summary>
+      <div class="dmm-body"><svg viewBox="0 0 330 460" class="dmm-svg" role="img" aria-label="${esc('Muscles worked: '+rows.map(g=>GROUPS[g]+' '+MUSCLE_LVL[show[g]].toLowerCase()).join(', '))}">${dmmFig('front',lv,col,82)}${dmmFig('back',lv,col,248)}</svg>
+      <div class="dmm-list">${now?`<div class="eyebrow">Now · ${esc(this.cur.name)}</div>`:''}<ul>${rows.map(g=>`<li><i style="background:${col};opacity:${DMM_OP[show[g]]}"></i><span>${esc(GROUPS[g])}</span><small>${MUSCLE_LVL[show[g]]}</small></li>`).join('')}</ul>
+      ${c.flow?'<p class="hint">Faint: worked elsewhere in the flow. This follows the step that is playing.</p>':''}
+      <p class="hint">${eq==='kb'?'Based on muscle-activity studies where they exist.':'An estimate from coaching sources and how the move works; there is little lab research on '+(eq==='mace'?'mace':'club')+' training.'}</p></div></div></details>`;
+    const d=box.querySelector('details');d.addEventListener('toggle',()=>{S.dmmOpen=d.open;save()})}
 };
 /* ---- animated demos ---- */
 document.addEventListener('click',e=>{

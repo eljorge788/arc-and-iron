@@ -2344,7 +2344,7 @@ function Player(views,tl,onMark){
 
 /* ---------- pop-up ---------- */
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let dlg=null,player=null;
+let dlg=null,player=null,ctxNow=null;   // ctxNow: what is open ({name,eq} or {flow}), for the muscles panel
 function ensureDialog(){
   if(dlg)return dlg;
   dlg=document.createElement('dialog');dlg.className='dm-dialog';dlg.setAttribute('aria-labelledby','dmTitle');
@@ -2357,6 +2357,7 @@ function ensureDialog(){
     <div class="seg dm-alt" id="dmAlt" role="group" aria-label="Version" hidden></div>
     <input type="range" class="dm-scrub" id="dmScrub" min="0" max="1000" value="0" aria-label="Move through the demo">
     <ol class="dm-steps" id="dmSteps" hidden></ol>
+    <div class="dm-mus" id="dmMus"></div>
     <p class="dm-cue" id="dmCue"></p>
     <div class="dm-ctl"><button type="button" class="btn small" id="dmPlay">❚❚ Pause</button>
       <div class="seg dm-speed" role="group" aria-label="Speed"><button type="button" data-sp="0.5" aria-pressed="false">½×</button><button type="button" data-sp="1" aria-pressed="true">1×</button></div></div>
@@ -2385,12 +2386,14 @@ function show(title,eye,tl,stepNames,variants){
   const steps=d.querySelector('#dmSteps');
   if(stepNames){steps.hidden=false;steps.innerHTML=stepNames.map((s,i)=>`<li><button type="button" data-i="${i}">${esc(s)}</button></li>`).join('')}
   else{steps.hidden=true;steps.innerHTML=''}
+  {const mb=d.querySelector('#dmMus');if(window.DemoMuscles)try{DemoMuscles.open(mb,ctxNow)}catch(e){mb.innerHTML=''}else mb.innerHTML=''}
   const playBtn=d.querySelector('#dmPlay'),scrub=d.querySelector('#dmScrub');
   d.querySelectorAll('[data-sp]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.sp==='1'));
   function start(tl){
     if(player)player.destroy();
     player=Player({front:d.querySelector('#dmFront'),side:d.querySelector('#dmSide')},tl,(i,m)=>{
       d.querySelector('#dmCue').textContent=m.cue||'';
+      if(window.DemoMuscles)try{DemoMuscles.step(i,m,stepNames&&stepNames[i])}catch(e){}
       steps.querySelectorAll('button').forEach((b,j)=>b.setAttribute('aria-current',j===i?'step':'false'));
     });
     const sp=d.querySelector('[data-sp][aria-pressed="true"]');if(sp)player.speed(+sp.dataset.sp);
@@ -2656,10 +2659,10 @@ const flowTLFor=flow=>{const f=FLOW_TL[(flow.eq||'club')+':'+String(flow.name).t
 window.Demos={
   has:(name,eq)=>!!key(name,eq),
   hasFlow:flow=>!!(flowTLFor(flow)||flowKeys(flow)),
-  open(name,eq){const k=key(name,eq);if(!k)return false;const mv=MOVES[k];
+  open(name,eq){const k=key(name,eq);if(!k)return false;const mv=MOVES[k];ctxNow={name,eq};
     const vars=mv.alt?[{label:mv.label,tl:join([mv])},{label:MOVES[mv.alt].label,tl:join([MOVES[mv.alt]])}]:null;
     show(String(name).replace(/\s*[×x]\s*\d.*$/,''),'Move demo',join([mv]),null,vars);return true},
-  openFlow(flow){const ft=flowTLFor(flow);if(ft){show(flow.name,'Flow demo',ft,ft.marks.map(m=>m.label));return true}
+  openFlow(flow){ctxNow={flow};const ft=flowTLFor(flow);if(ft){show(flow.name,'Flow demo',ft,ft.marks.map(m=>m.label));return true}
     const ks=flowKeys(flow);if(!ks)return false;
     show(flow.name,'Flow demo',join(ks.map(k=>MOVES[k[0]]),ks.map(k=>k[1])),ks.map(k=>k[1]));return true},
   // for previews and tests
