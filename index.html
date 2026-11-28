@@ -366,7 +366,8 @@ details.cfold[open]>.cf-h{border-bottom:1px solid var(--line);margin-bottom:10px
 .feel button:last-child{border-right:0}
 .feel button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink);font-weight:700;box-shadow:inset 0 -3px 0 var(--accent)}
 .upt{display:inline-block;font-family:var(--mono);font-size:.72rem;font-weight:700;border-radius:6px;padding:2px 6px;margin:2px 0}
-.upt.up{background:var(--good-soft);color:var(--good)}.upt.dn{background:var(--accent-soft);color:var(--ink)}
+.upt.up{background:var(--good-soft);color:var(--good)}.upt.adj{background:var(--line);color:var(--ink);margin-left:4px}
+.adjbox{display:grid;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}.adjit{display:grid;gap:6px;padding:8px;border:1px solid var(--line);border-radius:8px}.adjhd{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.adjnote{opacity:.9}.upt.dn{background:var(--accent-soft);color:var(--ink)}
 .coach{border:1px solid var(--good);border-radius:10px;background:var(--good-soft);padding:12px 14px;margin:10px 0;display:grid;gap:6px}
 .coach.light{border-color:var(--accent);background:var(--accent-soft)}
 .coach.off{display:block;border-color:var(--line);background:transparent;font-size:.88rem;color:var(--muted)}
@@ -1197,11 +1198,18 @@ function renderRack(){
     const conv=p=>p.u!==u?`<small>${wConv(p,u)} ${u}</small>`:'';
     div.innerHTML=`<div class="imp-head"><label><input type="checkbox" id="on-${k}" ${st.on?'checked':''}> ${e.name}</label>
         <div class="unitwrap"><span class="unit">Show in</span><div class="seg unitseg" role="group" aria-label="Show ${e.name.toLowerCase()} weights in"><button id="u-${k}-lb" aria-pressed="${u==='lb'}">lb</button><button id="u-${k}-kg" aria-pressed="${u==='kg'}">kg</button></div></div></div>
-      <p class="hint rk-own">${own.length?`Yours: ${own.map(p=>esc(wLab(p))).join(', ')}`:'Tap the weights you own. Mix kg and lb if your gear comes from different makers.'}</p>
+      <p class="hint rk-own">${own.length?`Yours: ${own.map(p=>esc(wLab(p))+((st.adj||[]).some(a=>(a.w||[]).includes(p.key))?' (adjustable)':'')).join(', ')}`:'Tap the weights you own. Mix kg and lb if your gear comes from different makers.'}</p>
       <div class="rk-browse"><span class="unit">Sizes listed in</span><div class="seg unitseg" role="group" aria-label="${e.name} sizes listed in"><button id="b-${k}-kg" aria-pressed="${bu==='kg'}">kg</button><button id="b-${k}-lb" aria-pressed="${bu==='lb'}">lb</button></div></div>
       <div class="weights">${list.map((p,j)=>`<button class="chip${p.u!==bu?' chip-x':''}" id="w-${k}-${j}" aria-pressed="${st.w.includes(p.key)}" aria-label="${esc(wLab(p))}">${p.v}<i>${p.u}</i>${conv(p)}</button>`).join('')}</div>
       <div class="addw"><input type="number" id="add-${k}" min="1" max="200" step="0.5" inputmode="decimal" placeholder="Other weight" aria-label="Add another ${e.name.toLowerCase()} weight in ${bu}"><span class="unit">${bu}</span><button class="btn ghost small" id="addb-${k}">Add</button></div>
-      ${e.pair?`<label class="pairrow"><input type="checkbox" id="pair-${k}" ${st.pair?'checked':''}> I have matching pairs (unlocks double ${k==='kb'?'bell':'club'} moves)</label>`:''}`;
+      ${e.pair?`<label class="pairrow"><input type="checkbox" id="pair-${k}" ${st.pair?'checked':''}> I have matching pairs (unlocks double ${k==='kb'?'bell':'club'} moves)</label>`:''}
+      ${own.length?`<div class="adjbox"><div class="unit">Adjustable ${EQWORD[k]}s</div>${(st.adj||[]).map((a,ai)=>`<div class="adjit"><div class="adjhd"><b>${esc(EQ[k].name)} ${(st.adj.length>1?ai+1:'')}</b>
+          <div class="seg" role="group" aria-label="How fast it changes"><button type="button" data-aq="${ai}:quick" aria-pressed="${a.speed==='quick'}">Quick change</button><button type="button" data-aq="${ai}:slow" aria-pressed="${a.speed!=='quick'}">Slow change</button></div>
+          <button type="button" class="link" data-ax="${ai}">Remove</button></div>
+          <p class="hint">${a.speed==='quick'?'A pin, dial or click: a few seconds to change.':'Screws, plates or collars: a minute or more to change.'} Tap the weights it can be set to.</p>
+          <div class="weights">${own.map(p=>`<button type="button" class="chip" data-aw="${ai}:${p.key}" aria-pressed="${(a.w||[]).includes(p.key)}">${p.v}<i>${p.u}</i></button>`).join('')}</div></div>`).join('')}
+        <button type="button" class="btn ghost small" data-aa="1">+ Add an adjustable ${EQWORD[k]}</button>
+        <p class="hint">Weights you don't tap on an adjustable one count as fixed ${EQWORD[k]}s. Workouts set slow-change gear once per section (or once per superset pair) and guided mode pauses for every change.</p></div>`:''}`;
     r.appendChild(div);
     div.querySelector(`#on-${k}`).onchange=ev=>{st.on=ev.target.checked;save();renderRack()};
     list.forEach((p,j)=>{div.querySelector(`#w-${k}-${j}`).onclick=()=>{const i=st.w.indexOf(p.key);i<0?st.w.push(p.key):st.w.splice(i,1);sortRack(st);save();renderRack()}});
@@ -1211,6 +1219,12 @@ function renderRack(){
     div.querySelector(`#addb-${k}`).onclick=addIt;
     div.querySelector(`#add-${k}`).onkeydown=ev=>{if(ev.key==='Enter')addIt()};
     if(e.pair)div.querySelector(`#pair-${k}`).onchange=ev=>{st.pair=ev.target.checked;save()};
+    const adjSave=()=>{save();renderRack();try{render()}catch(e){}};
+    div.querySelectorAll('[data-aa]').forEach(b=>b.onclick=()=>{st.adj=st.adj||[];st.adj.push({id:'a'+Date.now().toString(36)+st.adj.length,speed:'slow',w:[]});adjSave()});
+    div.querySelectorAll('[data-ax]').forEach(b=>b.onclick=()=>{st.adj.splice(+b.dataset.ax,1);adjSave()});
+    div.querySelectorAll('[data-aq]').forEach(b=>b.onclick=()=>{const[i,v]=b.dataset.aq.split(':');st.adj[+i].speed=v;adjSave()});
+    div.querySelectorAll('[data-aw]').forEach(b=>b.onclick=()=>{const[i,key]=b.dataset.aw.split(':'),a=st.adj[+i];a.w=a.w||[];const j=a.w.indexOf(key);
+      if(j<0){st.adj.forEach(x=>{x.w=(x.w||[]).filter(y=>y!==key)});a.w.push(key)}else a.w.splice(j,1);adjSave()});
   }
   const sl=document.createElement('label');sl.className='pairrow rk-listed';
   sl.innerHTML=`<input type="checkbox" id="showListed" ${showListed()?'checked':''}> When a weight is converted, also show it as listed on the bell, mace or club (e.g. 15.9 kg (35 lb))`;
@@ -1300,6 +1314,76 @@ const noProgNow=()=>!progOn()||!!(BUILD_CTX&&BUILD_CTX.noProg);
 function deloadActive(){if(BUILD_CTX&&BUILD_CTX.light)return progOn();const c=Store.state.coach;return !!(progOn()&&c&&c.deload&&c.deload===mondayOf(todayStr()))}
 function rackList(eq){const u=unitOf(eq);return (effEq(eq).w||[]).map(x=>wP(x,u)).filter(Boolean).sort((a,b)=>a.kg-b.kg)}
 const midItem=l=>l[Math.min(l.length-1,Math.floor((l.length-1)/2))];
+/* Adjustable gear: S.eq[k].adj = [{id, speed:'quick'|'slow', w:[rack keys]}]. A weight on an adjustable item is reached by
+   changing that item; every other owned weight is a fixed implement. fitAdjust() shapes workouts around this and
+   adjSteps() adds the weight changes to guided mode. */
+const ADJ_QUICK=15,ADJ_ONE={Tabata:1,AMRAP:1,Ladder:1,'Deck of cards':1};
+function adjItems(eq){const st=S.eq[eq];if(!st||!Array.isArray(st.adj)||!st.adj.length)return [];const own=new Set(effEq(eq).w||[]);
+  return st.adj.map(a=>({id:a.id,speed:a.speed==='quick'?'quick':'slow',w:(a.w||[]).filter(k=>own.has(k))})).filter(a=>a.w.length)}
+function adjFor(eq,wt){if(!eq||!wt)return null;const p=wP(wt,unitOf(eq));if(!p)return null;return adjItems(eq).find(a=>a.w.includes(p.key))||null}
+function adjName(eq,a){const all=(S.eq[eq].adj||[]).filter(x=>(x.w||[]).length),n=all.findIndex(x=>x.id===a.id);return 'adjustable '+EQWORD[eq]+(all.length>1?' '+(n+1):'')}
+const adjKey=(m)=>{const p=wP(m.wt,unitOf(m.eq));return p?p.key:''};
+function adjSet(m,p){const pair=/^2 ×/.test(String(m.wt));if(adjKey(m)===p.key)return;m.adjFrom=m.wt;m.wt=(pair?'2 × ':'')+wLab(p);delete m.up;delete m.need}
+function adjPairs(b){
+  // strength supersets: pair the moves so each pair needs one setting of a slow adjustable, then run lighter settings first
+  const ms=b.moves;if(ms.length!==4)return;
+  const cost=(x,y)=>{const a=adjFor(x.eq,x.wt),c=adjFor(y.eq,y.wt);if(!a||!c||a.id!==c.id||x.eq!==y.eq||adjKey(x)===adjKey(y))return 0;return a.speed==='slow'?10:1};
+  const opts=[[0,1,2,3],[0,2,1,3],[0,3,1,2]];let best=opts[0],bc=1e9;
+  opts.forEach(o=>{const c=cost(ms[o[0]],ms[o[1]])+cost(ms[o[2]],ms[o[3]]);if(c<bc){bc=c;best=o}});
+  let pr=[[ms[best[0]],ms[best[1]]],[ms[best[2]],ms[best[3]]]];
+  const lo=q=>{const k=q.map(m=>adjFor(m.eq,m.wt)?wP(m.wt,unitOf(m.eq)).kg:null).filter(x=>x!=null);return k.length?Math.min(...k):null};
+  const a0=pr[0].map(m=>adjFor(m.eq,m.wt)).find(Boolean),a1=pr[1].map(m=>adjFor(m.eq,m.wt)).find(Boolean);
+  if(a0&&a1&&a0.id===a1.id&&lo(pr[1])<lo(pr[0]))pr=[pr[1],pr[0]];
+  b.moves=[...pr[0],...pr[1]];b.moves.forEach((m,i)=>{m.tag=(i<2?'A':'B')+(i%2+1)});
+}
+function fitAdjust(w){
+  if(!w||!w.blocks)return w;
+  w.blocks.forEach(b=>{delete b.adjNote;if(!b.moves||b.flow||['Warm-up','Cool-down','Practice'].includes(b.kind))return;
+    if(!b.moves.some(m=>adjFor(m.eq,m.wt)))return;
+    if(b.kind==='Strength'){adjPairs(b);
+      for(let i=0;i+1<b.moves.length;i+=2){const x=b.moves[i],y=b.moves[i+1],a=adjFor(x.eq,x.wt),c=adjFor(y.eq,y.wt);
+        if(a&&c&&a.id===c.id&&x.eq===y.eq&&a.speed==='slow'&&adjKey(x)!==adjKey(y)){const px=wP(x.wt,unitOf(x.eq)),py=wP(y.wt,unitOf(y.eq)),p=px.kg<=py.kg?px:py;adjSet(x,p);adjSet(y,p)}}}
+    if(b.kind==='Intervals'||b.kind==='EMOM'){const kg=m=>adjFor(m.eq,m.wt)?wP(m.wt,unitOf(m.eq)).kg:-1;b.moves=b.moves.map((m,i)=>[m,i]).sort((x,y)=>kg(x[0])-kg(y[0])||x[1]-y[1]).map(x=>x[0])}
+    const by={};b.moves.forEach(m=>{const a=adjFor(m.eq,m.wt);if(!a)return;const k=m.eq+'|'+a.id;(by[k]=by[k]||{a,eq:m.eq,ms:[]}).ms.push(m)});
+    const notes=[];
+    Object.values(by).forEach(g=>{const nm=adjName(g.eq,g.a),ps=g.ms.map(m=>wP(m.wt,unitOf(m.eq))),keys=[...new Set(ps.map(p=>p.key))];
+      if(keys.length<2){if(b.kind==='Strength'||g.a.speed==='quick')return;notes.push(`Your ${nm} stays at ${wTxt(ps[0].key,g.eq)} for this whole section.`);return}
+      const one=g.a.speed==='slow'?b.kind!=='Strength':!!ADJ_ONE[b.kind];
+      if(one){const lo=ps.reduce((a,p)=>p.kg<a.kg?p:a,ps[0]);g.ms.forEach(m=>adjSet(m,lo));
+        notes.push(`Your ${nm} is ${g.a.speed==='slow'?'slow':'too slow mid-section'} to change, so it is set once: ${wTxt(lo.key,g.eq)} for every move it is used for here.`)}
+      else if(g.a.speed==='quick')notes.push(`Quick change: switch your ${nm} between moves (${ps.filter((p,i,a)=>a.findIndex(q=>q.key===p.key)===i).sort((x,y)=>x.kg-y.kg).map(p=>wTxt(p.key,g.eq)).join(', ')}). Guided mode gives you the time.`);
+      else notes.push(`Each pair uses one setting of your ${nm}. Between pairs, guided mode pauses so you can change it and waits for you to tap Done.`)});
+    if(notes.length)b.adjNote=notes.join(' ');
+  });
+  return w;
+}
+// guided mode: insert or fold in a weight change wherever an adjustable item needs a new setting
+function adjSteps(steps){
+  if(!Object.keys(EQ).some(k=>adjItems(k).length))return steps;
+  const cur={},out=[];
+  const uses=s=>{if(s.rest||s.prep)return [];const ms=s.list?s.list:[{eq:s.eq,wt:s.wt}],r=[],seen=new Set();
+    ms.forEach(m=>{const a=adjFor(m.eq,m.wt);if(!a)return;const k=m.eq+'|'+a.id;if(seen.has(k))return;seen.add(k);r.push({a,k,eq:m.eq,key:wP(m.wt,unitOf(m.eq)).key})});return r};
+  steps.forEach(s=>{
+    const need=uses(s).filter(u=>cur[u.k]!==u.key);
+    if(need.length){
+      const slow=need.some(u=>u.a.speed==='slow'),first=need.every(u=>cur[u.k]==null);
+      const txt='Set '+listJoin(need.map(u=>`your ${adjName(u.eq,u.a)} to ${wTxt(u.key,u.eq)}`));
+      const to=need.map(u=>({eq:u.eq,wt:u.key})),prev=out[out.length-1],pr=prev&&(prev.rest||prev.prep)&&!prev.adjust;
+      if(slow){
+        if(pr){prev.secs=null;prev.adjust=true;prev.adjTo=to;prev.adjTxt=txt+'.';if(!prev.prep){prev.name='Change weight';prev.detail=`${txt}. Rest while you do it, then tap Done. Next: ${s.name}.`}else prev.detail=(prev.detail||'')+` ${txt}, then tap Done.`}
+        else out.push({bi:s.bi,block:s.block,kind:s.kind,name:first?'Set your weight':'Change weight',detail:`${txt}. Tap Done when it is set. Next: ${s.name}.`,rest:true,adjust:true,adjTo:to,adjTxt:txt+'.',secs:null});
+      }else{
+        if(pr&&(prev.secs==null||prev.secs>=10)){prev.detail=(prev.detail?prev.detail+' · ':'')+txt+'.';prev.adjTo=to;prev.adjTxt=txt+'.'}
+        else if(s.kind==='EMOM'&&prev&&prev.bi===s.bi){s.detail=`${txt} first · ${s.detail||''}`}
+        else out.push({bi:s.bi,block:s.block,kind:s.kind,name:'Quick weight change',detail:`${txt}. Next: ${s.name}.`,rest:true,adjust:true,adjTo:to,adjTxt:txt+'.',secs:ADJ_QUICK});
+      }
+      need.forEach(u=>cur[u.k]=u.key);
+    }
+    out.push(s);
+  });
+  return out;
+}
+const adjTag=m=>{if(!m||!m.eq||!m.wt)return '';const a=adjFor(m.eq,m.wt);return a?`<span class="upt adj">⚙ Adjustable · ${a.speed==='slow'?'slow':'quick'} change</span>`:''};
 function moveHist(name,eq,dbl){
   const out=[],u=unitOf(eq);
   Store.logs.slice().sort((a,b)=>a.ts-b.ts).forEach(l=>(l.moves||[]).forEach(m=>{
@@ -1596,7 +1680,8 @@ function buildWorkout(type,eqs,minutes,opts){
   return{id:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),type,eqs,minutes,blocks,opts,avoided:ctx.avoided?rRest:[],built:Date.now(),deload:!opts.noProg&&(opts.light||(opts.around&&opts.around.light)?progOn():deloadActive())};
 }
 
-{const _bw=buildWorkout;buildWorkout=function(){const w=_bw.apply(this,arguments);try{noteGear(w)}catch(e){}return w}}
+{const _bw=buildWorkout;buildWorkout=function(){const w=_bw.apply(this,arguments);try{fitAdjust(w)}catch(e){}try{noteGear(w)}catch(e){}return w}}
+{const _rw=refreshWorkout;refreshWorkout=function(){const w=_rw.apply(this,arguments);try{fitAdjust(w)}catch(e){}return w}}
 let current=null,selDay=0,selWk=0;
 function generate(jump){
   const eqs=activeEq();const m=$('msg');
@@ -1699,7 +1784,7 @@ function blockHTML(b,bi,wi){
       <div class="go">${hasFlowAnim(b.flow)?flowDemoBtn(b.flow):b.flow.video?`<a class="demo vid" href="https://www.youtube.com/watch?v=${b.flow.video}" target="_blank" rel="noopener">▶ Watch a similar sequence</a>`:''}<button class="link" data-sf="${wi}:${bi}">⇄ Different flow</button></div>`;
   }else{
     body=`<ol class="moves">${b.moves.map((m,mi)=>{const lt=m.eq?lastTxt(m.name,m.eq):'';
-      return `<li class="${m.eq?'has-eq eq-'+m.eq:''}">${m.eq?`<div class="wline">${eqBanner(m.eq,m.wt,{light:!m.wt})}${b.kind==='Warm-up'||b.kind==='Cool-down'?'':wtAdj(wi,bi,mi,m.eq,m)+handSeg('wh',wi+':'+bi+':'+mi,m.name,m.eq)}</div>`:''}<span class="mv-name">${m.tag?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}${handsTag(m)}</span><span class="mv-dose">${esc(m.dose)}</span>${m.eq?upTag(m,m.eq):''}${lt?`<span class="last">${esc(lt)}</span>`:''}<span class="mv-cue">${m.cue?esc(m.cue)+' ':''}${demo(m.name,m.eq)}${SWAPPABLE(b)&&m.eq?` <button class="link swap" data-sw="${wi}:${bi}:${mi}" aria-label="Swap ${esc(m.name)} for a similar move">⇄ Swap</button>`:''}</span></li>`}).join('')}</ol>`;
+      return `<li class="${m.eq?'has-eq eq-'+m.eq:''}">${m.eq?`<div class="wline">${eqBanner(m.eq,m.wt,{light:!m.wt})}${b.kind==='Warm-up'||b.kind==='Cool-down'?'':wtAdj(wi,bi,mi,m.eq,m)+handSeg('wh',wi+':'+bi+':'+mi,m.name,m.eq)}</div>`:''}<span class="mv-name">${m.tag?`<span class="tag">${esc(m.tag)}</span> `:''}${esc(m.name)}${handsTag(m)}</span><span class="mv-dose">${esc(m.dose)}</span>${m.eq?upTag(m,m.eq)+adjTag(m):''}${lt?`<span class="last">${esc(lt)}</span>`:''}<span class="mv-cue">${m.cue?esc(m.cue)+' ':''}${demo(m.name,m.eq)}${SWAPPABLE(b)&&m.eq?` <button class="link swap" data-sw="${wi}:${bi}:${mi}" aria-label="Swap ${esc(m.name)} for a similar move">⇄ Swap</button>`:''}</span></li>`}).join('')}</ol>`;
   }
   const prep=b.kind==='Warm-up'||b.kind==='Cool-down';
   const peek=b.flow?b.flow.steps.slice(0,3).join(' → ')+(b.flow.steps.length>3?' …':''):(b.moves||[]).map(m=>m.name).slice(0,3).join(', ')+((b.moves||[]).length>3?` +${b.moves.length-3} more`:'');
@@ -1708,7 +1793,7 @@ function blockHTML(b,bi,wi){
     <summary class="block-head"><span class="bh-t"><span class="chev" aria-hidden="true"></span><h3>${esc(b.title)}<small>${b.title===b.kind?'':b.kind+' · '}${b.min} min</small></h3></span>
       <span class="bh-a">${prep?`<button class="link" data-skip="${wi}:${bi}" type="button">Skip</button>`:''}<button class="btn ghost small" data-t="${wi}:${bi}" type="button">Start here</button></span>
       <span class="bh-peek">${count} · ${esc(peek)}</span></summary>
-    <div class="block-body"><p class="fmt">${esc(b.fmt)}</p>${body}</div></details>`;
+    <div class="block-body"><p class="fmt">${esc(b.fmt)}</p>${b.adjNote?`<p class="fmt adjnote">⚙ ${esc(b.adjNote)}</p>`:''}${body}</div></details>`;
 }
 // collapsed state is remembered per kind of block (Warm-up, Flow, Strength ...)
 const foldOpen=kind=>!((S.fold||{})[kind]);
@@ -1813,7 +1898,7 @@ function render(){
     if(current.single){current.single=nw;keepBuilt()}else current.week[selDay]=nw;
     render();
   };
-  out.querySelectorAll('[data-sw]').forEach(b=>b.onclick=()=>{const[wi,bi,mi]=b.dataset.sw.split(':').map(Number);if(swapMove(wkAt(wi),bi,mi)){if(current.single)keepBuilt();render()}else{b.textContent='No other options';b.disabled=true}});
+  out.querySelectorAll('[data-sw]').forEach(b=>b.onclick=()=>{const[wi,bi,mi]=b.dataset.sw.split(':').map(Number);if(swapMove(wkAt(wi),bi,mi)){try{fitAdjust(wkAt(wi))}catch(e){}if(current.single)keepBuilt();render()}else{b.textContent='No other options';b.disabled=true}});
   out.querySelectorAll('[data-sf]').forEach(b=>b.onclick=()=>{const[wi,bi]=b.dataset.sf.split(':').map(Number);const w=wkAt(wi),old=w.blocks[bi];
     const nb=flowBlock([old.flow.eq],old.min,new Set([old.flow.name]));if(nb&&nb.flow.name!==old.flow.name){w.blocks[bi]=nb;if(current.single)keepBuilt();render()}else{b.textContent='No other flows at your level';b.disabled=true}});
   const after=()=>{if(current.single)keepBuilt();render()};
@@ -1952,6 +2037,7 @@ function guidedSteps(w){
       steps.push(Object.assign({},base,{name:ph.name,detail:`${ph.label}${m.dose&&!/ s$/.test(m.dose)?' · '+m.dose:''}${half?' · switch lead side halfway':emom?' · switch lead side halfway through the reps':''}`,wt:m.wt,eq:m.eq,cue:m.cue,secs:ph.secs,half,one,lastKey:m.eq?[m.name,m.eq]:null}));
     });
   });
+  const st2=adjSteps(steps);steps.length=0;steps.push(...st2);
   // number the working sets of each section and of each move, for the "sets done / left" line in guided mode
   const work=x=>!x.rest&&!x.prep&&!x.nocount,sec={},mv={};
   steps.forEach(x=>{if(!work(x))return;sec[x.bi]=(sec[x.bi]||0)+1;x.secI=sec[x.bi];const k=x.bi+'|'+x.name;mv[k]=(mv[k]||0)+1;x.mvI=mv[k]});
@@ -2023,8 +2109,9 @@ function announceStep(){
   if(!G||!voiceOn())return;
   if(G.done){say('Workout complete. Nice work. Log it so your progress stays up to date.',{interrupt:true});return}
   const s=G.steps[G.i];let t='';
-  if(s.prep){const b=G.w.blocks[s.bi],gear=prepGear(b).map(g=>EQ[g.eq].name.toLowerCase()+(g.wt?' '+wTxt(g.wt,g.eq,{plain:1}):''));t=`Next section, ${b.title}. ${gear.length?'Grab your '+listJoin(gear)+'. ':''}Starting in ${s.secs} seconds.`}
-  else if(s.rest){const nx=nextWorkStep(G.i);t=`Rest${s.secs?' '+s.secs+' seconds':''}.${nx?' Next up, '+nx.name+'.':''}`}
+  if(s.prep){const b=G.w.blocks[s.bi],gear=prepGear(b).map(g=>EQ[g.eq].name.toLowerCase()+(g.wt?' '+wTxt(g.wt,g.eq,{plain:1}):''));t=`Next section, ${b.title}. ${gear.length?'Grab your '+listJoin(gear)+'. ':''}${s.adjTxt?s.adjTxt+' ':''}${s.secs?'Starting in '+s.secs+' seconds.':'Tap done when you are ready.'}`}
+  else if(s.adjust){const nx=nextWorkStep(G.i);t=`${s.name}. ${s.adjTxt||''} ${s.secs?'You have '+s.secs+' seconds.':'Tap done when it is set.'}${nx?' Next up, '+nx.name+'.':''}`}
+  else if(s.rest){const nx=nextWorkStep(G.i);t=`Rest${s.secs?' '+s.secs+' seconds':''}.${s.adjTxt?' '+s.adjTxt:''}${nx?' Next up, '+nx.name+'.':''}`}
   else if(s.list){t=`${s.name}. ${Math.round((s.secs||0)/60)} minutes. ${s.counter==='deck'?'Draw a card to start.':s.counter==='rounds'?'Tap plus one after each round.':s.counter==='rungs'?'Start at '+s.rungs[0]+' reps.':''} Go.`}
   else{
     const parts=[s.name];const hd=handsOf({name:s.name,eq:s.eq});if(hd&&!s.flow)parts.push(hd);
@@ -2117,10 +2204,11 @@ function gDraw(){
   const s=G.steps[G.i];
   $('gBack').hidden=false;$('gPause').hidden=!s.secs;$('gPause').textContent=G.run?'Pause':'Resume';$('gEnd').textContent=G.armed?'Tap to end':'End';
   $('gBlock').textContent=s.block;$('gCount').textContent=`Step ${G.i+1} of ${n}`;$('gSets').innerHTML=gSetsHTML();
-  $('gPhase').textContent=s.prep?'Next section':s.rest?'Rest':(s.tag?s.tag+' · ':'')+s.kind;
+  $('gPhase').textContent=s.adjust&&!s.prep?'Change weight':s.prep?'Next section':s.rest?'Rest':(s.tag?s.tag+' · ':'')+s.kind;
   $('gName').textContent=s.name;const hd=!s.rest&&!s.flow&&!s.list?handsOf({name:s.name,eq:s.eq}):'';$('gDetail').textContent=(hd?hd+' · ':'')+(s.detail||'');
   const gmi=(!s.rest&&s.eq&&!s.list)?gStepMi(s):null;
   $('gWt').innerHTML=(!s.rest&&s.eq&&!s.list)?eqBanner(s.eq,s.wt,{big:true,flow:!!s.flow,light:!s.wt})+(gmi!=null?gMoveCtl(s.bi,gmi):''):'';
+  if(s.adjust&&!s.prep&&s.adjTo)$('gWt').innerHTML=s.adjTo.map(g=>eqBanner(g.eq,g.wt,{big:true})).join('');
   $('gLast').textContent=s.lastKey?lastTxt(s.lastKey[0],s.lastKey[1]):'';
   $('gCue').textContent=s.cue||'';
   $('gDemo').innerHTML=(!s.rest&&s.eq&&!s.list)?(s.flow&&hasFlowAnim(s.flow)?flowDemoBtn(s.flow):demo(s.demoName||(s.flow?s.flow.steps[0]:s.name),s.eq)):'';
