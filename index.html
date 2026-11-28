@@ -591,6 +591,25 @@ textarea{min-height:70px;resize:vertical}
 .link.swap{margin-left:4px}
 .startbtn{width:100%;font-size:1.05rem;padding:14px}
 .tip.good{border-left-color:var(--good)}
+.bsec{border:1px solid var(--line);border-radius:12px;background:var(--surface);margin:0 0 10px}
+.bsec>.bs-h{list-style:none;cursor:pointer;display:flex;align-items:baseline;gap:10px;padding:13px 14px;flex-wrap:wrap}
+.bsec>.bs-h::-webkit-details-marker{display:none}
+.bsec>.bs-h::after{content:'▾';margin-left:auto;color:var(--muted)}
+.bsec[open]>.bs-h::after{content:'▴'}
+.bs-t{font-family:var(--display);text-transform:uppercase;font-size:1.15rem;letter-spacing:.02em}
+.bs-s{color:var(--muted);font-size:.86rem;flex:1 1 160px;min-width:0}
+.bsec>section,.bsec>div{padding:0 14px 14px}
+.bsec[open]>.bs-h{border-bottom:1px solid var(--line);margin-bottom:12px}
+.wkind{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-bottom:4px}
+.wkind b{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;border-radius:999px;padding:3px 9px;background:var(--accent-soft);color:var(--accent)}
+.wkind.wk-program b{background:var(--eq-club-soft);color:var(--eq-club-ink)}
+.wkind.wk-plan b{background:var(--eq-mace-soft);color:var(--eq-mace-ink)}
+.wkind.wk-practice b{background:var(--eq-kb-soft);color:var(--eq-kb-ink)}
+.wkind span{color:var(--muted);font-size:.9rem}
+.pickeq{display:flex;flex-wrap:wrap;gap:6px}
+.pkchip{font:inherit;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:6px 12px;background:var(--surface);color:var(--muted);cursor:pointer}
+.pkchip svg{width:16px;height:16px}
+.pkchip[aria-pressed="true"]{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
 .limits,.onb-goals{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px}
 .limchip{font:inherit;text-align:left;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);padding:8px 10px;cursor:pointer;display:grid;gap:2px}
 .limchip small{color:var(--muted);font-size:.78rem}
@@ -725,10 +744,9 @@ html.guiding,html.guiding body{overflow:hidden}
 
   <div class="view" id="v-build">
   <p class="tip" id="buildTip" hidden></p>
-  <div id="coachBox" class="cnotes"></div>
-  <section id="recBox" class="recbox" aria-label="Recommended workout"></section>
-  <section class="setupbar" aria-labelledby="eq-h">
-    <h2 id="eq-h">Equipment</h2>
+  <details class="bsec" id="bs-coach" hidden><summary class="bs-h"><span class="bs-t">Coach notes</span><span class="bs-s" id="bsS-coach"></span></summary><div id="coachBox" class="cnotes"></div></details>
+  <details class="bsec" id="bs-rec" hidden><summary class="bs-h"><span class="bs-t">Recommended for today</span><span class="bs-s" id="bsS-rec"></span></summary><section id="recBox" class="recbox" aria-label="Recommended workout"></section></details>
+  <details class="bsec" id="bs-eq"><summary class="bs-h"><span class="bs-t">Equipment</span><span class="bs-s" id="bsS-eq"></span></summary><section class="setupbar" aria-label="Equipment">
     <div class="field"><span>Setup</span><div class="seg setupseg" id="setupSeg" role="group" aria-label="Equipment setup"></div></div>
     <div class="field"><span>Using today</span><div id="todayGear" class="todaygear"></div>
       <div class="tg-foot"><span class="hint" id="todayNote"></span><button class="link" id="todayReset" type="button" hidden>Use the whole setup</button></div></div>
@@ -741,8 +759,8 @@ html.guiding,html.guiding body{overflow:hidden}
     </details>
   </section>
 
-  <section aria-labelledby="set-h">
-    <h2 id="set-h">Session</h2>
+  </details>
+  <details class="bsec" id="bs-set"><summary class="bs-h"><span class="bs-t">Build a workout</span><span class="bs-s" id="bsS-set"></span></summary><section aria-label="Build a workout">
     <div class="settings">
       <div class="field"><span>Experience</span><div class="seg" id="level"></div></div>
       <div class="field"><span>Focus</span><div class="seg" id="goal"></div></div>
@@ -757,6 +775,7 @@ html.guiding,html.guiding body{overflow:hidden}
       <div class="field" id="minField"><span>Time for this workout</span>
         <div class="range"><input type="range" id="minutes" min="10" max="60" step="5" aria-label="Minutes per workout"><output id="minOut"></output></div></div>
       <div class="field"><span>Build</span><div class="seg" id="mode"></div></div>
+      <div class="field" id="pickField"><span>Equipment for this workout</span><div class="pickeq" id="pickEq" role="group" aria-label="Equipment for this workout"></div><span class="hint" id="pickHint">Just for single workouts today. Your setup stays the same.</span></div>
       <div class="field" id="daysField"><span>Time you have each day</span><span class="hint">Pick minutes for each day you can train. Leave the rest as Rest.</span><div class="daylist" id="days"></div><span class="hint" id="daySum"></span></div>
       <div class="field" id="lenField"><span>Plan length</span><div class="seg" id="planLen"></div><span class="hint">Longer plans repeat your week so the moves get familiar, step up as you log, and end with a lighter week.</span></div>
       <div class="go">
@@ -768,7 +787,8 @@ html.guiding,html.guiding body{overflow:hidden}
     </div>
   </section>
 
-  <section id="out" aria-live="polite"></section>
+  </details>
+  <details class="bsec" id="bs-out" hidden><summary class="bs-h"><span class="bs-t">Your workout</span><span class="bs-s" id="bsS-out"></span></summary><section id="out" aria-live="polite"></section></details>
 
   <details class="lib" id="lib">
     <summary>Movement library</summary>
@@ -1205,8 +1225,13 @@ function renderSetupBar(){
   box.querySelectorAll('[data-tw]').forEach(b=>b.onclick=()=>{const tw=editTweak(),[k,w]=b.dataset.tw.split(':');const a=tw.offW[k]=tw.offW[k]||[];const i=a.indexOf(w);
     if(i<0){if(S.eq[k].w.filter(x=>!a.includes(x)).length<=1){tw.off.push(k)}else a.push(w)}else a.splice(i,1);commitTweak()});
 }
+function renderPick(){const box=$('pickEq');if(!box)return;const t=todayTweak()||{off:[]},ks=Object.keys(EQ).filter(k=>S.eq[k].on&&S.eq[k].w.length);
+  if(!ks.length){box.innerHTML='<span class="hint">Add equipment to your setup first.</span>';return}
+  box.innerHTML=ks.map(k=>{const on=!(t.off||[]).includes(k);return `<button type="button" class="pkchip" data-pk="${k}" aria-pressed="${on}">${EQ_ICON[k]}<span>${EQ[k].name}</span></button>`}).join('');
+  box.querySelectorAll('[data-pk]').forEach(b=>b.onclick=()=>{const k=b.dataset.pk,tw=editTweak(),i=tw.off.indexOf(k);
+    if(i<0){if(ks.filter(x=>!tw.off.includes(x)).length<=1)return;tw.off.push(k)}else tw.off.splice(i,1);commitTweak()})}
 function editTweak(){let t=todayTweak();if(!t){t=S.today={date:new Date().toLocaleDateString('en-CA'),setup:S.active,off:[],offW:{}}}t.off=t.off||[];t.offW=t.offW||{};return t}
-function commitTweak(){const t=S.today;if(t){t.off=t.off.filter(k=>S.eq[k]);for(const k in t.offW){t.offW[k]=t.offW[k].filter(w=>S.eq[k].w.includes(w))}}save();renderSetupBar()}
+function commitTweak(){const t=S.today;if(t){t.off=t.off.filter(k=>S.eq[k]);for(const k in t.offW){t.offW[k]=t.offW[k].filter(w=>S.eq[k].w.includes(w))}}save();renderSetupBar();renderPick()}
 let suCount=0;
 function newSetup(){
   const base=activeSetup();let n=S.setups.length+1,name='Setup '+n;while(S.setups.some(x=>x.name===name))name='Setup '+(++n);
@@ -1237,7 +1262,7 @@ function renderSettings(){
   if(S.prep==null)S.prep=30;
   seg('prepSeg',[[0,'Off'],[15,'15 s'],[30,'30 s'],[45,'45 s'],[60,'60 s']],'prep');
   $('progSet').checked=progOn();$('progSet').onchange=e=>{S.prog=e.target.checked;save();renderCoach();renderRec(true)};
-  const modeUI=()=>{const wk=S.mode==='week';if($('todayNote'))renderSetupBar();$('daysField').hidden=!wk;$('lenField').hidden=!wk;$('minField').hidden=wk;$('gen').textContent=wk?'Build plan':'Build workout'};
+  const modeUI=()=>{const wk=S.mode==='week';if($('pickField'))$('pickField').hidden=wk;renderPick();if($('todayNote'))renderSetupBar();$('daysField').hidden=!wk;$('lenField').hidden=!wk;$('minField').hidden=wk;$('gen').textContent=wk?'Build plan':'Build workout'};
   if(![1,4,6].includes(S.planWeeks))S.planWeeks=4;
   seg('planLen',[[1,'1 week'],[4,'4 weeks'],[6,'6 weeks']],'planWeeks');
   seg('mode',[['single','Single workout'],['week','Weekly plan']],'mode',modeUI);
@@ -1582,7 +1607,7 @@ function generate(jump){
   render();
   if(jump===true){
     $('gearBox').open=false;try{localStorage.setItem('ironflow-setup','1')}catch(e){}
-    const out=$('out');try{out.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})}catch(e){}
+    showOut(true)
   }
 }
 
@@ -1675,8 +1700,19 @@ function avoidedNote(w){
   if(!w.avoided||!w.avoided.length)return '';
   return `<p class="tip good"><b>Built around your recovery:</b> went easy on your ${esc(w.avoided.map(g=>GROUPS[g].toLowerCase()).join(', '))}, which still need rest.</p>`;
 }
-function workoutHTML(w,wi,heading){
-  return `<div class="sheet"><div class="sheet-head"><div><div class="eyebrow">${esc(w.program?w.program.label:(heading||'Your workout'))}</div><h2>${GOALS[w.type]} · ${w.minutes} min</h2></div>
+/* what a workout on screen is: practice, weekly plan day, program session or a single build, and when it is scheduled
+   ("Wednesday, week 1 day 3"). Shown on the sheet and in the collapsed Workout section's label. */
+const WEEKFULL={Mon:'Monday',Tue:'Tuesday',Wed:'Wednesday',Thu:'Thursday',Fri:'Friday',Sat:'Saturday',Sun:'Sunday'};
+function wKind(w){if(!w)return null;
+  if(w.practice)return{k:'practice',t:'Practice',name:w.label||'Skill practice',when:''};
+  const soon=(src,match)=>{const u=upcoming(8).find(x=>x.src===src&&match(x));return u&&(u.date===todayStr()||u.date===addDays(todayStr(),1))?' ('+dayWord(u.date)+')':''};
+  if(w.program){const pr=PROGRAMS.find(x=>x.id===w.program.id),m=/w(\d+)d(\d+)/.exec(w.program.key||'')||[],wk=+m[1],d=+m[2],st=progState(w.program.id);
+    const day=st&&st.days&&st.days[d-1];return{k:'program',t:'Program',name:pr?pr.name:w.program.label,when:`${day?WEEKFULL[day]+soon('prog',x=>x.id===w.program.id&&x.pw===wk&&x.pd===d)+', ':''}week ${wk} day ${d}`}}
+  if(w.weekRef){const p=planNorm(),wk=w.weekRef.wk||1,days=p&&p.plan[wk-1]?p.plan[wk-1].days:[],i=days.findIndex(x=>x.day===w.weekRef.day),many=p&&p.plan.length>1;
+    return{k:'plan',t:'Weekly plan',name:p?(many?p.plan.length+'-week plan':'One-week plan'):'Weekly plan',when:`${WEEKFULL[w.weekRef.day]||w.weekRef.day}${soon('plan',x=>x.k===wk-1&&x.i===i)}, ${many?'week '+wk+' ':''}day ${i+1}`}}
+  return{k:'single',t:'Single workout',name:'Built '+ago(w.built||Date.now()),when:''}}
+function workoutHTML(w,wi,heading){const K=wKind(w);
+  return `<div class="sheet"><div class="sheet-head"><div><div class="wkind wk-${K.k}"><b>${K.t}</b><span>${esc(K.name)}${K.when?' · '+esc(K.when):''}</span></div><h2>${GOALS[w.type]} · ${w.minutes} min</h2></div>
     <div class="tags"><span class="tag">${esc(activeSetup().name)}</span><span class="tag">${LEVELS[S.level-1]}</span>${w.eqs.map(k=>`<span class="tag tag-eq eq-${k}">${EQ_ICON[k]}${EQ[k].name}</span>`).join('')}</div></div>
     <button class="btn startbtn" data-start="${wi}">▶ Start workout</button>
     ${coachHTML(w,wi)}${progOn()&&!(w.opts&&w.opts.noProg)?gearHTML(w,wi):''}${aroundNote(w)}${avoidedNote(w)}${recoveryTip(w)}
@@ -2446,7 +2482,7 @@ function openProgramDay(p,w,d){
   wk.program={id:p.id,key:progKey(w,d),label:`${p.name} · Week ${w} · Day ${d}`};
   const old=savedList().find(x=>x.program&&x.program.id===p.id&&x.program.key===wk.program.key);
   if(old){current={single:old,sid:old.id}}else{current={single:wk};keepBuilt()}go('build');render();
-  try{$('out').scrollIntoView({block:'start'})}catch(e){}
+  showOut()
 }
 function markProgDay(id,key,val){
   const st=progState(id);if(!st)return;
@@ -3143,7 +3179,7 @@ function renderRec(force){
   box.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{const k=b.dataset.r;
     const show=()=>{const had=savedList().find(x=>x.id===r.w.id);current=had?{single:had,sid:had.id}:{single:r.w};keepBuilt();render()};
     if(k==='start'){show();startGuided(r.w,0)}
-    if(k==='see'){show();try{$('out').scrollIntoView({block:'start'})}catch(e){}}
+    if(k==='see'){show();showOut()}
     if(k==='tweak'){S.goal=r.type;if(r.format)S.format=r.format;S.minutes=r.minutes;S.mode='single';save();renderSettings();show();
       const m=$('msg');m.textContent=`The settings below now match the recommendation${r.eqs.length<activeEq().length?` (it featured ${eqLabel(r.eqs)}; use "Using today" above to match)`:''}. Change anything, then tap Build workout.`;m.hidden=false;
       try{$('set-h').scrollIntoView({block:'start'})}catch(e){}}
@@ -3397,8 +3433,21 @@ function finishedWorkout(wid,wref){
   const r=readResume();if(r&&wid&&r.w.id===wid)clearResume();
   Store.saveState();renderContinue();if(current&&current.week)render();
 }
-function openWeek(k,i){const p=planNorm();if(!p)return;current={week:p.plan[k].days};selWk=k;selDay=i;go('build');render();try{$('out').scrollIntoView({block:'start'})}catch(e){}}
-function openBuilt(id){const w=id?savedList().find(x=>x.id===id):savedList()[0];if(!w)return;current={single:w,sid:w.id};go('build');render();try{$('out').scrollIntoView({block:'start'})}catch(e){}}
+function showOut(smooth){const d=$('bs-out');if(d){d.hidden=!current;d.open=true}
+  try{(d||$('out')).scrollIntoView({behavior:smooth&&!matchMedia('(prefers-reduced-motion: reduce)').matches?'smooth':'auto',block:'start'})}catch(e){}}
+// keep each Build section's one-line label current, and hide empty ones
+function bsSync(){const set=(id,t)=>{const e=$('bsS-'+id);if(e&&e.textContent!==t)e.textContent=t},hide=(id,h)=>{const d=$('bs-'+id);if(d&&d.hidden!==h)d.hidden=h};
+  const cn=$('coachBox')?$('coachBox').children.length:0;hide('coach',!cn);set('coach',cn?cn+' new':'');
+  const rb=$('recBox'),rt=rb&&rb.querySelector('#rec-title'),due=rb?rb.querySelectorAll('[data-due]').length:0;hide('rec',!rb||!rb.innerHTML.trim());
+  set('rec',[due?due+' scheduled today':'',rt?rt.textContent:''].filter(Boolean).join(' · '));
+  const ae=activeEq();set('eq',activeSetup().name+(ae.length?' · '+ae.map(k=>EQ[k].name).join(', '):' · nothing selected'));
+  set('set',S.mode==='week'?`Weekly plan · ${S.planWeeks||4} week${(S.planWeeks||4)>1?'s':''}`:`Single workout · ${GOALS[S.goal]||''} · ${S.minutes} min`);
+  hide('out',!current);let ot='';
+  if(current){const w=current.single||(current.week&&current.week[selDay]);const K=w&&!w.stub?wKind(w):null;if(K)ot=`${K.t} · ${K.when||K.name} · ${GOALS[w.type]} ${w.minutes} min`}
+  set('out',ot)}
+{let q=0;const v=document.getElementById('v-build');if(v&&window.MutationObserver)new MutationObserver(()=>{if(q)return;q=1;setTimeout(()=>{q=0;bsSync()},0)}).observe(v,{childList:true,subtree:true})}
+function openWeek(k,i){const p=planNorm();if(!p)return;current={week:p.plan[k].days};selWk=k;selDay=i;go('build');render();showOut()}
+function openBuilt(id){const w=id?savedList().find(x=>x.id===id):savedList()[0];if(!w)return;current={single:w,sid:w.id};go('build');render();showOut()}
 function contSaved(r){return savedList().filter(w=>!w.program&&!(r&&r.w.id===w.id)&&Date.now()-(w.built||0)<7*DAY)}
 function contItems(){
   const it=[];const st=Store.state;
@@ -3503,7 +3552,7 @@ $('suName').onblur=e=>{if(!e.target.value.trim())e.target.value=activeSetup().na
 $('suDel').onclick=()=>{const b=$('suDel');if(S.setups.length<2)return;
   if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Tap again to delete '+activeSetup().name;setTimeout(()=>{b.classList.remove('armed');b.textContent='Delete this setup'},3000);return}
   S.setups=S.setups.filter(x=>x.id!==S.active);S.active=S.setups[0].id;linkSetups();save();b.classList.remove('armed');b.textContent='Delete this setup';renderRack()};
-$('todayReset').onclick=()=>{S.today=null;save();renderSetupBar()};
+$('todayReset').onclick=()=>{S.today=null;save();renderSetupBar();renderPick()};
 {let setup=false;try{setup=localStorage.getItem('ironflow-setup')==='1'}catch(e){}$('gearBox').open=!setup&&!fromStore}
 applyLook();renderRack();renderSettings();renderLib();renderSoreForm();renderLook();paintViewArt();
 Store.loadLocal();
