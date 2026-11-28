@@ -2377,7 +2377,7 @@ function practiceGuided(b,base,steps){
 // from the log form: {stepId: true (solid) | false (not yet)}; returns the step titles that became mastered
 function applyPractice(pr,map,date){const P=Store.state.practice||(Store.state.practice={}),out=[];
   for(const id in map){if(!map[id])continue;const a=(P[id]||[]).filter(d=>d!==date);a.push(date);P[id]=a.slice(-6);
-    if(new Set(a).size>=2&&!pDone(id)){const st=pSteps(pr.eq).find(x=>x.id===id);if(!st)continue;setStep(id,true);coachNote({kind:'skill',eq:pr.eq,id,via:'practice'});out.push(st.t)}}
+    if(new Set(a).size>=2&&!pDone(id)){const st=pSteps(pr.eq).find(x=>x.id===id);if(!st)continue;setStep(id,true);coachNote({kind:'skill',eq:pr.eq,sid:id,via:'practice'});out.push(st.t)}}
   Store.saveState();return out}
 
 /* ---------- first-run walkthrough ----------
@@ -3063,7 +3063,10 @@ function hideToast(){const el=$('toast');clearTimeout(toastT);el.classList.remov
 /* ---- coach: level, skill steps and lighter weeks (run whenever logs change) ----
    Store.state.coach = {notes:[...], deload:'YYYY-MM-DD' Monday, lastDeload, skipDeload, noAuto:{'eq:i':1}} */
 function coachState(){return Store.state.coach||(Store.state.coach={})}
-function coachNote(n){const c=coachState();c.notes=(c.notes||[]).filter(x=>x.kind!==n.kind||n.kind==='skill').concat([Object.assign({id:'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),ts:Date.now()},n)]).slice(-5)}
+const noteId=()=>'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+function coachNote(n){const c=coachState();c.notes=(c.notes||[]).filter(x=>x.kind!==n.kind||n.kind==='skill').concat([Object.assign({ts:Date.now()},n,{id:noteId()})]).slice(-5)}
+// skill notes saved before the fix used the step id as the note id, which broke their buttons: move it to sid
+function fixNotes(c){(c.notes||[]).forEach(n=>{if(n.kind==='skill'&&!n.sid&&n.id&&String(n.id).includes(':')){n.sid=n.id;n.id=noteId()}})}
 const avg=a=>a.reduce((x,y)=>x+y,0)/Math.max(1,a.length);
 function coachChecks(){
   if(!progOn()||!Store.logs.length)return;
@@ -3086,27 +3089,29 @@ function coachChecks(){
   // skill paths: three solid logged sessions with an open move or flow step marks it mastered
   Object.keys(PATHS).forEach(eq=>pOpenAll(eq).forEach(st=>{if(st.kind==='basic'||(c.noAuto||{})[st.id])return;
     const n=Store.logs.filter(l=>(l.moves||[]).some(m=>m.eq===eq&&sameMove(m.name,st.m,eq)&&m.feel!=='h')).length;
-    if(n>=3){Store.state.path=Object.assign({},PS(),{[st.id]:now});coachNote({kind:'skill',eq,id:st.id});changed=true}}));
+    if(n>=3){Store.state.path=Object.assign({},PS(),{[st.id]:now});coachNote({kind:'skill',eq,sid:st.id});changed=true}}));
   if(changed&&syncPathLevel())try{renderSettings()}catch(e){}
   if(changed)Store.saveState();
 }
 function noteText(n){
   if(n.kind==='level')return n.to>n.from?`<b>Moved you up to ${LEVELS[n.to-1]}.</b> Your last four weeks were steady at moderate effort, so new workouts have more reps, longer work periods and harder flows.`
     :`<b>Eased you back to ${LEVELS[n.to-1]} for now.</b> Your last few sessions were rated 9 or 10 out of 10. It moves back up once training feels steady again.`;
-  if(n.kind==='skill'){const P=PATHS[n.eq],st=n.id&&P&&P.steps.find(x=>x.id===n.id);if(!st)return '';const nx=pOpen(n.eq,1)[0];
+  if(n.kind==='skill'){const P=PATHS[n.eq],st=n.sid&&P&&P.steps.find(x=>x.id===n.sid);if(!st)return '';const nx=pOpen(n.eq,1)[0];
     return `<b>Marked “${esc(st.t)}” mastered</b> on your ${esc(P.name.toLowerCase())} path after ${n.via==='practice'?'two solid practice sessions':'three solid sessions with it'}.${nx?` Next up: ${esc(nx.t)}.`:' That finishes the path.'}`}
   if(n.kind==='deload')return `<b>This is a lighter week.</b> You've trained steadily for ${n.weeks} weeks. Weights drop one step and there are no new targets, so your body can catch up and the next push sticks.`;
   return '';
 }
 function renderCoach(){
-  const box=$('coachBox');if(!box)return;const c=Store.state.coach||{},mon=mondayOf(todayStr());
+  const box=$('coachBox');if(!box)return;const c=Store.state.coach||{},mon=mondayOf(todayStr());fixNotes(c);
+  // a note with nothing to say (for example an old skill note from the earlier paths) is retired quietly
+  (c.notes||[]).forEach(n=>{if(!n.seen&&!noteText(n))n.seen=true});
   const notes=(c.notes||[]).filter(n=>!n.seen&&!(n.kind==='deload'&&c.deload!==mon));
   box.innerHTML=notes.map(n=>`<div class="cnote"><p>${noteText(n)}</p><div class="go"><button class="btn ghost small" type="button" data-cn="ok:${n.id}">Got it</button><button class="link" type="button" data-cn="undo:${n.id}">${n.kind==='deload'?'Skip the lighter week':'Undo'}</button></div></div>`).join('');
-  box.querySelectorAll('[data-cn]').forEach(b=>b.onclick=()=>{const[k,id]=b.dataset.cn.split(':');const n=(c.notes||[]).find(x=>x.id===id);if(!n)return;
+  box.querySelectorAll('[data-cn]').forEach(b=>b.onclick=()=>{const v=b.dataset.cn,j=v.indexOf(':'),k=v.slice(0,j),id=v.slice(j+1);const n=(c.notes||[]).find(x=>x.id===id);if(!n)return;
     n.seen=true;
     if(k==='undo'){
       if(n.kind==='level'){S.level=n.from;S.levelAt=Date.now();save();renderSettings()}
-      if(n.kind==='skill'&&n.id){setStep(n.id,false);c.noAuto=Object.assign({},c.noAuto,{[n.id]:1});renderPrograms()}
+      if(n.kind==='skill'&&n.sid){setStep(n.sid,false);c.noAuto=Object.assign({},c.noAuto,{[n.sid]:1});renderPrograms()}
       if(n.kind==='deload'){c.skipDeload=c.deload;c.deload=null}
       if(current&&current.single&&!current.single.program){current.single=buildWorkout(current.single.type,current.single.eqs,current.single.minutes,current.single.opts);keepBuilt();render()}
       renderRec(true);
