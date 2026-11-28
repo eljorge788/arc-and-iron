@@ -100,6 +100,7 @@ section{display:grid;gap:14px}
 .todaygear{display:grid;gap:8px}
 .tg-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:8px 10px}
 .tg-row .weights{flex:1 1 200px;min-width:0;align-items:center}
+.tg-groups{flex:1 1 220px;display:grid;gap:6px;min-width:0}.tg-grp{display:grid;gap:3px}.tg-lbl{font-size:.78rem;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}.tg-sp{font-style:normal;font-family:var(--mono);font-size:.68rem;font-weight:700;border-radius:6px;padding:1px 6px;background:var(--line);color:var(--ink)}.tg-sp.tg-slow{background:var(--accent-soft)}.tg-sp.tg-quick{background:var(--good-soft);color:var(--good)}
 .tg-imp{font:inherit;font-weight:700;display:flex;align-items:center;gap:8px;border:0;background:transparent;color:var(--ink);cursor:pointer;padding:4px 2px;min-width:118px;text-align:left}
 .tg-box{width:20px;height:20px;border-radius:5px;border:2px solid var(--accent);display:grid;place-items:center;font-size:.8rem;color:var(--accent-ink);background:var(--accent)}
 .tg-off .tg-box{background:transparent;border-color:var(--line)}
@@ -1247,7 +1248,13 @@ function renderRack(){
   $('suDel').hidden=S.setups.length<2;
   renderSetupBar();
 }
-function setupSummary(st){const p=Object.keys(EQ).filter(k=>st.eq[k].on&&st.eq[k].w.length).map(k=>`${EQ[k].name} ${st.eq[k].w.map(x=>{const q=wP(x,st.eq[k].unit);return q?wLab(q):x}).join(', ')}`);return p.length?p.join(' · '):'No equipment yet'}
+// a setup's gear for one implement: the fixed pieces, then each adjustable piece with the weights it sets to and its speed
+function gearGroups(k,eq){const st=(eq||S.eq)[k],adj=(st.adj||[]).filter(a=>(a.w||[]).some(x=>st.w.includes(x))),both=st.both||[],word=EQWORD[k];
+  const fixed=st.w.filter(x=>!adj.some(a=>a.w.includes(x))||both.includes(x)),out=[];
+  if(fixed.length)out.push({label:`Fixed ${word}${fixed.length>1?'s':''} (${fixed.length})`,w:fixed});
+  adj.forEach((a,i)=>out.push({label:`Adjustable ${word}${adj.length>1?' '+(i+1):''}`,speed:a.speed==='quick'?'quick':'slow',w:st.w.filter(x=>a.w.includes(x))}));
+  return out}
+function setupSummary(st){const p=Object.keys(EQ).filter(k=>st.eq[k].on&&st.eq[k].w.length).map(k=>`${EQ[k].name}: `+gearGroups(k,st.eq).map(g=>`${g.label.replace(/ \(\d+\)$/,'').toLowerCase()}${g.speed?' ('+g.speed+' change)':''} ${g.w.map(x=>{const q=wP(x,st.eq[k].unit);return q?wLab(q):x}).join(', ')}`).join('; '));return p.length?p.join(' · '):'No equipment yet'}
 function renderSetupBar(){
   const sg=$('setupSeg');sg.innerHTML='';
   S.setups.forEach(st=>{const b=document.createElement('button');b.type='button';b.textContent=st.name;b.setAttribute('aria-pressed',String(st.id===S.active));
@@ -1259,7 +1266,8 @@ function renderSetupBar(){
   if(!ks.length){box.innerHTML='<p class="empty">This setup has no equipment yet. Tap Edit setup to add what you have.</p>'}
   else box.innerHTML=ks.map(k=>{const st=S.eq[k],off=(t.off||[]).includes(k),ow=(t.offW||{})[k]||[];
     return `<div class="tg-row${off?' tg-off':''}"><button type="button" class="tg-imp" data-ti="${k}" aria-pressed="${!off}"><span class="tg-box">${off?'':'✓'}</span>${EQ[k].name}</button>
-      <div class="weights">${st.w.map(w=>{const q=wP(w,st.unit);return `<button type="button" class="chip" data-tw="${k}:${w}" aria-pressed="${!off&&!ow.includes(w)}" ${off?'disabled':''}>${q?esc(wTxt(q.key,k)):w}</button>`}).join('')}</div></div>`}).join('');
+      <div class="tg-groups">${gearGroups(k).map(g=>`<div class="tg-grp"><span class="tg-lbl">${esc(g.label)}${g.speed?`<i class="tg-sp tg-${g.speed}">${g.speed==='slow'?'Slow change':'Quick change'}</i>`:''}</span>
+        <div class="weights">${g.w.map(w=>{const q=wP(w,st.unit);return `<button type="button" class="chip" data-tw="${k}:${w}" aria-pressed="${!off&&!ow.includes(w)}" ${off?'disabled':''}>${q?esc(wTxt(q.key,k)):w}</button>`}).join('')}</div></div>`).join('')}</div></div>`}).join('');
   const changed=tweakActive();
   $('todayNote').textContent=S.mode==='week'?'Weekly plans use the whole setup. Today-only changes apply to single workouts.':changed?'Changed for today only. Your saved setup stays the same.':'Tap anything you are not using today. Changes reset tomorrow.';
   $('todayReset').hidden=!changed;
