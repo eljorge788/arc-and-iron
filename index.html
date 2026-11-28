@@ -336,6 +336,17 @@ button.steplink{font:inherit;font-weight:700;background:none;border:0;padding:0;
 /* continue */
 .cont{display:grid;gap:12px}
 .ccard{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:14px;display:grid;gap:8px}
+details.cfold{display:block;padding:0;margin-bottom:10px}
+details.cfold>*:not(summary){margin:0 14px 10px}
+details.cfold>.art{margin:0 0 10px}
+.cf-h{list-style:none;cursor:pointer;display:flex;align-items:baseline;gap:10px;padding:13px 14px;flex-wrap:wrap}
+.cf-h::-webkit-details-marker{display:none}
+.cf-h::after{content:'▾';margin-left:auto;color:var(--muted)}
+details.cfold[open]>.cf-h::after{content:'▴'}
+.cf-t{font-family:var(--display);text-transform:uppercase;font-size:1.05rem;letter-spacing:.02em}
+.cf-s{color:var(--muted);font-size:.86rem;flex:1 1 140px;min-width:0}
+.cf-x{border:0;background:transparent;color:var(--muted);font-size:1rem;cursor:pointer;padding:0 4px;order:3}
+details.cfold[open]>.cf-h{border-bottom:1px solid var(--line);margin-bottom:10px}
 .ccard h3{font-size:1.4rem;text-transform:uppercase}
 .ccard p{margin:0}
 .ccard .meter{display:block}
@@ -3518,6 +3529,20 @@ function bsSync(){const set=(id,t)=>{const e=$('bsS-'+id);if(e&&e.textContent!==
 function openWeek(k,i){const p=planNorm();if(!p)return;current={week:p.plan[k].days};selWk=k;selDay=i;go('build');render();showOut()}
 function openBuilt(id){const w=id?savedList().find(x=>x.id===id):savedList()[0];if(!w)return;current={single:w,sid:w.id};go('build');render();showOut()}
 function contSaved(r){return savedList().filter(w=>!w.program&&!(r&&r.w.id===w.id)&&Date.now()-(w.built||0)<7*DAY)}
+/* Continue tab: every card folds to a one-line label (S.contFold remembers each card's choice; what is in progress
+   right now starts open, the rest start folded), and completed programs and plans can be dismissed
+   (Store.state.contHide, keyed by program and end time or plan id). */
+const contHidden=k=>!!(Store.state.contHide||{})[k];
+const CONT_OPEN={resume:1,today:1,goal:1};
+function contFold(box){const F=S.contFold||{};
+  box.querySelectorAll('article[data-ck]').forEach(a=>{const k=a.dataset.ck,ey=a.querySelector(':scope > .eyebrow'),h3=a.querySelector(':scope > h3');
+    const t=ey?ey.textContent:(k==='goal'?'Weekly goal':''),sub=h3?h3.textContent:'';
+    const d=document.createElement('details');d.className=a.className+' cfold';d.dataset.ck=k;if(a.getAttribute('aria-label'))d.setAttribute('aria-label',a.getAttribute('aria-label'));
+    d.open=F[k]!=null?!!F[k]:!!CONT_OPEN[k];
+    const sm=document.createElement('summary');sm.className='cf-h';sm.innerHTML=`<span class="cf-t">${esc(t)}</span>${sub?`<span class="cf-s">${esc(sub)}</span>`:''}${a.dataset.dismiss?`<button type="button" class="cf-x" data-c="hide:${esc(a.dataset.dismiss)}" aria-label="Dismiss">✕</button>`:''}`;
+    if(k==='goal'){const top=a.querySelector('.goal-num');if(top)sm.querySelector('.cf-t').insertAdjacentHTML('afterend',`<span class="cf-s">${esc(top.textContent)}</span>`)}
+    d.appendChild(sm);if(ey&&k!=='goal')ey.remove();if(h3)h3.remove();while(a.firstChild)d.appendChild(a.firstChild);a.replaceWith(d);
+    d.addEventListener('toggle',()=>{S.contFold=Object.assign({},S.contFold,{[k]:d.open});save()})})}
 function contItems(){
   const it=[];const st=Store.state;
   const r=readResume();if(r)it.push('resume');
@@ -3525,7 +3550,8 @@ function contItems(){
   if(upcoming(1).some(u=>u.date===todayStr()))it.unshift('today');
   if(progList().some(x=>{const pr=PROGRAMS.find(y=>y.id===x.id);return pr&&progNext(pr,x)}))it.push('program');
   if(contSaved(r).length)it.push('built');
-  if(progDoneList().some(x=>Date.now()-x.end<7*DAY))it.push('progdone');
+  if(progDoneList().some(x=>Date.now()-x.end<7*DAY&&!contHidden('pd-'+x.id+'-'+x.end)))it.push('progdone');
+  if(p&&!planNext(p)&&Date.now()-planLast(p)<7*DAY&&!contHidden('plan-'+p.id))it.push('plandone');
   if(Object.keys(PATHS).some(eq=>activeEq().includes(eq)&&pOpen(eq,1).length))it.push('skills');
   return it;
 }
@@ -3534,14 +3560,14 @@ function renderContinue(){
   $('contDot').hidden=!items.some(x=>x!=='skills');
   let h='';
   if(items.includes('resume')){const r=readResume(),pct=Math.round(r.i/Math.max(1,r.total)*100);
-    h+=`<article class="ccard ccard-hot"><div class="eyebrow">Workout in progress</div><h3>${esc(r.w.program?r.w.program.label:r.w.label||GOALS[r.w.type]+' · '+r.w.minutes+' min')}</h3>
+    h+=`<article class="ccard ccard-hot" data-ck="resume"><div class="eyebrow">Workout in progress</div><h3>${esc(r.w.program?r.w.program.label:r.w.label||GOALS[r.w.type]+' · '+r.w.minutes+' min')}</h3>
       <p class="hint">Stopped at step ${r.i+1} of ${r.total}${r.name?' · '+esc(r.name):''} · ${ago(r.ts)} · ${Math.round(r.elapsed/60)} min done</p>
       <span class="meter"><i class="s-ready" style="width:${pct}%"></i></span>
       <div class="go"><button class="btn" data-c="resume">▶ Resume</button><button class="btn ghost small" data-c="restart">Start over</button><button class="link" data-c="drop">Discard</button></div></article>`}
   if(items.includes('week')){const p=planNorm(),dn=p.done||{},sk=p.skip||{},nx=planNext(p),n=p.plan.length,days=p.plan[nx.k].days,w=days[nx.i],kk=(k,x)=>(k+1)+':'+x.day;
     const tot=p.plan.reduce((a,x)=>a+x.days.length,0),doneN=p.plan.reduce((a,x,k)=>a+x.days.filter(y=>dn[kk(k,y)]).length,0),ph=PHASE[(p.phases||[])[nx.k]]||PHASE.learn;
     const last=Math.max(0,...Object.values(dn));
-    h+=`<article class="ccard"><div class="eyebrow">${n>1?`Your ${n}-week plan · Week ${nx.k+1} of ${n} · ${ph[0]}`:"This week's plan"}${p.setup?' · '+esc(p.setup):''}</div><h3>${doneN} of ${tot} days done</h3>
+    h+=`<article class="ccard" data-ck="week"><div class="eyebrow">${n>1?`Your ${n}-week plan · Week ${nx.k+1} of ${n} · ${ph[0]}`:"This week's plan"}${p.setup?' · '+esc(p.setup):''}</div><h3>${doneN} of ${tot} days done</h3>
       ${n>1?`<span class="meter"><i class="s-ready" style="width:${Math.round(doneN/tot*100)}%"></i></span>`:''}
       <div class="cdays">${WEEK.map(d=>{const i=days.findIndex(x=>x.day===d);if(i<0)return`<span class="cday rest">${d}</span>`;const t=dn[kk(nx.k,days[i])];
         return `<button class="cday${t?' dn':''}${i===nx.i?' nx':''}" data-c="wday:${nx.k}:${i}" aria-label="${d}${t?', done '+fmtDate(t):''}">${d}${t?'<i>✓</i>':''}</button>`}).join('')}</div>
@@ -3549,29 +3575,35 @@ function renderContinue(){
       <div class="go"><button class="btn" data-c="wday:${nx.k}:${nx.i}">Open ${w.day}'s workout</button><button class="btn ghost small" data-c="wdone:${nx.k}:${nx.i}">Mark ${w.day} done</button></div>
       <div class="go"><button class="link" data-c="wnew">Replace with a new plan</button><button class="link" data-c="wend">End plan</button></div></article>`}
   if(items.includes('today')){const due=upcoming(1).filter(u=>u.date===todayStr());
-    h=`<article class="ccard ccard-hot"><div class="eyebrow">Scheduled today · ${dowName(todayStr())}</div>${due.map((u,i)=>`<div class="trow"><span>${eqDots(u.eqs)}<b>${esc(u.label)}</b></span><button class="btn small" data-c="due:${i}">Open</button></div>`).join('')}
+    h=`<article class="ccard ccard-hot" data-ck="today"><div class="eyebrow">Scheduled today · ${dowName(todayStr())}</div>${due.map((u,i)=>`<div class="trow"><span>${eqDots(u.eqs)}<b>${esc(u.label)}</b></span><button class="btn small" data-c="due:${i}">Open</button></div>`).join('')}
       <p class="hint">Want more? <button class="link" data-c="extra">Add another workout</button> built around these.</p></article>`}
   if(items.includes('program'))progList().forEach(ps=>{const prog=PROGRAMS.find(x=>x.id===ps.id);if(!prog)return;const nx=progNext(prog,ps);if(!nx)return;
     const spec=prog.day(nx.w,nx.d),doneN=Object.keys(ps.done||{}).length,tot=prog.weeks*prog.days,when=upcoming(14).find(u=>u.src==='prog'&&u.id===prog.id);
-    h+=`<article class="ccard">${artHTML(PROG_ART[prog.id])}<div class="eyebrow">Program · ${doneN} of ${tot} sessions${ps.days?' · '+ps.days.join(', '):''}</div><h3>${esc(prog.name)}</h3>
+    h+=`<article class="ccard" data-ck="prog-${prog.id}">${artHTML(PROG_ART[prog.id])}<div class="eyebrow">Program · ${doneN} of ${tot} sessions${ps.days?' · '+ps.days.join(', '):''}</div><h3>${esc(prog.name)}</h3>
       <span class="meter"><i class="s-ready" style="width:${Math.round(doneN/tot*100)}%"></i></span>
       <p class="hint">Next: <b>Week ${nx.w} · Day ${nx.d}</b>${when?' · '+dayWord(when.date):''} · ${esc(spec.label)} · ${spec.min} min</p>
       <div class="go">${progAvail(prog)?`<button class="btn" data-c="prog:${prog.id}">Open next session</button>`:'<span class="hint">Turn on the gear this program needs in your setup.</span>'}<button class="btn ghost small" data-c="progs">See program</button></div></article>`});
-  if(items.includes('progdone'))progDoneList().filter(x=>Date.now()-x.end<7*DAY).forEach(x=>{const p=PROGRAMS.find(q=>q.id===x.id);if(!p)return;
-    h+=`<article class="ccard">${artHTML(PROG_ART[p.id])}<div class="eyebrow">Program complete · ${fmtDate(x.end)}</div><h3>✓ ${esc(p.name)}</h3>
+  if(items.includes('progdone'))progDoneList().filter(x=>Date.now()-x.end<7*DAY&&!contHidden('pd-'+x.id+'-'+x.end)).forEach(x=>{const p=PROGRAMS.find(q=>q.id===x.id);if(!p)return;
+    h+=`<article class="ccard" data-ck="pdone-${p.id}" data-dismiss="pd-${p.id}-${x.end}">${artHTML(PROG_ART[p.id])}<div class="eyebrow">Program complete · ${fmtDate(x.end)}</div><h3>✓ ${esc(p.name)}</h3>
       <span class="meter"><i class="s-ready" style="width:100%"></i></span>
       <p class="hint">All ${p.weeks*p.days} sessions done. ${x.days&&x.days.length?esc(x.days.join(', '))+' are':'Its days are'} free on your schedule now.</p>
-      <div class="go"><button class="btn" data-c="progs">Pick a new program</button><button class="btn ghost small" data-c="tobuild">Build a workout or plan</button></div></article>`});
+      <div class="go"><button class="btn" data-c="progs">Pick a new program</button><button class="btn ghost small" data-c="tobuild">Build a workout or plan</button><button class="link" data-c="hide:pd-${x.id}-${x.end}">Dismiss</button></div></article>`});
+  if(items.includes('plandone')){const p=planNorm(),dn=p.done||{},tot=p.plan.reduce((a,x)=>a+x.days.length,0),doneN=Object.keys(dn).length,end=planLast(p);
+    h+=`<article class="ccard" data-ck="plandone" data-dismiss="plan-${p.id}"><div class="eyebrow">Plan complete · ${fmtDate(end)}</div><h3>✓ ${p.plan.length>1?p.plan.length+'-week plan':'Weekly plan'}</h3>
+      <span class="meter"><i class="s-ready" style="width:100%"></i></span>
+      <p class="hint">${doneN} of ${tot} days done${tot-doneN?', '+(tot-doneN)+' skipped':''}. Its days are free on your schedule.</p>
+      <div class="go"><button class="btn" data-c="wnew">Build a new plan</button><button class="btn ghost small" data-c="progs">Pick a program</button><button class="link" data-c="hide:plan-${p.id}">Dismiss</button></div></article>`}
   if(items.includes('built')){const ws=contSaved(readResume());
-    h+=`<article class="ccard"><div class="eyebrow">Workouts you built · not logged yet</div>${ws.map(w=>`<div class="trow"><span>${eqDots(w.eqs)}<b>${esc(GOALS[w.type]+' · '+w.minutes+' min')}</b><small>${ago(w.built||Date.now())}</small></span>
+    h+=`<article class="ccard" data-ck="built"><div class="eyebrow">Workouts you built · not logged yet</div><h3 class="cf-only">${ws.length} waiting</h3>${ws.map(w=>`<div class="trow"><span>${eqDots(w.eqs)}<b>${esc(GOALS[w.type]+' · '+w.minutes+' min')}</b><small>${ago(w.built||Date.now())}</small></span>
       <span class="go"><button class="btn small" data-c="built:${esc(w.id)}">Open</button><button class="btn ghost small" data-c="builtgo:${esc(w.id)}">▶ Start</button><button class="link" data-c="builtdrop:${esc(w.id)}">Remove</button></span></div>`).join('')}</article>`}
   if(items.includes('skills')){
-    h+=`<article class="ccard"><div class="eyebrow">Skill paths</div>${Object.entries(PATHS).filter(([eq])=>activeEq().includes(eq)&&pOpen(eq,1).length).map(([eq,P])=>{const nx=pOpen(eq,1)[0];
+    h+=`<article class="ccard" data-ck="skills"><div class="eyebrow">Skill paths</div><h3 class="cf-only">${esc(Object.keys(PATHS).filter(eq=>activeEq().includes(eq)&&pOpen(eq,1).length).map(eq=>EQ[eq].name+': '+pOpen(eq,1)[0].t).join(' · '))}</h3>${Object.entries(PATHS).filter(([eq])=>activeEq().includes(eq)&&pOpen(eq,1).length).map(([eq,P])=>{const nx=pOpen(eq,1)[0];
       return `<div class="cskill">${eqBanner(eq,'')}<p><b>${PATH_LVLS[nx.lvl]} · ${esc(nx.t)}</b><br><span class="hint">${esc(nx.goal)}</span></p><span class="go"><button class="btn small" data-c="pract:${eq}">▶ Practice</button><button class="link" data-c="skill:${eq}">See path</button></span></div>`}).join('')}${needBasics(activeEq()).length?`<p class="hint">Finish the Basics for your ${esc(eqNames(needBasics(activeEq())))} to unlock weekly plans and programs with it.</p>`:''}</article>`}
   const gst=goalStats();
   if(!items.length)h=`<div class="empty"><p><b>Nothing in progress yet.</b> Workouts you build, weekly plans, programs and skill paths you start will show up here so you can pick up where you left off.</p>
       <div class="go"><button class="btn" data-c="tobuild">Build a workout</button><button class="btn ghost" data-c="progs">Browse programs</button></div></div>`;
-  box.innerHTML=(gst?goalCardHTML(gst,true):'')+h;
+  box.innerHTML=(gst?goalCardHTML(gst,true).replace('<article class="goal','<article data-ck="goal" class="goal'):'')+h;
+  contFold(box);
   box.querySelectorAll('[data-goal="see"]').forEach(b=>b.onclick=()=>go('progress'));
   box.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{const[k,a,c]=b.dataset.c.split(':');const r=readResume();
     if(k==='resume'&&r)startGuided(r.w,0,r);
@@ -3588,6 +3620,7 @@ function renderContinue(){
     if(k==='built')openBuilt(a);
     if(k==='builtgo'){if(showSaved(a)){render();startGuided(current.single,0)}}
     if(k==='builtdrop'){if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Tap again to remove';return}dropSaved(a);Store.saveState();renderContinue();if(current&&current.single&&current.single.id===a){current=null;render()}}
+    if(k==='hide'){const key=b.dataset.c.slice(5);Store.state.contHide=Object.assign({},Store.state.contHide,{[key]:Date.now()});Store.saveState();renderContinue();return}
     if(k==='skill'){goPaths(a)}
     if(k==='pract'){startPractice(a)}
     if(k==='tobuild')go('build');
